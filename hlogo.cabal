@@ -1,0 +1,32 @@
+name:                  hlogo
+version:               0.0.1
+synopsis:              HLogo, a simulation framework in Haskell
+description:           Input programs are written in a dialect of Logo. Then on, they are source-to-source compiled down to Haskell,
+                       and are executed on the Haskell modelling framework.
+author:                Nikolaos Bezirgiannis, Ilias Sakellariou
+maintainer:            NikolaosBezirgiannis <n.bezirgiannis@students.uu.nl>, Ilias Sakellariou <iliass@uom.gr>
+stability:             provisional
+build-type:            Simple
+cabal-version:         >= 1.4
+                      
+library
+  build-depends:      base, containers, cmdargs, mtl, array, random, stm, threads
+  exposed-modules:    Framework.Logo.Base, Framework.Logo.Core, 
+                      Framework.Logo.Prim, Framework.Logo.Prim.Unsafe
+                      Language.Logo.Syntax, Language.Logo.Parser, Language.Logo.Pretty
+  other-modules:      Framework.Logo.Conf
+  ghc-options:        -rtsopts -threaded
+  hs-source-dirs:     src
+
+executable hlogo
+  main-is:             Main.hs
+  build-depends:       base, containers, cmdargs, mtl, array, random, stm, threads
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src
+
+test-suite test
+  type:                exitcode-stdio-1.0
+  main-is:             Test.hs
+  build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
+  ghc-options:
+  hs-source-dirs:      src, test                        
