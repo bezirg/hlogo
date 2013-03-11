@@ -4,8 +4,9 @@ module Math where
 
 import Test.Framework
 import Test.Framework.TH
-import Test.HUnit
 import Test.Framework.Providers.HUnit
+import Test.HUnit
+
 
 mathTestGroup = $(testGroupGenerator)
 case_1 = do 1 @=? 1

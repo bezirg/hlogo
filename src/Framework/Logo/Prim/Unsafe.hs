@@ -1,6 +1,37 @@
-module Framework.Logo.Prim.Unsafe where
+-- | This module contains \"unsafe\" counterparts of some common functions taken from the "Framework.Logo.Prim" module. Also, it includes any primitives that cannot be specified in CSTM monad, and thus have to be executed on the CIO monad.
+-- Using the functions from this module, will in principle speed up the execution, compared to the Prim module.
+module Framework.Logo.Prim.Unsafe (
+                           -- * Agent related
+                           self, other, count, distance, distancexy, towards, towardsxy, in_radius, in_cone,
 
-import Framework.Logo.Prim (mod_, sin_, cos_, delta, primary_colors, xor)
+                           -- * Turtle related
+                           turtles_here, turtles_at, turtles, turtle, turtle_set, face, can_movep, dx, dy, heading, xcor, ycor, who, no_turtles, turtles_on, left, right, downhill, downhill4,
+
+                           -- * Patch related
+                           patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches,
+
+                           -- * Random related
+                           -- | NB: The following random functions use internally 'getStdRandom', which is non thread-safe. This means that it is possible for simultaneous threads to yield the same random number.
+                           random_xcor, random_ycor, random_pxcor, random_pycor, random, random_float, new_seed, random_seed, random_exponential, random_gamma, random_normal, random_poisson,
+                           -- * Color
+
+                           -- * List related
+                           anyp, one_of, shuffle,
+
+                           -- * Math
+
+                           -- * Misc
+                           every, wait, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, ticks,
+
+                           -- * Input/Output
+                           -- | NB: Non-deterministic IO; use with care. Possible output mangling.
+                           show_, print_,
+
+                           -- * IO Operations
+                           ask_, of_, with
+) where
+
+import Framework.Logo.Prim (mod_, sin_, cos_, primary_colors, xor)
 import Framework.Logo.Base
 import Framework.Logo.Conf
 import Control.Concurrent.STM
@@ -12,7 +43,7 @@ import Data.List
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import Data.Array
-import System.Random
+import System.Random hiding (random)
 import Control.Applicative
 
 count :: [a] -> CIO Int
@@ -21,20 +52,17 @@ count = return . length
 anyp :: [AgentRef] -> CIO Bool
 anyp as = return $ not $ null as
 
-random_primary_color :: CIO Double
-random_primary_color = do
-  i <- lift $ randomRIO (0,13)
-  return $ primary_colors !! i
-
 self :: CIO [AgentRef]
 self = do
   (_, _, a, _, _) <- ask
   return [a]
 
+other :: [AgentRef] -> CIO [AgentRef]
 other as = do
   [s] <- self
   return $ delete s as
 
+turtles_here :: CIO [AgentRef]
 turtles_here = do
   [s] <- self
   h <- patch_here
@@ -49,38 +77,7 @@ turtles_at x y = do
   with (return . (== [a])  =<< patch_here) =<< turtles
 
 
-ask_ :: CIO a -> [AgentRef] -> CIO ()
-ask_ f as = do
- (gs, tw, _, p, s) <- ask
- tg <- lift ThreadGroup.new
- lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, s)) | a <- as]
- lift $ ThreadGroup.wait tg
-
-of_ :: CIO a -> [AgentRef] -> CIO [a]
-of_ f as = do
-  (gs, tw, _, p, s) <- ask
-  xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, s)) | a <- as]
-  lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
-
-with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
-with f as = do
-  res <- f `of_` as
-  return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
-
-show_ :: Show a => a -> CIO ()
-show_ a = do
-  (_,_, r, _, _) <- ask
-  lift $ putStrLn $ (case r of
-                           ObserverRef -> "observer: "
-                           PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
-                           TurtleRef i _ -> "(turtle " ++ show i ++ "): ")   ++ show a
-
-
-print_ :: Show a => a -> CIO ()
-print_ a = do
-  lift $ putStrLn $ show a
-
-patch_at :: Double -> Double -> ReaderT Context IO [AgentRef]
+patch_at :: Double -> Double -> CIO [AgentRef]
 patch_at x y = do
   (_, _, a, _, _) <- ask
   case a of
@@ -109,6 +106,7 @@ patch x y = do
            x' = round x
            y' = round y
 
+-- | Internal
 newTurtle x = MkTurtle <$>
   newTVarIO x <*>
   newTVarIO "turtles" <*>
@@ -219,30 +217,38 @@ random_float x | x == 0 = return 0
                | x < 0 = lift $ getStdRandom $ randomR (x,0)
                | x > 0 = lift $ getStdRandom $ randomR (0,x)
 
+-- | Internal
+random_primary_color :: CIO Double
+random_primary_color = do
+  i <- lift $ randomRIO (0,13)
+  return $ primary_colors !! i
 
--- todo
+
+-- | Reports a number suitable for seeding the random number generator. 
+-- | todo
 new_seed = undefined
 
+-- | Sets the seed of the pseudo-random number generator to the integer part of number.
 random_seed n = setStdGen $ mkStdGen n
 
---todo
+-- | random-exponential reports an exponentially distributed random floating point number. 
+-- | todo
 random_exponential m = undefined
 
-
-
--- @todo
+-- | random-gamma reports a gamma-distributed random floating point number as controlled by the floating point alpha and lambda parameters. 
+-- | todo
 random_gamma a l = undefined
 
-
--- @todo
+-- | random-normal reports a normally distributed random floating point number. 
+-- | todo
 random_normal m s = undefined
 
-
--- @todo
+-- | random-poisson reports a Poisson-distributed random integer. 
+-- | todo
 random_poisson m = undefined
 
 
-
+-- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
 turtles_on :: [AgentRef] -> CIO [AgentRef]
 turtles_on [] = return []
 turtles_on ps@(PatchRef _ _ : _) = do
@@ -275,17 +281,25 @@ distancexy x' y' = do
             PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
             TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
   return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+      where
+        delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
 
-downhill = undefined                    -- todo
 
-downhill4 = undefined                   -- todo
+-- | todo
+downhill = undefined
 
-face = 3                 -- todo
+-- | todo
+downhill4 = undefined
 
-towards = undefined                     -- todo
+-- | todo
+face = undefined
 
-towardsxy = undefined                   -- todo
+-- | todo
+towards = undefined
+
+-- | todo
+towardsxy = undefined
 
 in_radius :: [AgentRef] -> Double -> CIO [AgentRef]
 in_radius as n = do
@@ -303,9 +317,11 @@ no_turtles = return []
 no_patches :: CIO [AgentRef]
 no_patches = return []
 
+-- | Runs the given commands only if it's been more than number seconds since the last time this agent ran them in this context. Otherwise, the commands are skipped. 
 every :: Double -> CIO a -> CIO ()
 every n a = a >> wait n
 
+-- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
 wait n = lift $ threadDelay (round $ n * 1000000)
 
 max_pxcor :: CIO Int
@@ -338,8 +354,7 @@ one_of l = do
   v <- lift $ randomRIO (0, length l)
   return (l !! v)
 
--- todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
-
+-- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
 shuffle :: Eq a => [a] -> CIO [a]
 shuffle [] = return []
 shuffle l = shuffle' l (length l) where
@@ -348,4 +363,37 @@ shuffle l = shuffle' l (length l) where
       x <- one_of l
       xs <- shuffle' (delete x l) (i-1)
       return $ x:xs
+
+
+show_ :: Show a => a -> CIO ()
+show_ a = do
+  (_,_, r, _, _) <- ask
+  lift $ putStrLn $ (case r of
+                           ObserverRef -> "observer: "
+                           PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
+                           TurtleRef i _ -> "(turtle " ++ show i ++ "): ")   ++ show a
+
+
+print_ :: Show a => a -> CIO ()
+print_ a = do
+  lift $ putStrLn $ show a
+
+
+ask_ :: CIO a -> [AgentRef] -> CIO ()
+ask_ f as = do
+ (gs, tw, _, p, s) <- ask
+ tg <- lift ThreadGroup.new
+ lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, s)) | a <- as]
+ lift $ ThreadGroup.wait tg
+
+of_ :: CIO a -> [AgentRef] -> CIO [a]
+of_ f as = do
+  (gs, tw, _, p, s) <- ask
+  xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, s)) | a <- as]
+  lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
+
+with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
+with f as = do
+  res <- f `of_` as
+  return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
 
