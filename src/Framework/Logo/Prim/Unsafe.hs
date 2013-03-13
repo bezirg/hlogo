@@ -342,7 +342,7 @@ world_width = return $ (max_pxcor_ conf) - (min_pxcor_ conf) + 1
 world_height :: CIO Int
 world_height = return $ (max_pycor_ conf) - (min_pycor_ conf) + 1
 
-ticks :: CIO Int
+ticks :: CIO Double
 ticks = do
   (gs, _, _, _, _) <- ask
   lift $ readTVarIO (gs ! 1)

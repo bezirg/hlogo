@@ -1,3 +1,5 @@
 dist/
 doc/*.pdf
 *_flymake.hs
+*.hi
+*.o

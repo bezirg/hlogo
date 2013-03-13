@@ -49,9 +49,9 @@ type Patches = M.Map (Int, Int) Patch
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle
 
--- | The 'Globals' structure is an array of Int-indices pointing to Int (for now) variables.
+-- | The 'Globals' structure is an array of Int-indices pointing to Double (for now) variables.
 -- In the future it must be polymorphic on the container type.
-type Globals = Array Int (TVar Int)
+type Globals = Array Int (TVar Double)
 
 -- | The 'World' is the union of 'Patches' and 'Turtles'
 data World = MkWorld Patches Turtles

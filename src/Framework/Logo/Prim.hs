@@ -273,8 +273,8 @@ create_turtles n = do
   (gs, tw, _, _, _) <- ask
   let who = gs ! 0
   lift $ do 
-    oldWho <- readTVar who
-    modifyTVar who (n +)
+    oldWho <- liftM round $ readTVar who
+    modifyTVar who (\ ow -> fromIntegral n + ow)
     ns <- newTurtles oldWho n
     modifyTVar tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -673,14 +673,14 @@ tick = tick_advance 1
 
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 -- todo: dynamic typing, float
-tick_advance :: Int -> CSTM ()
+tick_advance :: Double -> CSTM ()
 tick_advance n = do
   (gs, _, _, _, _) <- ask
   lift $ modifyTVar' (gs ! 1) (+n)
 
 -- | Reports the current value of the tick counter. The result is always a number and never negative. 
 -- todo: dynamic typing, integer or float
-ticks :: CSTM Int
+ticks :: CSTM Double
 ticks = do
   (gs, _, _, _, _) <- ask
   lift $ readTVar (gs ! 1)
