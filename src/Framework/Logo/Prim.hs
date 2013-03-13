@@ -1016,4 +1016,3 @@ with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
 with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
-
