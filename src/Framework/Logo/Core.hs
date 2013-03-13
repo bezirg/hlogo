@@ -15,14 +15,15 @@ import Control.Monad
 import System.Random (mkStdGen)
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
+-- Takes the length of the global from TemplateHaskell (trick), to determine the size of the globals array
 -- Returns the top-level Observer context.
-cInit :: IO Context
-cInit = do
+cInit :: Integer -> IO Context
+cInit gl = do
   -- read dimensions from conf
   let mx = max_pxcor_ conf
   let my = max_pycor_ conf
   -- initialize globals
-  gs <- return . listArray (0,9) =<< replicateM 10 (newTVarIO 0)
+  gs <- return . listArray (0, fromIntegral gl+1) =<< replicateM (fromIntegral gl + 2) (newTVarIO 0)
   -- spawn patches
   ps <- sequence [do
                    p <- newPatch x y

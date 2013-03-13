@@ -50,6 +50,9 @@ type Patches = M.Map (Int, Int) Patch
 type Turtles = IM.IntMap Turtle
 
 -- | The 'Globals' structure is an array of Int-indices pointing to Double (for now) variables.
+-- Index 0 is reserved for holding the global who variable.
+-- Index 1 is reserved for holding the global ticks variable.
+-- The globals variables start indexing from index 2.
 -- In the future it must be polymorphic on the container type.
 type Globals = Array Int (TVar Double)
 

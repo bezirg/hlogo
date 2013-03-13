@@ -3,7 +3,7 @@ module Framework.Logo.Prim (
                            self, other, count, distance, distancexy, towards, towardsxy, in_radius, in_cone,
 
                            -- * Turtle related
-                           turtles_here, turtles_at, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, turtle, turtle_set, face, xcor, ycor, who, dx, dy, home, right, rt, left, lt, downhill, downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles,
+                           turtles_here, turtles_at, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, turtle, turtle_set, face, xcor, ycor, who, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles,
 
 
                            -- * Patch related
@@ -195,9 +195,12 @@ anyp as = return $ not $ null as
 
 
 -- | Internal
-newTurtle x = MkTurtle <$>
+newTurtle x = newBreed "turtles" x
+
+-- | Internal
+newBreed b x = MkTurtle <$>
   newTVar x <*>
-  newTVar "turtles" <*>
+  newTVar b <*>
   newTVar 9.9 <*>
   newTVar 0 <*>
   newTVar 0 <*>
@@ -209,6 +212,7 @@ newTurtle x = MkTurtle <$>
   newTVar 1 <*>
   newTVar 1 <*>
   newTVar Up
+
 
 -- | Reports the agentset consisting of all patches. 
 patches :: CSTM [AgentRef]
@@ -347,6 +351,11 @@ who :: CSTM Int
 who = do
   (_,_,TurtleRef i _, _, _) <- ask
   return i
+
+breed :: CSTM String
+breed = do
+  (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
+  lift $ readTVar b
 
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: CSTM Double

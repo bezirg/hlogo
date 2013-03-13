@@ -5,7 +5,7 @@ module Framework.Logo.Prim.Unsafe (
                            self, other, count, distance, distancexy, towards, towardsxy, in_radius, in_cone,
 
                            -- * Turtle related
-                           turtles_here, turtles_at, turtles, turtle, turtle_set, face, can_movep, dx, dy, heading, xcor, ycor, who, no_turtles, turtles_on, left, right, downhill, downhill4,
+                           turtles_here, turtles_at, turtles, turtle, turtle_set, face, can_movep, dx, dy, heading, xcor, ycor, who, breed, no_turtles, turtles_on, left, right, downhill, downhill4,
 
                            -- * Patch related
                            patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches,
@@ -107,20 +107,23 @@ patch x y = do
            y' = round y
 
 -- | Internal
-newTurtle x = MkTurtle <$>
-  newTVarIO x <*>
-  newTVarIO "turtles" <*>
-  newTVarIO 9.9 <*>
-  newTVarIO 0 <*>
-  newTVarIO 0 <*>
-  newTVarIO 0 <*>
-  newTVarIO "default" <*>
-  newTVarIO "" <*>
-  newTVarIO 9.9 <*>
-  newTVarIO False <*>
-  newTVarIO 1 <*>
-  newTVarIO 1 <*>
-  newTVarIO Up
+newTurtle x = newBreed "turtles" x
+
+-- | Internal
+newBreed b x = MkTurtle <$>
+  newTVar x <*>
+  newTVar b <*>
+  newTVar 9.9 <*>
+  newTVar 0 <*>
+  newTVar 0 <*>
+  newTVar 0 <*>
+  newTVar "default" <*>
+  newTVar "" <*>
+  newTVar 9.9 <*>
+  newTVar False <*>
+  newTVar 1 <*>
+  newTVar 1 <*>
+  newTVar Up
 
 turtles :: CIO [AgentRef]
 turtles = do
@@ -188,6 +191,10 @@ ycor = do
   (_,_,TurtleRef _ (MkTurtle {ycor_ = y}), _, _) <- ask
   lift $ readTVarIO y
 
+breed :: CIO String
+breed = do
+  (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
+  lift $ readTVarIO b
 
 who :: CIO Int
 who = do
