@@ -1,13 +1,13 @@
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, unsafe_self, other, unsafe_other, count, unsafe_count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait,
+                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait,
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, unsafe_turtle_set, face, unsafe_face, xcor, unsafe_xcor, heading, unsafe_heading, ycor, unsafe_ycor, who, unsafe_who,breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, unsafe_who, breed, set_breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
 
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, unsafe_patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches,
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -16,13 +16,13 @@ module Framework.Logo.Prim (
                            primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
-                           sum_, anyp, unsafe_anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values,
+                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values,
 
                            -- * Math
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_, 
 
                            -- * Misc
-                           max_pxcor, unsafe_max_pxcor, max_pycor, unsafe_max_pycor, min_pxcor, unsafe_min_pxcor, min_pycor, unsafe_min_pycor, world_width, unsafe_world_width, world_height, unsafe_world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
+                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
 
                            -- * Input/Output
                            show_, unsafe_show_, print_, unsafe_print_, read_from_string,
@@ -50,13 +50,13 @@ import Control.Monad (forM_)
 import Data.Function
 
 -- |  Reports this turtle or patch. 
-self :: CSTM [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
+self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (_, _, a, _, _) <- ask
   return [a]
 
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
-other :: [AgentRef] -> CSTM [AgentRef]
+other :: Monad m => [AgentRef] -> C m [AgentRef]
 other as = do
   [s] <- self
   return $ delete s as
@@ -187,11 +187,11 @@ random_primary_color = do
   return (primary_colors !! v)
 
 -- | Reports the number of agents in the given agentset. 
-count :: [AgentRef] -> CSTM Int
+count :: Monad m => [AgentRef] -> C m Int
 count = return . length
 
 -- | Reports true if the given agentset is non-empty, false otherwise. 
-anyp :: [AgentRef] -> CSTM Bool
+anyp :: Monad m => [AgentRef] -> C m Bool
 anyp as = return $ not $ null as
 
 
@@ -318,10 +318,11 @@ turtle n = do
 
 
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
-turtle_set :: [CSTM [AgentRef]] -> CSTM [AgentRef]
+turtle_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
 turtle_set ts = sequence ts >>= return . concat
 
--- | Reports an agentset containing all of the patches anywhere in any of the inputs. 
+-- | Reports an agentset containing all of the patches anywhere in any of the inputs.
+patch_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
 patch_set = turtle_set
 
 -- | Reports true if this turtle can move distance in the direction it is facing without violating the topology; reports false otherwise. 
@@ -335,17 +336,33 @@ heading = do
   (_,_,TurtleRef _ (MkTurtle {heading_ = h}), _, _) <- ask
   lift $ readTVar h
 
+set_heading :: Double -> CSTM ()
+set_heading v = do
+  (_,_,TurtleRef _ t, _, _) <- ask
+  lift $ writeTVar (heading_ t) v
+
 -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
 xcor :: CSTM Double
 xcor = do
   (_,_,TurtleRef _ (MkTurtle {xcor_ = x}), _, _) <- ask
   lift $ readTVar x
 
+set_xcor :: Double -> CSTM ()
+set_xcor v = do
+  (_,_,TurtleRef _ t, _, _) <- ask
+  lift $ writeTVar (xcor_ t) v
+
+
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: CSTM Double
 ycor = do
   (_,_,TurtleRef _ (MkTurtle {ycor_ = y}), _, _) <- ask
   lift $ readTVar y
+
+set_ycor :: Double -> CSTM ()
+set_ycor v = do
+  (_,_,TurtleRef _ t, _, _) <- ask
+  lift $ writeTVar (ycor_ t) v
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: CSTM Int
@@ -357,6 +374,11 @@ breed :: CSTM String
 breed = do
   (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
   lift $ readTVar b
+
+set_breed :: String -> CSTM ()
+set_breed v = do
+  (_,_,TurtleRef _ t, _, _) <- ask
+  lift $ writeTVar (breed_ t) v
 
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: CSTM Double
@@ -488,8 +510,8 @@ downhill = undefined
 downhill4 = undefined
 
 -- | Set the caller's heading towards agent. 
--- | todo
-face = undefined
+face :: [AgentRef] -> CSTM ()
+face a = set_heading (towards a)
 
 -- | Reports the heading from this agent to the given agent. 
 -- | todo: wrapping
@@ -579,7 +601,7 @@ xor p q = (p || q) && not (p && q)
 
 
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
-max_pxcor :: CSTM Int
+max_pxcor :: Monad m => C m Int
 max_pxcor = return $ max_pxcor_ conf
 
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
@@ -1030,25 +1052,9 @@ with f as = do
 -- Unsafe
 --
 
-unsafe_count :: [a] -> CIO Int
-unsafe_count = return . length
-
-unsafe_anyp :: [AgentRef] -> CIO Bool
-unsafe_anyp as = return $ not $ null as
-
-unsafe_self :: CIO [AgentRef]
-unsafe_self = do
-  (_, _, a, _, _) <- ask
-  return [a]
-
-unsafe_other :: [AgentRef] -> CIO [AgentRef]
-unsafe_other as = do
-  [s] <- unsafe_self
-  return $ delete s as
-
 unsafe_turtles_here :: CIO [AgentRef]
 unsafe_turtles_here = do
-  [s] <- unsafe_self
+  [s] <- self
   h <- unsafe_patch_here
   ts <- unsafe_turtles
   res <- with (return . ( == h) =<< unsafe_patch_here) ts
@@ -1109,11 +1115,6 @@ unsafe_turtle n = do
   (MkWorld _ ts) <- lift $ readTVarIO tw
   return $ [TurtleRef n (ts IM.! n)]
 
-
-unsafe_turtle_set :: [CIO [AgentRef]] -> CIO [AgentRef]
-unsafe_turtle_set ts = sequence ts >>= return . concat
-
-unsafe_patch_set = turtle_set
 
 unsafe_can_movep :: Double -> CIO Bool
 unsafe_can_movep n = unsafe_patch_ahead n >>= \ p -> return (p /= [Nobody])
@@ -1256,16 +1257,11 @@ unsafe_distancexy x' y' = do
       where
         delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
-
-
 -- | todo
 unsafe_downhill = undefined
 
 -- | todo
 unsafe_downhill4 = undefined
-
--- | todo
-unsafe_face = undefined
 
 -- | todo
 unsafe_towards = undefined
@@ -1290,35 +1286,18 @@ unsafe_no_patches :: CIO [AgentRef]
 unsafe_no_patches = return []
 
 -- | Runs the given commands only if it's been more than number seconds since the last time this agent ran them in this context. Otherwise, the commands are skipped. 
+-- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
 unsafe_every :: Double -> CIO a -> CIO ()
 unsafe_every n a = a >> unsafe_wait n
 
 -- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
+-- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
 unsafe_wait n = lift $ threadDelay (round $ n * 1000000)
-
-unsafe_max_pxcor :: CIO Int
-unsafe_max_pxcor = return $ max_pxcor_ conf
-
-unsafe_max_pycor :: CIO Int
-unsafe_max_pycor = return $ max_pycor_ conf
-
-unsafe_min_pxcor :: CIO Int
-unsafe_min_pxcor = return $ min_pxcor_ conf
-
-unsafe_min_pycor :: CIO Int
-unsafe_min_pycor = return $ min_pycor_ conf
-
-unsafe_world_width :: CIO Int
-unsafe_world_width = return $ (max_pxcor_ conf) - (min_pxcor_ conf) + 1
-
-unsafe_world_height :: CIO Int
-unsafe_world_height = return $ (max_pycor_ conf) - (min_pycor_ conf) + 1
 
 unsafe_ticks :: CIO Double
 unsafe_ticks = do
   (gs, _, _, _, _) <- ask
   lift $ readTVarIO (gs ! 1)
-
 
 unsafe_one_of :: [a] -> CIO a
 unsafe_one_of [] = error "empty list"

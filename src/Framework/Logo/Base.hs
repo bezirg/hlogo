@@ -69,6 +69,8 @@ data AgentRef = PatchRef (Int,Int) Patch
 -- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, and the current random seed in a TVar
 type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen)
 
+type C m a = ReaderT Context m a
+
 -- | The enhanced STM monad having a particular calling context
 type CSTM a = ReaderT Context STM a
 

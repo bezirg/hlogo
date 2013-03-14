@@ -22,7 +22,7 @@ go = do
   unsafe_show_ "ok"
   atomic $ show_ =<< g1
   unsafe_show_ =<< unsafe_g1
-  unsafe_show_ =<< unsafe_count =<< unsafe_mice
+  unsafe_show_ =<< count =<< unsafe_mice
 
 
 behave = do
