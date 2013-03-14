@@ -10,7 +10,7 @@ import Control.Monad (liftM)
 import Control.Concurrent.STM
 import Data.Array
 import Data.List (genericLength)
-
+import qualified Data.IntMap as IM
 
 globals vs  = liftM2 (++) 
               -- trick to store the length of globals
@@ -34,7 +34,51 @@ links_own vs = [d| |]
 
 breeds_own bs vs = [d| |]
 
-breeds [p,s] = sequence [valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (unsafe_breed >>= \ b -> return (b == $(litE (stringL p)))) =<< unsafe_turtles |]) []]
+breeds [p,s] = do
+  sp <- valD (varP (mkName p)) (normalB [| do ts <- turtles; filterM (\ (TurtleRef _ (MkTurtle {breed_ = b})) -> do b' <- lift $ readTVar b; return $ b' == $(litE (stringL p))) ts |]) []
+  up <- valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (unsafe_breed >>= \ b -> return (b == $(litE (stringL p)))) =<< unsafe_turtles |]) []
+  x <- newName "x"
+  y <- newName "y"
+  us <- funD (mkName ("unsafe_" ++ s)) [clause [varP y] 
+                                       (normalB [| do (_,tw,_, _, _) <- ask :: CIO Context; (MkWorld _ ts) <- lift (readTVarIO tw); let {t = ts IM.! $(varE y)}; tb <- lift (readTVarIO (breed_ t)); return $ if tb == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
+  ss <- funD (mkName s) [clause [varP y] 
+                        (normalB [| do (_,tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ ts) <- lift (readTVar tw); let {t = ts IM.! $(varE y)}; tb <- lift (readTVar (breed_ t)); return $ if tb == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
+  cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
+                                       (normalB [| create_breeds $(litE (stringL p)) $(varE y) |]) []]
+  cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
+                                                (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) |]) []]
+  th <- valD (varP (mkName (p ++ "_here"))) (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_here;  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; b' <- lift $ readTVar b; return $ round x' == px && round y' == py && b' == $(litE (stringL p))) ts |]) []
+  ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] 
+                                   (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y);  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; b' <- lift $ readTVar b; return $ round x' == px && round y' == py && b' == $(litE (stringL p))) ts |]) []]
+  return [sp,up,us,ss,cb,cob,th,ta]
+
+-- -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
+-- turtles_here :: CSTM [AgentRef]
+-- turtles_here = do
+--   [s] <- self
+--   [PatchRef (px,py) _] <- patch_here
+--   ts <- turtles
+--   filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
+--              x' <- lift $ readTVar x
+--              y' <- lift $ readTVar y
+--              return $ round x' == px && round y' == py
+--           ) ts
+
+-- -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
+-- turtles_at :: Double -> Double -> CSTM [AgentRef] -- ^ dx -> dy -> CSTM (Set AgentRef)
+-- turtles_at x y = do
+--   (_, _, a, _, _) <- ask
+--   [PatchRef (px, py) _] <- patch_at x y
+--   ts <- turtles
+--   filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
+--              x' <- lift $ readTVar x
+--              y' <- lift $ readTVar y
+--              return $ round x' == px && round y' == py
+--           ) ts
+
+
+
+
 
 directed_link_breed [p,s] = [d| |]
 

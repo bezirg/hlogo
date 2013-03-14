@@ -33,7 +33,7 @@ cInit gl = do
   let ts = IM.empty
   tw <- newTVarIO (MkWorld (M.fromAscList ps) ts)
   tp <- newTChanIO
-  ts <- newTVarIO (mkStdGen 0)
+  ts <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
   return (gs, tw, ObserverRef, tp, ts)
 
