@@ -2,7 +2,6 @@ module Main where
 
 import Framework.Logo.Keyword
 import Framework.Logo.Prim
-import qualified Framework.Logo.Prim.Unsafe as Unsafe
 
 globals ["g1", "g2", "g3"]
 turtles_own ["t1", "t2"]
@@ -19,11 +18,11 @@ setup = do
   atomic $ create_turtles 100 -- 100000
 
 go = do
-  ask_ behave =<< Unsafe.turtles
-  Unsafe.show_ "ok"
+  ask_ behave =<< unsafe_turtles
+  unsafe_show_ "ok"
   atomic $ show_ =<< g1
-  Unsafe.show_ =<< unsafe_g1
-  Unsafe.show_ =<< Unsafe.count =<< unsafe_mice
+  unsafe_show_ =<< unsafe_g1
+  unsafe_show_ =<< unsafe_count =<< unsafe_mice
 
 
 behave = do

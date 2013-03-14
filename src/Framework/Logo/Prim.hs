@@ -1,31 +1,31 @@
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, other, count, distance, distancexy, towards, towardsxy, in_radius, in_cone,
+                           self, unsafe_self, other, unsafe_other, count, unsafe_count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait,
 
                            -- * Turtle related
-                           turtles_here, turtles_at, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, turtle, turtle_set, face, xcor, ycor, who, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, unsafe_turtle_set, face, unsafe_face, xcor, unsafe_xcor, heading, unsafe_heading, ycor, unsafe_ycor, who, unsafe_who,breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
 
 
                            -- * Patch related
-                           patch_at, patch_here, patch_ahead, patches, patch, patch_set, can_movep, heading, no_patches,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, unsafe_patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches,
 
                            -- * Random related
-                           random_xcor, random_ycor,random_pxcor, random_pycor, random, random_float,
+                           random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
 
                            -- * Color
                            primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
-                           sum_, anyp, item, one_of, remove, remove_item, replace_item, shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values,
+                           sum_, anyp, unsafe_anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values,
 
                            -- * Math
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_, 
 
                            -- * Misc
-                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, 
+                           max_pxcor, unsafe_max_pxcor, max_pycor, unsafe_max_pycor, min_pxcor, unsafe_min_pxcor, min_pycor, unsafe_min_pycor, world_width, unsafe_world_width, world_height, unsafe_world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
 
                            -- * Input/Output
-                           show_, print_, read_from_string,
+                           show_, unsafe_show_, print_, unsafe_print_, read_from_string,
 
                            -- * IO Operations
                            atomic, ask_, of_, with
@@ -37,6 +37,7 @@ import Framework.Logo.Base
 import Framework.Logo.Conf
 import Control.Concurrent.STM
 import Control.Monad.Reader
+import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Thread as Thread
 import qualified Control.Concurrent.Thread.Group as ThreadGroup
 import Data.List
@@ -1025,3 +1026,329 @@ with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
 with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
+
+-- Unsafe
+--
+
+unsafe_count :: [a] -> CIO Int
+unsafe_count = return . length
+
+unsafe_anyp :: [AgentRef] -> CIO Bool
+unsafe_anyp as = return $ not $ null as
+
+unsafe_self :: CIO [AgentRef]
+unsafe_self = do
+  (_, _, a, _, _) <- ask
+  return [a]
+
+unsafe_other :: [AgentRef] -> CIO [AgentRef]
+unsafe_other as = do
+  [s] <- unsafe_self
+  return $ delete s as
+
+unsafe_turtles_here :: CIO [AgentRef]
+unsafe_turtles_here = do
+  [s] <- unsafe_self
+  h <- unsafe_patch_here
+  ts <- unsafe_turtles
+  res <- with (return . ( == h) =<< unsafe_patch_here) ts
+  return (s:res)
+
+unsafe_turtles_at :: Double -> Double -> CIO [AgentRef]
+unsafe_turtles_at x y = do
+  (_, _, a, _, _) <- ask
+  p <- unsafe_patch_at x y
+  with (return . (== [a])  =<< unsafe_patch_here) =<< unsafe_turtles
+
+
+unsafe_patch_at :: Double -> Double -> CIO [AgentRef]
+unsafe_patch_at x y = do
+  (_, _, a, _, _) <- ask
+  case a of
+    PatchRef (px, py) _ -> unsafe_patch (fromIntegral px) (fromIntegral py)
+    TurtleRef _ _ -> do
+                 [PatchRef (px, py) _] <- unsafe_patch_here
+                 unsafe_patch (fromIntegral px + x) (fromIntegral py +y)
+                 
+
+unsafe_patches :: CIO [AgentRef]
+unsafe_patches = do
+  (_,tw,_, _, _) <- ask
+  (MkWorld ps _) <- lift $ readTVarIO tw
+  return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
+
+
+unsafe_patch :: Double -> Double -> CIO [AgentRef]
+unsafe_patch x y = do
+  (_, tw,_, _, _) <- ask
+  (MkWorld ps _) <- lift $ readTVarIO tw
+  return $ if x' > max_pxcor_ conf || x' < min_pxcor_ conf || y' > max_pycor_ conf || y' < min_pycor_ conf
+           then [Nobody]
+           else
+               [PatchRef (x',y') (ps M.! (x',y'))]
+         where
+           x' = round x
+           y' = round y
+
+unsafe_turtles :: CIO [AgentRef]
+unsafe_turtles = do
+  (_,tw,_, _, _) <- ask
+  (MkWorld _ ts) <- lift $ readTVarIO tw
+  return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
+
+unsafe_patch_here :: CIO [AgentRef]
+unsafe_patch_here = do
+  (_,_,TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}), _, _) <- ask
+  x' <- lift $ readTVarIO x
+  y' <- lift $ readTVarIO y
+  unsafe_patch x' y'
+
+unsafe_turtle :: Int -> CIO [AgentRef]
+unsafe_turtle n = do
+  (_, tw,_, _, _) <- ask
+  (MkWorld _ ts) <- lift $ readTVarIO tw
+  return $ [TurtleRef n (ts IM.! n)]
+
+
+unsafe_turtle_set :: [CIO [AgentRef]] -> CIO [AgentRef]
+unsafe_turtle_set ts = sequence ts >>= return . concat
+
+unsafe_patch_set = turtle_set
+
+unsafe_can_movep :: Double -> CIO Bool
+unsafe_can_movep n = unsafe_patch_ahead n >>= \ p -> return (p /= [Nobody])
+
+unsafe_patch_ahead ::Double -> CIO [AgentRef]
+unsafe_patch_ahead n = do
+  x <- unsafe_xcor 
+  y <- unsafe_ycor
+  dx_ <- unsafe_dx
+  dy_ <- unsafe_dy
+  let mx = fromIntegral $ max_pxcor_ conf
+  let my = fromIntegral $ max_pycor_ conf
+  let px_new = fromIntegral (round x) + if horizontal_wrap_ conf
+                                        then (dx_*n + mx) `mod_` (truncate mx * 2 + 1) - mx
+                                        else dx_*n
+
+  let py_new = fromIntegral (round y) + if vertical_wrap_ conf
+                                        then (dy_*n + my) `mod_` (truncate my * 2 + 1) - my
+                                        else  dy_*n
+  unsafe_patch px_new py_new
+
+unsafe_dx :: CIO Double
+unsafe_dx = liftM sin_ unsafe_heading
+
+unsafe_dy :: CIO Double
+unsafe_dy = liftM cos_ unsafe_heading
+
+unsafe_heading :: CIO Double
+unsafe_heading = do
+  (_,_,TurtleRef _ (MkTurtle {heading_ = h}), _, _) <- ask
+  lift $ readTVarIO h
+
+unsafe_xcor :: CIO Double
+unsafe_xcor = do
+  (_,_,TurtleRef _ (MkTurtle {xcor_ = x}), _, _) <- ask
+  lift $ readTVarIO x
+
+unsafe_ycor :: CIO Double
+unsafe_ycor = do
+  (_,_,TurtleRef _ (MkTurtle {ycor_ = y}), _, _) <- ask
+  lift $ readTVarIO y
+
+unsafe_breed :: CIO String
+unsafe_breed = do
+  (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
+  lift $ readTVarIO b
+
+unsafe_who :: CIO Int
+unsafe_who = do
+  (_,_,TurtleRef i _, _, _) <- ask
+  return i
+
+
+unsafe_random_xcor :: CIO Double
+unsafe_random_xcor = lift $ getStdRandom $ randomR ((fromIntegral $ min_pxcor_ conf),(fromIntegral $ max_pxcor_ conf))
+
+unsafe_random_ycor :: CIO Double
+unsafe_random_ycor = lift $ getStdRandom $ randomR ((fromIntegral $ min_pycor_ conf),(fromIntegral $ max_pycor_ conf))
+
+unsafe_random_pxcor :: CIO Int
+unsafe_random_pxcor = lift $ getStdRandom $ randomR (min_pxcor_ conf, max_pxcor_ conf)
+
+unsafe_random_pycor :: CIO Int
+unsafe_random_pycor = lift $ getStdRandom $ randomR (min_pycor_ conf, max_pycor_ conf)
+
+unsafe_random :: Int -> CIO Int
+unsafe_random x | x == 0 = return 0
+         | x < 0 = lift $ getStdRandom $ randomR (x,0)
+         | x > 0 = lift $ getStdRandom $ randomR (0,x)
+
+unsafe_random_float :: Double -> CIO Double
+unsafe_random_float x | x == 0 = return 0
+               | x < 0 = lift $ getStdRandom $ randomR (x,0)
+               | x > 0 = lift $ getStdRandom $ randomR (0,x)
+
+-- | Internal
+unsafe_random_primary_color :: CIO Double
+unsafe_random_primary_color = do
+  i <- lift $ randomRIO (0,13)
+  return $ primary_colors !! i
+
+
+-- | Reports a number suitable for seeding the random number generator. 
+-- | todo
+unsafe_new_seed = undefined
+
+-- | Sets the seed of the pseudo-random number generator to the integer part of number.
+unsafe_random_seed n = setStdGen $ mkStdGen n
+
+-- | random-exponential reports an exponentially distributed random floating point number. 
+-- | todo
+unsafe_random_exponential m = undefined
+
+-- | random-gamma reports a gamma-distributed random floating point number as controlled by the floating point alpha and lambda parameters. 
+-- | todo
+unsafe_random_gamma a l = undefined
+
+-- | random-normal reports a normally distributed random floating point number. 
+-- | todo
+unsafe_random_normal m s = undefined
+
+-- | random-poisson reports a Poisson-distributed random integer. 
+-- | todo
+unsafe_random_poisson m = undefined
+
+
+-- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
+unsafe_turtles_on :: [AgentRef] -> CIO [AgentRef]
+unsafe_turtles_on [] = return []
+unsafe_turtles_on ps@(PatchRef _ _ : _) = do
+  with (liftM (flip elem ps . head) unsafe_patch_here) =<< unsafe_turtles
+unsafe_turtles_on ts@(TurtleRef _ _ : _) = do
+  unsafe_turtles_on =<< of_ (liftM head unsafe_patch_here) ts
+
+unsafe_right :: Double -> CIO Double
+unsafe_right n = do
+  h <- unsafe_heading
+  return $ mod_ (h + n) 360
+
+unsafe_left :: Double -> CIO Double
+unsafe_left n = do
+  unsafe_right (-n)
+
+
+unsafe_distance :: [AgentRef] -> CIO Double
+unsafe_distance [PatchRef (x,y) _] = do
+  unsafe_distancexy (fromIntegral x) (fromIntegral y)
+unsafe_distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
+  x <- lift $ readTVarIO tx
+  y <- lift $ readTVarIO ty
+  unsafe_distancexy x y
+
+unsafe_distancexy :: Double -> Double -> CIO Double
+unsafe_distancexy x' y' = do
+  (_,_,ref,_,_) <- ask
+  (x,y) <- case ref of
+            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+  return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+      where
+        delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
+
+
+
+-- | todo
+unsafe_downhill = undefined
+
+-- | todo
+unsafe_downhill4 = undefined
+
+-- | todo
+unsafe_face = undefined
+
+-- | todo
+unsafe_towards = undefined
+
+-- | todo
+unsafe_towardsxy = undefined
+
+unsafe_in_radius :: [AgentRef] -> Double -> CIO [AgentRef]
+unsafe_in_radius as n = do
+  (_,_,ref,_,_) <- ask
+  (x, y) <- case ref of
+    PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+  with (unsafe_distancexy x y >>= \ d -> return $ d <= n) as
+
+unsafe_in_cone = undefined
+
+unsafe_no_turtles :: CIO [AgentRef]
+unsafe_no_turtles = return []
+
+unsafe_no_patches :: CIO [AgentRef]
+unsafe_no_patches = return []
+
+-- | Runs the given commands only if it's been more than number seconds since the last time this agent ran them in this context. Otherwise, the commands are skipped. 
+unsafe_every :: Double -> CIO a -> CIO ()
+unsafe_every n a = a >> unsafe_wait n
+
+-- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
+unsafe_wait n = lift $ threadDelay (round $ n * 1000000)
+
+unsafe_max_pxcor :: CIO Int
+unsafe_max_pxcor = return $ max_pxcor_ conf
+
+unsafe_max_pycor :: CIO Int
+unsafe_max_pycor = return $ max_pycor_ conf
+
+unsafe_min_pxcor :: CIO Int
+unsafe_min_pxcor = return $ min_pxcor_ conf
+
+unsafe_min_pycor :: CIO Int
+unsafe_min_pycor = return $ min_pycor_ conf
+
+unsafe_world_width :: CIO Int
+unsafe_world_width = return $ (max_pxcor_ conf) - (min_pxcor_ conf) + 1
+
+unsafe_world_height :: CIO Int
+unsafe_world_height = return $ (max_pycor_ conf) - (min_pycor_ conf) + 1
+
+unsafe_ticks :: CIO Double
+unsafe_ticks = do
+  (gs, _, _, _, _) <- ask
+  lift $ readTVarIO (gs ! 1)
+
+
+unsafe_one_of :: [a] -> CIO a
+unsafe_one_of [] = error "empty list"
+unsafe_one_of l = do
+  v <- lift $ randomRIO (0, length l)
+  return (l !! v)
+
+-- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
+unsafe_shuffle :: Eq a => [a] -> CIO [a]
+unsafe_shuffle [] = return []
+unsafe_shuffle l = shuffle' l (length l) where
+    shuffle [x] 1 = return [x]
+    shuffle' l i = do
+      x <- unsafe_one_of l
+      xs <- shuffle' (delete x l) (i-1)
+      return $ x:xs
+
+
+unsafe_show_ :: Show a => a -> CIO ()
+unsafe_show_ a = do
+  (_,_, r, _, _) <- ask
+  lift $ putStrLn $ (case r of
+                           ObserverRef -> "observer: "
+                           PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
+                           TurtleRef i _ -> "(turtle " ++ show i ++ "): ")   ++ show a
+
+
+unsafe_print_ :: Show a => a -> CIO ()
+unsafe_print_ a = do
+  lift $ putStrLn $ show a
+
+
+

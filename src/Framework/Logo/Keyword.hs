@@ -5,7 +5,6 @@ import Language.Haskell.TH
 import Framework.Logo.Core
 import Framework.Logo.Base
 import Framework.Logo.Prim
-import qualified Framework.Logo.Prim.Unsafe as Unsafe
 import Control.Monad.Reader
 import Control.Monad (liftM)
 import Control.Concurrent.STM
@@ -33,7 +32,7 @@ links_own vs = [d| |]
 
 breeds_own bs vs = [d| |]
 
-breeds [p,s] = sequence [valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (Unsafe.breed >>= \ b -> return (b == $(litE (stringL p)))) =<< Unsafe.turtles |]) []]
+breeds [p,s] = sequence [valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (unsafe_breed >>= \ b -> return (b == $(litE (stringL p)))) =<< unsafe_turtles |]) []]
 
 directed_link_breed [p,s] = [d| |]
 

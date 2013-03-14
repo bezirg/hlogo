@@ -12,7 +12,7 @@ cabal-version:         >= 1.4
 library
   build-depends:      base, containers, cmdargs, mtl, array, random, stm, threads, template-haskell
   exposed-modules:    Framework.Logo.Base, Framework.Logo.Core, 
-                      Framework.Logo.Keyword, Framework.Logo.Prim, Framework.Logo.Prim.Unsafe
+                      Framework.Logo.Keyword, Framework.Logo.Prim, 
                       Language.Logo.Syntax, Language.Logo.Parser, Language.Logo.Pretty
   other-modules:      Framework.Logo.Conf
   extensions:         TemplateHaskell
