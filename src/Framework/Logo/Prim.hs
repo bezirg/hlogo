@@ -6,9 +6,11 @@ module Framework.Logo.Prim (
                            -- * Turtle related
                            turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
 
-
                            -- * Patch related
                            patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches,
+
+                           -- * Link related
+                           create_link_from, create_links_from, create_link_to, create_links_to, create_link_with, create_links_with, create_breeded_links_from, create_breeded_links_to, create_breeded_links_with, hide_link, show_link, is_linkp, is_undirected_linkp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie,
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -23,7 +25,7 @@ module Framework.Logo.Prim (
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_, 
 
                            -- * Misc
-                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
+                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
 
                            -- * Input/Output
                            show_, unsafe_show_, print_, unsafe_print_, read_from_string,
@@ -283,7 +285,7 @@ jump :: Double -> CSTM ()
 jump n = do
   (_,_, TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, heading_ = h}), _, _) <- ask
   h' <- lift $ readTVar h
-  lift $ modifyTVar x (+ (sin_ h' * n)) >>  modifyTVar y (+ (cos_ h' * n))
+  lift $ modifyTVar' x (+ (sin_ h' * n)) >>  modifyTVar' y (+ (cos_ h' * n))
 
 
 
@@ -318,9 +320,9 @@ create_turtles n = do
   (gs, tw, _, _, _) <- ask
   let who = gs ! 0
   oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar who (\ ow -> fromIntegral n + ow)
+  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
   ns <- newTurtles oldWho n
-  lift $ modifyTVar tw (addTurtles ns) 
+  lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newTurtles w n = return . IM.fromAscList =<< sequence [do
@@ -335,9 +337,9 @@ create_breeds b n = do
   (gs, tw, _, _, _) <- ask
   let who = gs ! 0
   oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar who (\ ow -> fromIntegral n + ow)
+  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
   ns <- newBreeds oldWho n
-  lift $ modifyTVar tw (addTurtles ns) 
+  lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newBreeds w n = return . IM.fromAscList =<< sequence [do
@@ -358,9 +360,9 @@ create_ordered_breeds b n = do
   let who = gs ! 0
   lift $ do
     oldWho <- liftM round $ readTVar who
-    modifyTVar who (\ ow -> fromIntegral n + ow)
+    modifyTVar' who (\ ow -> fromIntegral n + ow)
     ns <- newTurtles oldWho n
-    modifyTVar tw (addTurtles ns) 
+    modifyTVar' tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newTurtles w n = return . IM.fromAscList =<< sequence [do
@@ -378,9 +380,9 @@ create_ordered_turtles n = do
   let who = gs ! 0
   lift $ do
     oldWho <- liftM round $ readTVar who
-    modifyTVar who (\ ow -> fromIntegral n + ow)
+    modifyTVar' who (\ ow -> fromIntegral n + ow)
     ns <- newTurtles oldWho n
-    modifyTVar tw (addTurtles ns) 
+    modifyTVar' tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newTurtles w n = return . IM.fromAscList =<< sequence [do
@@ -763,6 +765,13 @@ clear_turtles = do
 -- | alias for 'clear_turtles'
 ct = clear_turtles
 
+-- | Kills all links.
+clear_links :: CSTM ()
+clear_links = do
+  (_, tw, _, _, _) <- ask
+  (MkWorld ps ts _) <- lift $ readTVar tw
+  lift $ writeTVar tw (MkWorld ps ts M.empty)
+
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: CSTM ()
 clear_patches = do
@@ -1114,6 +1123,215 @@ subtract_headings = undefined
 {-# INLINE sum_ #-}
 -- | Reports the sum of the items in the list. 
 sum_ = sum
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_from :: [AgentRef] -> CSTM ()
+create_link_from f = case f of
+                       [TurtleRef _ _] -> create_links_from f
+                       _ -> error "expected agentset with a single turtle"
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_from :: [AgentRef] -> CSTM ()
+create_links_from as = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink f x s =  do
+                       n <- newLink f x
+                       return $ M.insertWith (flip const) (f,x) n s
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_to :: [AgentRef] -> CSTM ()
+create_link_to t = case t of
+                     [TurtleRef _ _] -> create_links_to t
+                     _ -> error "expected agentset with a single turtle"
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_to :: [AgentRef] -> CSTM ()
+create_links_to as = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLink x t
+                       return $ M.insertWith (flip const) (x,t) n s
+                                   
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_with :: [AgentRef] -> CSTM ()
+create_link_with w = case w of
+                     [TurtleRef _ _] -> create_links_with w
+                     _ -> error "expected agentset with a single turtle"
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_with :: [AgentRef] -> CSTM ()
+create_links_with as = create_links_from as >> create_links_to as
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_to :: String -> [AgentRef] -> CSTM ()
+create_breeded_links_to = undefined
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_from :: String -> [AgentRef] -> CSTM ()
+create_breeded_links_from = undefined
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_with :: String -> [AgentRef] -> CSTM ()
+create_breeded_links_with b as = create_breeded_links_from b as >> create_breeded_links_to b as
+
+
+
+-- | Internal
+newLink :: Int -> Int -> CSTM Link
+newLink f t = newLBreed f t "links" 
+
+-- | Internal
+newLBreed :: Int -> Int -> String -> CSTM Link
+newLBreed f t b = lift $ MkLink <$>
+                  return f <*>
+                  return t <*>
+                  newTVar 5 <*>
+                  newTVar "" <*>
+                  newTVar 9.9 <*>
+                  newTVar False <*>
+                  return b <*>
+                  newTVar 0 <*>
+                  newTVar "default" <*>
+                  newTVar None 
+                  
+
+-- | The link makes itself invisible. 
+hide_link :: CSTM ()
+hide_link = do
+  (_, _, LinkRef _ (MkLink {lhiddenp_ = h}), _, _) <- ask
+  lift $ writeTVar h True
+
+-- | The turtle becomes visible again. 
+show_link :: CSTM ()
+show_link = do
+  (_, _, LinkRef _ (MkLink {lhiddenp_ = h}), _, _) <- ask
+  lift $ writeTVar h False
+
+
+-- | Reports true if value is of the given type, false otherwise. 
+is_linkp = undefined
+
+-- | Reports true if value is of the given type, false otherwise. 
+is_undirected_linkp = undefined
+
+-- | Reports the distance between the endpoints of the link. 
+link_length :: CSTM Double
+link_length = do
+  (_, tw, LinkRef (f,t) _, _, _) <- ask
+  [TurtleRef _ (MkTurtle {xcor_ = fx, ycor_ = fy})] <- turtle f
+  [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] <- turtle t
+  x <- lift $ readTVar fx
+  y <- lift $ readTVar fy
+  x' <- lift $ readTVar tx
+  y' <- lift $ readTVar ty
+  return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+
+-- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
+link :: Int -> Int -> CSTM [AgentRef]
+link f t = do
+  (_, tw,_, _, _) <- ask
+  (MkWorld _ _ ls) <- lift $ readTVar tw
+  return $ [maybe Nobody (LinkRef (f,t)) $ M.lookup (f,t) ls]
+
+-- | Reports the agentset consisting of all links. 
+links :: CSTM [AgentRef]
+links = do
+  (_,tw,_, _, _) <- ask
+  (MkWorld _ _ ls) <- lift $ readTVar tw
+  return $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+
+
+-- | Report the undirected link between turtle and the caller. If no link exists then it reports nobody. 
+link_with :: [AgentRef] -> CSTM [AgentRef]
+link_with [TurtleRef x _] = do
+  (_, _, TurtleRef y _, _, _) <- ask
+  lxy <- link x y
+  lyx <- link y x
+  return $ case (lxy,lyx) of
+             ([Nobody], [Nobody]) -> [Nobody]
+             ([Nobody], _) -> error "directed link"
+             ([LinkRef _ _], [LinkRef _ _]) -> lxy -- return arbitrary 1 of the two link positions
+             (_, [Nobody]) -> error "directed link"
+  
+-- | Report the directed link from turtle to the caller. If no link exists then it reports nobody. 
+in_link_from :: [AgentRef] -> CSTM [AgentRef]
+in_link_from [TurtleRef x _] = do
+  (_, _, TurtleRef y _, _, _) <- ask
+  lxy <- link x y
+  lyx <- link y x
+  return $ case (lxy,lyx) of
+             ([Nobody], _) -> [Nobody]
+             (_, [Nobody]) -> lxy
+             ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+
+
+-- | Reports the directed link from the caller to turtle. If no link exists then it reports nobody. 
+out_link_to :: [AgentRef] -> CSTM [AgentRef]
+out_link_to [TurtleRef x _] = do
+  (_, _, TurtleRef y _, _, _) <- ask
+  lxy <- link x y
+  lyx <- link y x
+  return $ case (lyx,lxy) of
+             ([Nobody], _) -> [Nobody]
+             (_, [Nobody]) -> lyx
+             ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+
+
+-- | Reports an agentset of all undirected links connected to the caller. 
+my_links :: CSTM [AgentRef]
+my_links = do
+  (_, tw, TurtleRef x _, _, _) <- ask 
+  (MkWorld _ _ ls) <- lift $ readTVar tw
+  return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
+
+-- | Reports an agentset of all the directed links going out from the caller to other nodes. 
+my_out_links :: CSTM [AgentRef]
+my_out_links = do
+  (_, tw, TurtleRef x _, _, _) <- ask 
+  (MkWorld _ _ ls) <- lift $ readTVar tw
+  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
+
+-- |  Reports an agentset of all the directed links coming in from other nodes to the caller. 
+my_in_links :: CSTM [AgentRef]
+my_in_links = do
+  (_, tw, TurtleRef x _, _, _) <- ask 
+  (MkWorld _ _ ls) <- lift $ readTVar tw
+  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
+
+-- | Reports an empty link agentset. 
+no_links :: Monad m => ReaderT Context m [AgentRef]
+no_links = return []
+
+-- | Ties end1 and end2 of the link together. If the link is a directed link end1 is the root turtle and end2 is the leaf turtle. The movement of the root turtle affects the location and heading of the leaf turtle. If the link is undirected the tie is reciprocal so both turtles can be considered root turtles and leaf turtles. Movement or change in heading of either turtle affects the location and heading of the other turtle. 
+tie :: CSTM ()
+tie = do
+  (_, _, LinkRef _ (MkLink {tie_mode = t}), _, _) <- ask
+  lift $ writeTVar t Fixed
+
+-- | Unties end2 from end1 (sets tie-mode to "none") if they were previously tied together. If the link is an undirected link, then it will untie end1 from end2 as well. It does not remove the link between the two turtles. 
+untie :: CSTM ()
+untie = do
+  (_, _, LinkRef _ (MkLink {tie_mode = t}), _, _) <- ask
+  lift $ writeTVar t None
+
+
 
 -- | lifting STM to IO, a wrapper to atomically
 atomic :: CSTM a -> CIO a

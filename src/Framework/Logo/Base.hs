@@ -46,12 +46,11 @@ data Patch = MkPatch {
 data Link = MkLink {
       end1_ :: Int,              -- on creation
       end2_ :: Int,              -- on creation
-      directed_ :: Bool,         -- on creation
       lcolor_ :: TVar Double,
       llabel_ :: TVar String,
       llabel_color_ :: TVar Double,
       lhiddenp_ :: TVar Bool,
-      lbreed_ :: TVar String,
+      lbreed_ :: String,
       thickness_ :: TVar Double,
       lshape_ :: TVar String,
       tie_mode :: TVar TieMode
