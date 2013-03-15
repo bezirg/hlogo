@@ -8,7 +8,7 @@ import Control.Concurrent.STM
 import Framework.Logo.Conf
 import Framework.Logo.Base
 import Framework.Logo.Prim
-import qualified Data.Map as M (fromAscList)
+import qualified Data.Map as M (fromAscList, empty)
 import qualified  Data.IntMap as IM (empty)
 import Data.Array (listArray)
 import Control.Monad
@@ -31,7 +31,8 @@ cInit gl = do
                  | x <- [-mx..mx], y <- [-my..my]]
   -- initialize
   let ts = IM.empty
-  tw <- newTVarIO (MkWorld (M.fromAscList ps) ts)
+  let ls = M.empty
+  tw <- newTVarIO (MkWorld (M.fromAscList ps) ts ls)
   tp <- newTChanIO
   ts <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp

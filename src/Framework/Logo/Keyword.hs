@@ -40,9 +40,9 @@ breeds [p,s] = do
   x <- newName "x"
   y <- newName "y"
   us <- funD (mkName ("unsafe_" ++ s)) [clause [varP y] 
-                                       (normalB [| do (_,tw,_, _, _) <- ask :: CIO Context; (MkWorld _ ts) <- lift (readTVarIO tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
+                                       (normalB [| do (_,tw,_, _, _) <- ask :: CIO Context; (MkWorld _ ts _) <- lift (readTVarIO tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
   ss <- funD (mkName s) [clause [varP y] 
-                        (normalB [| do (_,tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ ts) <- lift (readTVar tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
+                        (normalB [| do (_,tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ ts _) <- lift (readTVar tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
   cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
                                        (normalB [| create_breeds $(litE (stringL p)) $(varE y) |]) []]
   cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]

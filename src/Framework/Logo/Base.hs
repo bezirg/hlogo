@@ -43,22 +43,22 @@ data Patch = MkPatch {
       }
            deriving (Eq)
 
--- data Link = MkLink {
---       end1_ :: Int,
---       end2_ :: Int,
---       directed_ :: Bool,
---       lcolor_ :: TVar Double,
---       llabel_ :: TVar String,
---       llabel_color_ :: TVar Double,
---       lhiddenp_ :: TVar Bool,
---       breed_ :: TVar String,
---       thickness_ :: TVar Double,
---       lshape_ :: TVar String,
---       tie_mode :: TVar TieMode
---     }
---           deriving (Eq)
+data Link = MkLink {
+      end1_ :: Int,              -- on creation
+      end2_ :: Int,              -- on creation
+      directed_ :: Bool,         -- on creation
+      lcolor_ :: TVar Double,
+      llabel_ :: TVar String,
+      llabel_color_ :: TVar Double,
+      lhiddenp_ :: TVar Bool,
+      lbreed_ :: TVar String,
+      thickness_ :: TVar Double,
+      lshape_ :: TVar String,
+      tie_mode :: TVar TieMode
+    }
+          deriving (Eq)
 
--- data TieMode = None | Fixed
+data TieMode = None | Fixed
 
 -- | The 'Patches' ADT is an ordered map (dictionary) from coordinates (Int, Int) to 'Patch' data structures
 type Patches = M.Map (Int, Int) Patch
@@ -67,7 +67,7 @@ type Patches = M.Map (Int, Int) Patch
 type Turtles = IM.IntMap Turtle
 
 -- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
--- type Links = M.Map (Int, Int) Link
+type Links = M.Map (Int, Int) Link
 
 -- | The 'Globals' structure is an array of Int-indices pointing to Double (for now) variables.
 -- Index 0 is reserved for holding the global who variable.
@@ -77,11 +77,12 @@ type Turtles = IM.IntMap Turtle
 type Globals = Array Int (TVar Double)
 
 -- | The 'World' is the union of 'Patches' and 'Turtles'
-data World = MkWorld Patches Turtles -- Links
+data World = MkWorld Patches Turtles Links
 
 -- | An 'AgentRef' is a reference to an agent of the framework.
 data AgentRef = PatchRef (Int,Int) Patch
               | TurtleRef Int Turtle
+              | LinkRef (Int,Int) Link
               | ObserverRef     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions. 
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq)

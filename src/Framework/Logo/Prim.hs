@@ -259,7 +259,7 @@ newOrderedBreed i o b x = do
 patches :: CSTM [AgentRef]
 patches = do
   (_,tw,_, _, _) <- ask
-  (MkWorld ps _) <- lift $ readTVar tw
+  (MkWorld ps _ _) <- lift $ readTVar tw
   return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
 
 
@@ -268,7 +268,7 @@ patches = do
 patch :: Double -> Double -> CSTM [AgentRef]
 patch x y = do
   (_, tw,_, _, _) <- ask
-  (MkWorld ps _) <- lift $ readTVar tw
+  (MkWorld ps _ _) <- lift $ readTVar tw
   return $ if x' > max_pxcor_ conf || x' < min_pxcor_ conf || y' > max_pycor_ conf || y' < min_pycor_ conf
            then [Nobody]
            else
@@ -327,7 +327,7 @@ create_turtles n = do
                                                                               t <- newTurtle i
                                                                               return (i, t)
                                                                              | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts)  = MkWorld ps (ts `IM.union` ts')
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeds :: String -> Int -> CSTM [AgentRef]
@@ -344,7 +344,7 @@ create_breeds b n = do
                                                                               t <- newBreed b i
                                                                               return (i, t)
                                                                              | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts)  = MkWorld ps (ts `IM.union` ts')
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 
 {-# INLINE crt #-}
@@ -367,7 +367,7 @@ create_ordered_breeds b n = do
                                                                               t <- newOrderedBreed i n b j 
                                                                               return (j, t)
                                                                              | i <- [1..n] | j <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts)  = MkWorld ps (ts `IM.union` ts')
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 
 
@@ -387,7 +387,7 @@ create_ordered_turtles n = do
                                                                               t <- newOrderedTurtle i n j 
                                                                               return (j, t)
                                                                              | i <- [1..n] | j <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts)  = MkWorld ps (ts `IM.union` ts')
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 {-# INLINE cro #-}
 -- | alias for 'create_ordered_turtles'
@@ -397,14 +397,14 @@ cro = create_ordered_turtles
 turtles :: CSTM [AgentRef]
 turtles = do
   (_,tw,_, _, _) <- ask
-  MkWorld _ ts <- lift $ readTVar tw
+  MkWorld _ ts _ <- lift $ readTVar tw
   return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
 -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
 turtle :: Int -> CSTM [AgentRef]
 turtle n = do
   (_, tw,_, _, _) <- ask
-  (MkWorld _ ts) <- lift $ readTVar tw
+  (MkWorld _ ts _) <- lift $ readTVar tw
   return [TurtleRef n (ts IM.! n)]
 
 
@@ -756,8 +756,8 @@ clear_output =
 clear_turtles :: CSTM ()
 clear_turtles = do
   (_, tw, _, _, _) <- ask
-  (MkWorld ps _) <- lift $ readTVar tw
-  lift $ writeTVar tw (MkWorld ps IM.empty)
+  (MkWorld ps _ ls) <- lift $ readTVar tw
+  lift $ writeTVar tw (MkWorld ps IM.empty ls)
 
 {-# INLINE ct #-}
 -- | alias for 'clear_turtles'
@@ -767,7 +767,7 @@ ct = clear_turtles
 clear_patches :: CSTM ()
 clear_patches = do
   (_, tw, _, _, _) <- ask
-  (MkWorld ps ts) <- lift $ readTVar tw
+  (MkWorld ps ts _) <- lift $ readTVar tw
   lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc)  -> do
                               writeTVar tc 0
                               writeTVar tl ""
@@ -1173,14 +1173,14 @@ unsafe_patch_at x y = do
 unsafe_patches :: CIO [AgentRef]
 unsafe_patches = do
   (_,tw,_, _, _) <- ask
-  (MkWorld ps _) <- lift $ readTVarIO tw
+  (MkWorld ps _ _) <- lift $ readTVarIO tw
   return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
 
 
 unsafe_patch :: Double -> Double -> CIO [AgentRef]
 unsafe_patch x y = do
   (_, tw,_, _, _) <- ask
-  (MkWorld ps _) <- lift $ readTVarIO tw
+  (MkWorld ps _ _) <- lift $ readTVarIO tw
   return $ if x' > max_pxcor_ conf || x' < min_pxcor_ conf || y' > max_pycor_ conf || y' < min_pycor_ conf
            then [Nobody]
            else
@@ -1192,7 +1192,7 @@ unsafe_patch x y = do
 unsafe_turtles :: CIO [AgentRef]
 unsafe_turtles = do
   (_,tw,_, _, _) <- ask
-  (MkWorld _ ts) <- lift $ readTVarIO tw
+  (MkWorld _ ts _) <- lift $ readTVarIO tw
   return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
 unsafe_patch_here :: CIO [AgentRef]
@@ -1205,7 +1205,7 @@ unsafe_patch_here = do
 unsafe_turtle :: Int -> CIO [AgentRef]
 unsafe_turtle n = do
   (_, tw,_, _, _) <- ask
-  (MkWorld _ ts) <- lift $ readTVarIO tw
+  (MkWorld _ ts _) <- lift $ readTVarIO tw
   return $ [TurtleRef n (ts IM.! n)]
 
 
