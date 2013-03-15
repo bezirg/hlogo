@@ -46,4 +46,4 @@ printer tp = forever $ do
 
 -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
 newPatch :: Int -> Int -> IO Patch
-newPatch x y =liftM5 MkPatch (newTVarIO x) (newTVarIO y) (newTVarIO 0) (newTVarIO "") (newTVarIO 9.9)
+newPatch x y =liftM5 MkPatch (return x) (return y) (newTVarIO 0) (newTVarIO "") (newTVarIO 9.9)

@@ -15,8 +15,8 @@ data PenMode = Down | Up | Erase
 -- an attribute value of 'Turtle'.
 -- For now only the default turtle attributes are supported.
 data Turtle = MkTurtle {
-      who_ :: TVar Int,
-      breed_ :: TVar String,
+      who_ :: Int,               -- on creation
+      breed_ :: String,          -- on creation
       color_ :: TVar Double,
       heading_ :: TVar Double,
       xcor_ :: TVar Double,
@@ -35,19 +35,39 @@ data Turtle = MkTurtle {
 -- Each field is a transactional variable (TVar) storing an attribute value of 'Patch'
 -- For now only the default patch attributes are supported.
 data Patch = MkPatch {
-      pxcor_ :: TVar Int,
-      pycor_ :: TVar Int,
+      pxcor_ :: Int,             -- on creation
+      pycor_ :: Int,             -- on creation
       pcolor_ :: TVar Double,
       plabel_ :: TVar String,
       plabel_color_ :: TVar Double
       }
            deriving (Eq)
 
+-- data Link = MkLink {
+--       end1_ :: Int,
+--       end2_ :: Int,
+--       directed_ :: Bool,
+--       lcolor_ :: TVar Double,
+--       llabel_ :: TVar String,
+--       llabel_color_ :: TVar Double,
+--       lhiddenp_ :: TVar Bool,
+--       breed_ :: TVar String,
+--       thickness_ :: TVar Double,
+--       lshape_ :: TVar String,
+--       tie_mode :: TVar TieMode
+--     }
+--           deriving (Eq)
+
+-- data TieMode = None | Fixed
+
 -- | The 'Patches' ADT is an ordered map (dictionary) from coordinates (Int, Int) to 'Patch' data structures
 type Patches = M.Map (Int, Int) Patch
 
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle
+
+-- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
+-- type Links = M.Map (Int, Int) Link
 
 -- | The 'Globals' structure is an array of Int-indices pointing to Double (for now) variables.
 -- Index 0 is reserved for holding the global who variable.
@@ -57,7 +77,7 @@ type Turtles = IM.IntMap Turtle
 type Globals = Array Int (TVar Double)
 
 -- | The 'World' is the union of 'Patches' and 'Turtles'
-data World = MkWorld Patches Turtles
+data World = MkWorld Patches Turtles -- Links
 
 -- | An 'AgentRef' is a reference to an agent of the framework.
 data AgentRef = PatchRef (Int,Int) Patch

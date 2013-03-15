@@ -4,7 +4,7 @@ module Framework.Logo.Prim (
                            self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait,
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, unsafe_who, color, unsafe_color, breed, set_breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
 
 
                            -- * Patch related
@@ -215,8 +215,8 @@ newBreed b x = do
   rpc <- random_primary_color
   rih <- random_integer_heading
   lift $ MkTurtle <$>
-       newTVar x <*>
-       newTVar b <*>
+       return x <*>
+       return b <*>
        newTVar rpc <*>          --  random primary color
        newTVar (fromInteger rih) <*> --  random integer heading
        newTVar 0 <*>
@@ -239,8 +239,8 @@ newOrderedBreed i o b x = do
   let rpc = primary_colors !! ((i-1) `mod` 14)
   let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
   MkTurtle <$>
-       newTVar x <*>
-       newTVar b <*>
+       return x <*>
+       return b <*>
        newTVar rpc <*>          --  ordered primary color
        newTVar rdh <*> --  ordered double heading
        newTVar 0 <*>
@@ -456,7 +456,7 @@ set_ycor v = do
   lift $ writeTVar (ycor_ t) v
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
-who :: CSTM Int
+who :: Monad m => ReaderT Context m Int
 who = do
   (_,_,TurtleRef i _, _, _) <- ask
   return i
@@ -468,15 +468,10 @@ color = do
   lift $ readTVar c
 
 
-breed :: CSTM String
+breed :: Monad m => ReaderT Context m String
 breed = do
   (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
-  lift $ readTVar b
-
-set_breed :: String -> CSTM ()
-set_breed v = do
-  (_,_,TurtleRef _ t, _, _) <- ask
-  lift $ writeTVar (breed_ t) v
+  return b
 
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: CSTM Double
@@ -1259,16 +1254,6 @@ unsafe_color :: CIO Double
 unsafe_color = do
   (_,_,TurtleRef _ (MkTurtle {color_ = c}), _, _) <- ask
   lift $ readTVarIO c
-
-unsafe_breed :: CIO String
-unsafe_breed = do
-  (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
-  lift $ readTVarIO b
-
-unsafe_who :: CIO Int
-unsafe_who = do
-  (_,_,TurtleRef i _, _, _) <- ask
-  return i
 
 
 unsafe_random_xcor :: CIO Double
