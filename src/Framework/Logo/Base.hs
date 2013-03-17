@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -- | The module contains the Base datatypes of the Framework.
 module Framework.Logo.Base where
 
@@ -6,6 +7,7 @@ import Control.Monad.Reader
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import Data.Array
+import Data.Typeable
 import System.Random (StdGen)
 
 -- | Following the NetLogo convention, PenMode is an Algebraic Data Type (ADT)
@@ -46,6 +48,7 @@ data Patch = MkPatch {
 data Link = MkLink {
       end1_ :: Int,              -- on creation
       end2_ :: Int,              -- on creation
+      directed_ :: Bool,          -- on creation
       lcolor_ :: TVar Double,
       llabel_ :: TVar String,
       llabel_color_ :: TVar Double,
@@ -84,7 +87,7 @@ data AgentRef = PatchRef (Int,Int) Patch
               | LinkRef (Int,Int) Link
               | ObserverRef     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions. 
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
-                deriving (Eq)
+                deriving (Eq, Typeable)
 
 -- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, and the current random seed in a TVar
 type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen)

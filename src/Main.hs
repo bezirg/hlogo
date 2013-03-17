@@ -24,6 +24,7 @@ go = do
   ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 1
   ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 3
   atomic $ show_ =<< count =<< links
+  atomic $ show_ =<< count =<< arcs
   -- ask_ behave =<< unsafe_turtles
   -- atomic $ create_mice 100
   -- unsafe_show_ =<< count =<< unsafe_mice

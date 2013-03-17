@@ -10,7 +10,10 @@ import Control.Monad (liftM)
 import Control.Concurrent.STM
 import Data.Array
 import Data.List (genericLength)
+import qualified Data.Map as M
 import qualified Data.IntMap as IM
+import Data.Maybe (maybe)
+import Data.Typeable (cast)
 
 globals vs  = liftM2 (++) 
               -- trick to store the length of globals
@@ -50,12 +53,39 @@ breeds [p,s] = do
   th <- valD (varP (mkName (p ++ "_here"))) (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_here;  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] 
                                    (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y);  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []]
-  return [sp,up,us,ss,cb,cob,th,ta]
+  ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
+                                   (normalB [| maybe False (\ t -> case t of [TurtleRef _ (MkTurtle {breed_ = b})] -> b == $(litE (stringL p)); _ -> False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
+  return [sp,up,us,ss,cb,cob,th,ta, ib]
 
 
-directed_link_breed [p,s] = [d| |]
+directed_link_breed [p,s] = do
+  sp <- valD (varP (mkName p)) (normalB [| do ls <- links; filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+  x <- newName "x"
+  y <- newName "y"
+  ss <- funD (mkName s) [clause [varP x, varP y] 
+                        (normalB [| do (_, tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+  ct <- funD (mkName ("create_" ++ s ++ "_to")) [clause [varP y]
+                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_to $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
+  cf <- funD (mkName ("create_" ++ s ++ "_from")) [clause [varP y]
+                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_from $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
+  ct' <- funD (mkName ("create_" ++ p ++ "to")) [clause [varP y]
+                                                (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) |]) []]
+  cf' <- funD (mkName ("create_" ++ p ++ "from")) [clause [varP y]
+                                                (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) |]) []]
+  return [sp, ss, ct, cf, ct', cf']
 
-undirected_link_breed [p,s] = [d| |]
+undirected_link_breed [p,s] = do
+  sp <- valD (varP (mkName p)) (normalB [| do ls <- links; filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+  x <- newName "x"
+  y <- newName "y"
+  ss <- funD (mkName s) [clause [varP x, varP y] 
+                        (normalB [| do (_, tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+  ct <- funD (mkName ("create_" ++ s ++ "_with")) [clause [varP y]
+                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_with $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
+  ct' <- funD (mkName ("create_" ++ p ++ "with")) [clause [varP y]
+                                                (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) |]) []]
+
+  return [sp, ss, ct, ct']
 
 link_breeds_own ls vs = [d| |]
 

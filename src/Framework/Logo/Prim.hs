@@ -1,16 +1,16 @@
 {-# LANGUAGE ParallelListComp #-}
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait,
+                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, is_agentsetp, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles, is_turtlep, is_turtle_setp,
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches, is_patchp, is_patch_setp,
 
                            -- * Link related
-                           create_link_from, create_links_from, create_link_to, create_links_to, create_link_with, create_links_with, create_breeded_links_from, create_breeded_links_to, create_breeded_links_with, hide_link, show_link, is_linkp, is_undirected_linkp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie,
+                           create_link_from, create_links_from, create_link_to, create_links_to, create_link_with, create_links_with, create_breeded_links_from, create_breeded_links_to, create_breeded_links_with, hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, 
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -19,10 +19,10 @@ module Framework.Logo.Prim (
                            primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
-                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values,
+                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_stringp,
 
                            -- * Math
-                           xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_, 
+                           xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
 
                            -- * Misc
                            max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
@@ -51,6 +51,8 @@ import Control.Applicative
 import System.Random hiding (random)
 import Control.Monad (forM_)
 import Data.Function
+import Data.Maybe (maybe, fromJust)
+import Data.Typeable
 
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
@@ -1181,27 +1183,50 @@ create_links_with as = create_links_from as >> create_links_to as
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_to :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_to = undefined
+create_breeded_links_to b as = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLBreed x t True b
+                       return $ M.insertWith (flip const) (x,t) n s
+
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_from :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_from = undefined
+create_breeded_links_from b as = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink f x s =  do
+                       n <- newLBreed f x True b
+                       return $ M.insertWith (flip const) (f,x) n s
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_with :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_with b as = create_breeded_links_from b as >> create_breeded_links_to b as
-
-
+create_breeded_links_with b as =  do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x  | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLBreed x t False b
+                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
 
 -- | Internal
+-- | internal links directed by default, that makes create-link(s)-with faulty
+-- | todo determine at run-time the direction of links
 newLink :: Int -> Int -> CSTM Link
-newLink f t = newLBreed f t "links" 
+newLink f t = newLBreed f t True "links" 
 
 -- | Internal
-newLBreed :: Int -> Int -> String -> CSTM Link
-newLBreed f t b = lift $ MkLink <$>
+newLBreed :: Int -> Int -> Bool -> String -> CSTM Link
+newLBreed f t d b = lift $ MkLink <$>
                   return f <*>
                   return t <*>
+                  return d <*>
                   newTVar 5 <*>
                   newTVar "" <*>
                   newTVar 9.9 <*>
@@ -1224,12 +1249,6 @@ show_link = do
   (_, _, LinkRef _ (MkLink {lhiddenp_ = h}), _, _) <- ask
   lift $ writeTVar h False
 
-
--- | Reports true if value is of the given type, false otherwise. 
-is_linkp = undefined
-
--- | Reports true if value is of the given type, false otherwise. 
-is_undirected_linkp = undefined
 
 -- | Reports the distance between the endpoints of the link. 
 link_length :: CSTM Double
@@ -1359,6 +1378,71 @@ with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
 with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
+
+-- Type-safe Casts
+
+is_turtlep t = maybe False (\ t -> case t of
+                                    [TurtleRef _ _] -> True
+                                    _ -> False)
+                                         (cast t :: Maybe [AgentRef])
+
+is_patchp t = maybe False (\ t -> case t of
+                                    [PatchRef _ _] -> True
+                                    _ -> False)
+                                         (cast t :: Maybe [AgentRef])
+
+is_agentp t = maybe False (\ t -> case t of -- check for a single agent
+                                    [_] -> True
+                                    _ -> False) (cast t :: Maybe [AgentRef])
+
+-- alternative but slower implementation is_agentp a = is_turtlep a || is_patchp a
+
+-- | Checks only the 1st element
+-- | todo: would require a datatype distinction between agentrefs
+is_patch_setp (p:_) = is_patchp p
+
+-- | Checks only the 1st element
+-- | todo: would require a datatype distinction between agentrefs
+is_turtle_setp (t:_) = is_turtlep t
+
+-- | Checks only the 1st element
+-- | todo: would require a datatype distinction between agentrefs
+is_agentsetp (a:_) = is_patchp a || is_turtlep a || is_linkp a
+
+-- Not used, because EDSL, using internal lambda abstractions
+-- is_command_taskp
+-- is_reporter_taskp
+
+--is_listp :: Typeable a => a -> Bool
+--is_listp :: (Typeable a, Typeable t) => t -> [a]
+--is_listp l =  (cast l :: Typeable a => Maybe [a])
+
+is_stringp s = maybe False (const True) (cast s :: Maybe String)
+
+is_numberp n = is_intp n || is_integerp n || is_floatp n || is_doublep n
+               where
+                 is_intp n = maybe False (const True) (cast n :: Maybe Int)
+                 is_integerp n = maybe False (const True) (cast n :: Maybe Integer)
+                 is_floatp n = maybe False (const True) (cast n :: Maybe Float)
+                 is_doublep n = maybe False (const True) (cast n :: Maybe Double)
+
+is_linkp l = maybe False (\ l -> case l of
+                                    [LinkRef _ _] -> True
+                                    _ -> False)
+                                         (cast l :: Maybe [AgentRef])
+
+is_directed_linkp l = maybe False (\ l -> case l of
+                                    [LinkRef _ (MkLink {directed_ = d})] -> d
+                                    _ -> False)
+                                         (cast l :: Maybe [AgentRef])
+
+is_undirected_linkp :: Typeable a => a -> Bool
+is_undirected_linkp = not . is_directed_linkp
+
+-- | Checks only the 1st element
+-- | todo: would require a datatype distinction between agentrefs
+is_link_setp (l:_) = is_linkp l
+
 
 -- Unsafe
 --
