@@ -68,10 +68,19 @@ turtles_own vs = do
 
   crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
   cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
-  return [ct, co]
+  -- Variables setters/getters
+  pg <- mapM (\ (v, i) -> do
+          p <- valD (varP (mkName v)) (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          return [p,u,w]
+            ) (zip vs [0..])
+  return $ ct : co : crt : cro: concat pg
 
 patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+  -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p <- valD (varP (mkName v)) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
           u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
@@ -84,7 +93,20 @@ patches_own vs = do
 
 links_own vs = [d| |]
 
-breeds_own bs vs = [d| |]
+breeds_own p vs = do
+  y <- newName "y"
+  cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
+                                       (normalB [| create_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
+                                                (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  pg <- mapM (\ (v, i) -> do
+          p <- valD (varP (mkName v)) (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,TurtleRef _ (MkTurtle {tvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          return [p,u,w]
+            ) (zip vs [0..])
+  return $ cb : cob : concat pg
 
 breeds [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do ts <- turtles; filterM (\ (TurtleRef _ (MkTurtle {breed_ = b})) -> do return $ b == $(litE (stringL p))) ts |]) []
@@ -95,16 +117,12 @@ breeds [p,s] = do
                                        (normalB [| do (_,tw,_, _, _) <- ask :: CIO Context; (MkWorld _ ts _) <- lift (readTVarIO tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
   ss <- funD (mkName s) [clause [varP y] 
                         (normalB [| do (_,tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ ts _) <- lift (readTVar tw); let {t = ts IM.! $(varE y)}; return $ if (breed_ t) == $(litE (stringL p)) then [TurtleRef $(varE y) t] else error ("turtle is not a " ++ s) |]) []]
-  cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
-                                       (normalB [| create_breeds $(litE (stringL p)) $(varE y) |]) []]
-  cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
-                                                (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) |]) []]
   th <- valD (varP (mkName (p ++ "_here"))) (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_here;  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] 
                                    (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y);  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []]
   ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
                                    (normalB [| return $ maybe False (\ t -> case t of [TurtleRef _ (MkTurtle {breed_ = b})] -> b == $(litE (stringL p)); _ -> False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
-  return [sp,up,us,ss,cb,cob,th,ta, ib]
+  return [sp,up,us,ss,th,ta, ib]
 
 
 directed_link_breed [p,s] = do
@@ -160,22 +178,7 @@ random_integer_heading = do
   lift $ writeTVar ts s'
   return v
 
-create_breeds :: String -> Int -> CSTM [AgentRef]
-create_breeds b n = do
-  (gs, tw, _, _, _) <- ask
-  let who = gs ! 0
-  oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
-  ns <- newBreeds oldWho n
-  lift $ modifyTVar' tw (addTurtles ns) 
-  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-        where
-                      newBreeds w n = return . IM.fromAscList =<< sequence [do
-                                                                              t <- newBreed b i 0
-                                                                              return (i, t)
-                                                                             | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-
+-- | Internal
 newBreed :: String -> Int -> Int -> CSTM Turtle
 newBreed b x to = do
   rpc <- random_primary_color
@@ -196,6 +199,28 @@ newBreed b x to = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
+-- | Internal
+newOrderedBreed :: Int -> Int -> String -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> CSTM Turtle
+newOrderedBreed i o b x to = do
+  let rpc = primary_colors !! ((i-1) `mod` 14)
+  let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
+  MkTurtle <$>
+       return x <*>
+       return b <*>
+       newTVar rpc <*>          --  ordered primary color
+       newTVar rdh <*> --  ordered double heading
+       newTVar 0 <*>
+       newTVar 0 <*>
+       newTVar "default" <*>
+       newTVar "" <*>
+       newTVar 9.9 <*>
+       newTVar False <*>
+       newTVar 1 <*>
+       newTVar 1 <*>
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+-- | Internal
 newTurtle x to = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -215,6 +240,7 @@ newTurtle x to = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
+-- | Internal
 newOrderedTurtle :: Int -> Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle
 newOrderedTurtle i o x to = do
     let rpc = primary_colors !! ((i-1) `mod` 14)
@@ -235,4 +261,39 @@ newOrderedTurtle i o x to = do
              newTVar Up <*>
             (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
-create_ordered_breeds = undefined
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeds :: String -> Int -> Int -> CSTM [AgentRef] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_breeds b n to = do
+  (gs, tw, _, _, _) <- ask
+  let who = gs ! 0
+  oldWho <- lift $ liftM round $ readTVar who
+  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
+  ns <- newBreeds oldWho n
+  lift $ modifyTVar' tw (addTurtles ns) 
+  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+        where
+                      newBreeds w n = return . IM.fromAscList =<< sequence [do
+                                                                              t <- newBreed b i to
+                                                                              return (i, t)
+                                                                             | i <- [w..w+n-1]]
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_ordered_breeds :: String -> Int -> Int -> CSTM [AgentRef]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_ordered_breeds b n to = do
+  (gs, tw, _, _, _) <- ask
+  let who = gs ! 0
+  lift $ do
+    oldWho <- liftM round $ readTVar who
+    modifyTVar' who (\ ow -> fromIntegral n + ow)
+    ns <- newTurtles oldWho n
+    modifyTVar' tw (addTurtles ns) 
+    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+        where
+                      newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
+                                                                              t <- newOrderedBreed i n b j to
+                                                                              return (j, t))
+                                                                             (zip [1..n] [w..w+n-1])
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+

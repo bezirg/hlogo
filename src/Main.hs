@@ -15,13 +15,13 @@ link_breeds_own "arcs" ["a1", "a2"]
 link_breeds_own "edges" ["e1", "a2"]
 
 setup = do
-  atomic $ create_ordered_turtles 400 -- 100000
+  atomic $ create_ordered_mice 400 -- 100000
 
 go = do
   unsafe_show_ =<< count =<< unsafe_turtles
-  -- ask_ (atomic $ show_ =<< p1) =<< unsafe_patch 0 0
-  -- ask_ (atomic $ set_p1 3) =<< unsafe_patch 0 0
-  -- ask_ (atomic $ show_ =<< p1) =<< unsafe_patch 0 0
+  ask_ (atomic $ show_ =<< b1) =<< unsafe_mouse 0 
+  ask_ (atomic $ set_b1 3) =<< unsafe_mouse 0
+  ask_ (atomic $ show_ =<< b1) =<< unsafe_mouse 0
   -- ask_ (atomic $ show_ =<< heading) =<< unsafe_mouse 17
   -- atomic $ show_ =<< count =<< mice
   -- ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 0
