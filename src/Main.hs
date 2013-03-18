@@ -12,7 +12,7 @@ breeds_own "mice" ["b1", "b2"]
 directed_link_breed ["arcs", "arc"]
 undirected_link_breed ["edges", "edge"]
 link_breeds_own "arcs" ["a1", "a2"]
-link_breeds_own "edges" ["e1", "a2"]
+link_breeds_own "edges" ["e1", "e2"]
 
 setup = do
   atomic $ create_ordered_mice 400 -- 100000
@@ -24,9 +24,12 @@ go = do
   ask_ (atomic $ show_ =<< b1) =<< unsafe_mouse 0
   -- ask_ (atomic $ show_ =<< heading) =<< unsafe_mouse 17
   -- atomic $ show_ =<< count =<< mice
-  -- ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 0
-  -- ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 1
-  -- ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 3
+  ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 0
+  ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 1
+  ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 3
+  ask_ (atomic $ show_ =<< l1) =<< atomic (link 0 1)
+  ask_ (atomic $ set_l1 4) =<< atomic (link 0 1)
+  ask_ (atomic $ show_ =<< l1) =<< atomic (link 0 1)
   -- atomic $ show_ =<< count =<< links
   -- atomic $ show_ =<< count =<< arcs
   -- ask_ behave =<< unsafe_turtles

@@ -9,7 +9,7 @@ module Framework.Logo.Prim (
                            patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches, is_patchp, is_patch_setp,
 
                            -- * Link related
-                           create_link_from, create_links_from, create_link_to, create_links_to, create_link_with, create_links_with, create_breeded_links_from, create_breeded_links_to, create_breeded_links_with, hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, 
+                           hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, 
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -96,6 +96,7 @@ show_ a = do
   lift $ writeTChan p $ (case r of
                            ObserverRef -> "observer: "
                            PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
+                           LinkRef (x,y) _ -> "(link " ++ show x ++ " " ++ show y ++ "): "
                            TurtleRef i _ -> "(turtle " ++ show i ++ "): ")   ++ show a
 
 -- | Prints value in the Command Center, followed by a carriage return. 
@@ -986,117 +987,6 @@ subtract_headings = undefined
 -- | Reports the sum of the items in the list. 
 sum_ = sum
 
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_from :: [AgentRef] -> CSTM ()
-create_link_from f = case f of
-                       [TurtleRef _ _] -> create_links_from f
-                       _ -> error "expected agentset with a single turtle"
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_from :: [AgentRef] -> CSTM ()
-create_links_from as = do
-  (_, tw, TurtleRef x _, _, _ ) <- ask
-  (MkWorld ps ts ls) <- lift $ readTVar tw
-  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
-  lift $ writeTVar tw (MkWorld ps ts ls')
-    where insertLink f x s =  do
-                       n <- newLink f x
-                       return $ M.insertWith (flip const) (f,x) n s
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_to :: [AgentRef] -> CSTM ()
-create_link_to t = case t of
-                     [TurtleRef _ _] -> create_links_to t
-                     _ -> error "expected agentset with a single turtle"
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_to :: [AgentRef] -> CSTM ()
-create_links_to as = do
-  (_, tw, TurtleRef x _, _, _ ) <- ask
-  (MkWorld ps ts ls) <- lift $ readTVar tw
-  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
-  lift $ writeTVar tw (MkWorld ps ts ls')
-    where insertLink t x s =  do
-                       n <- newLink x t
-                       return $ M.insertWith (flip const) (x,t) n s
-                                   
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_with :: [AgentRef] -> CSTM ()
-create_link_with w = case w of
-                     [TurtleRef _ _] -> create_links_with w
-                     _ -> error "expected agentset with a single turtle"
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_with :: [AgentRef] -> CSTM ()
-create_links_with as = create_links_from as >> create_links_to as
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_to :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_to b as = do
-  (_, tw, TurtleRef x _, _, _ ) <- ask
-  (MkWorld ps ts ls) <- lift $ readTVar tw
-  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
-  lift $ writeTVar tw (MkWorld ps ts ls')
-    where insertLink t x s =  do
-                       n <- newLBreed x t True b
-                       return $ M.insertWith (flip const) (x,t) n s
-
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_from :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_from b as = do
-  (_, tw, TurtleRef x _, _, _ ) <- ask
-  (MkWorld ps ts ls) <- lift $ readTVar tw
-  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
-  lift $ writeTVar tw (MkWorld ps ts ls')
-    where insertLink f x s =  do
-                       n <- newLBreed f x True b
-                       return $ M.insertWith (flip const) (f,x) n s
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_with :: String -> [AgentRef] -> CSTM ()
-create_breeded_links_with b as =  do
-  (_, tw, TurtleRef x _, _, _ ) <- ask
-  (MkWorld ps ts ls) <- lift $ readTVar tw
-  ls' <- foldr (=<<) (return ls) [ insertLink t x  | (TurtleRef t _) <- as]
-  lift $ writeTVar tw (MkWorld ps ts ls')
-    where insertLink t x s =  do
-                       n <- newLBreed x t False b
-                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
-
--- | Internal
--- | internal links directed by default, that makes create-link(s)-with faulty
--- | todo determine at run-time the direction of links
-newLink :: Int -> Int -> CSTM Link
-newLink f t = newLBreed f t True "links" 
-
--- | Internal
-newLBreed :: Int -> Int -> Bool -> String -> CSTM Link
-newLBreed f t d b = lift $ MkLink <$>
-                  return f <*>
-                  return t <*>
-                  return d <*>
-                  newTVar 5 <*>
-                  newTVar "" <*>
-                  newTVar 9.9 <*>
-                  newTVar False <*>
-                  return b <*>
-                  newTVar 0 <*>
-                  newTVar "default" <*>
-                  newTVar None 
-                  
-
 -- | The link makes itself invisible. 
 hide_link :: CSTM ()
 hide_link = do
@@ -1588,6 +1478,7 @@ unsafe_show_ a = do
   lift $ putStrLn $ (case r of
                            ObserverRef -> "observer: "
                            PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
+                           LinkRef (x,y) _ -> "(link " ++ show x ++ " " ++ show y ++ "): "
                            TurtleRef i _ -> "(turtle " ++ show i ++ "): ")   ++ show a
 
 

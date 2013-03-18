@@ -91,8 +91,6 @@ patches_own vs = do
   return $ pl : concat pg
 
 
-links_own vs = [d| |]
-
 breeds_own p vs = do
   y <- newName "y"
   cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
@@ -131,15 +129,7 @@ directed_link_breed [p,s] = do
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do (_, tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
-  ct <- funD (mkName ("create_" ++ s ++ "_to")) [clause [varP y]
-                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_to $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
-  cf <- funD (mkName ("create_" ++ s ++ "_from")) [clause [varP y]
-                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_from $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
-  ct' <- funD (mkName ("create_" ++ p ++ "to")) [clause [varP y]
-                                                (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) |]) []]
-  cf' <- funD (mkName ("create_" ++ p ++ "from")) [clause [varP y]
-                                                (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) |]) []]
-  return [sp, ss, ct, cf, ct', cf']
+  return [sp, ss]
 
 undirected_link_breed [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do ls <- links; filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
@@ -147,14 +137,39 @@ undirected_link_breed [p,s] = do
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do (_, tw,_, _, _) <- ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
-  ct <- funD (mkName ("create_" ++ s ++ "_with")) [clause [varP y]
-                                                (normalB [| case $(varE y) of [TurtleRef _ _] -> create_breeded_links_with $(litE (stringL p)) $(varE y); _ -> error "expected agentset with a single turtle" |]) []]
-  ct' <- funD (mkName ("create_" ++ p ++ "with")) [clause [varP y]
-                                                (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) |]) []]
+  return [sp, ss]
 
-  return [sp, ss, ct, ct']
+links_own vs = do
+  y <- newName "y"
+  cls <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cts <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cfs <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cl <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  ct <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  pg <- mapM (\ (v, i) -> do
+          p <- valD (varP (mkName v)) (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          return [p,u,w]
+            ) (zip vs [0..])
+  return $ cls : cts : cfs : cl : ct : cf : concat pg
 
-link_breeds_own ls vs = [d| |]
+link_breeds_own p vs = do
+  y <- newName "y"
+  cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  pg <- mapM (\ (v, i) -> do
+          p <- valD (varP (mkName v)) (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,LinkRef _ (MkLink {lvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          return [p,u,w]
+            ) (zip vs [0..])
+  return $ cls : cts : cfs : concat pg
+
 
 run as = do 
   [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
@@ -296,4 +311,134 @@ create_ordered_breeds b n to = do
                                                                               return (j, t))
                                                                              (zip [1..n] [w..w+n-1])
                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+
+
+
+-- Links
+-------
+
+
+-- | Internal
+-- | internal links directed by default, that makes create-link(s)-with faulty
+-- | todo determine at run-time the direction of links
+newLink :: Int -> Int -> Int -> CSTM Link -- ^ FromIndex -> ToIndex -> VarLength -> CSTM Link
+newLink f t ls = lift $ MkLink <$>
+                  return f <*>
+                  return t <*>
+                  return True <*>
+                  newTVar 5 <*>
+                  newTVar "" <*>
+                  newTVar 9.9 <*>
+                  newTVar False <*>
+                  return "links" <*>
+                  newTVar 0 <*>
+                  newTVar "default" <*>
+                  newTVar None <*>
+                  (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0))                  
+
+-- | Internal
+newLBreed :: Int -> Int -> Bool -> String -> Int -> CSTM Link -- ^ FromIndex -> ToIndex -> Directed-> Breed -> VarLength -> CSTM Link
+newLBreed f t d b ls = lift $ MkLink <$>
+                  return f <*>
+                  return t <*>
+                  return d <*>
+                  newTVar 5 <*>
+                  newTVar "" <*>
+                  newTVar 9.9 <*>
+                  newTVar False <*>
+                  return b <*>
+                  newTVar 0 <*>
+                  newTVar "default" <*>
+                  newTVar None <*>
+                  (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0))                  
+
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_from_ :: [AgentRef] -> Int -> CSTM ()
+create_link_from_ f ls = case f of
+                       [TurtleRef _ _] -> create_links_from_ f ls
+                       _ -> error "expected agentset with a single turtle"
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_from_ :: [AgentRef] -> Int -> CSTM ()
+create_links_from_ as ls = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink f x s =  do
+                       n <- newLink f x ls
+                       return $ M.insertWith (flip const) (f,x) n s
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_to_ :: [AgentRef] -> Int -> CSTM ()
+create_link_to_ t ls = case t of
+                     [TurtleRef _ _] -> create_links_to_ t ls
+                     _ -> error "expected agentset with a single turtle"
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_to_ :: [AgentRef] -> Int -> CSTM ()
+create_links_to_ as ls = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLink x t ls
+                       return $ M.insertWith (flip const) (x,t) n s
+                                   
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_link_with_ :: [AgentRef] -> Int -> CSTM ()
+create_link_with_ w ls = case w of
+                     [TurtleRef _ _] -> create_links_with_ w ls
+                     _ -> error "expected agentset with a single turtle"
+
+-- |  Used for creating breeded and unbreeded links between turtles.
+-- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
+-- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
+create_links_with_ :: [AgentRef] -> Int -> CSTM ()
+create_links_with_ as ls = create_links_from_ as ls >> create_links_to_ as ls
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_to :: String -> [AgentRef] -> Int -> CSTM ()
+create_breeded_links_to b as ls = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLBreed x t True b ls
+                       return $ M.insertWith (flip const) (x,t) n s
+
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_from :: String -> [AgentRef] -> Int -> CSTM ()
+create_breeded_links_from b as ls = do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink f x s =  do
+                       n <- newLBreed f x True b ls
+                       return $ M.insertWith (flip const) (f,x) n s
+
+-- | Internal, Utility function to make TemplateHaskell easier
+create_breeded_links_with :: String -> [AgentRef] -> Int -> CSTM ()
+create_breeded_links_with b as ls =  do
+  (_, tw, TurtleRef x _, _, _ ) <- ask
+  (MkWorld ps ts ls) <- lift $ readTVar tw
+  ls' <- foldr (=<<) (return ls) [ insertLink t x  | (TurtleRef t _) <- as]
+  lift $ writeTVar tw (MkWorld ps ts ls')
+    where insertLink t x s =  do
+                       n <- newLBreed x t False b ls
+                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
 

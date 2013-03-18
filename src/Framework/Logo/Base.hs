@@ -58,8 +58,8 @@ data Link = MkLink {
       lbreed_ :: String,
       thickness_ :: TVar Double,
       lshape_ :: TVar String,
-      tie_mode :: TVar TieMode --,
---      lvars_ :: Array Int (TVar Double)
+      tie_mode :: TVar TieMode,
+      lvars_ :: Array Int (TVar Double)
     }
           deriving (Eq)
 
