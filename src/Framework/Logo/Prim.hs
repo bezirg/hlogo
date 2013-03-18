@@ -1,10 +1,9 @@
-{-# LANGUAGE ParallelListComp #-}
 module Framework.Logo.Prim (
                            -- * Agent related
                            self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, is_agentsetp, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, create_turtles, crt, create_breeds, create_ordered_breeds, create_ordered_turtles, cro, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles, is_turtlep, is_turtle_setp,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles, is_turtlep, is_turtle_setp,
 
                            -- * Patch related
                            patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches, is_patchp, is_patch_setp,
@@ -182,24 +181,6 @@ pink = 135
 primary_colors :: [Double]
 primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
 
--- | Internal
-random_primary_color :: CSTM Double
-random_primary_color = do
-  (_,_,_,_,ts) <- ask
-  s <- lift $ readTVar ts
-  let (v,s') = randomR (0,13) s
-  lift $ writeTVar ts s'
-  return (primary_colors !! v)
-
--- | Internal
-random_integer_heading :: CSTM Integer
-random_integer_heading = do
-  (_,_,_,_,ts) <- ask
-  s <- lift $ readTVar ts
-  let (v,s') = randomR (0,360) s
-  lift $ writeTVar ts s'
-  return v
-
 -- | Reports the number of agents in the given agentset. 
 count :: Monad m => [AgentRef] -> C m Int
 count = return . length
@@ -210,36 +191,72 @@ anyp as = return $ not $ null as
 
 
 -- | Internal
-newTurtle :: Int -> CSTM Turtle
-newTurtle x = newBreed "turtles" x
+-- newTurtle :: Int -> Int -> CSTM Turtle
+-- newTurtle x to = do
+--   rpc <- random_primary_color
+--   rih <- random_integer_heading
+--   lift $ MkTurtle <$>
+--        return x <*>
+--        return "turtles" <*>
+--        newTVar rpc <*>          --  random primary color
+--        newTVar (fromInteger rih) <*> --  random integer heading
+--        newTVar 0 <*>
+--        newTVar 0 <*>
+--        newTVar "default" <*>
+--        newTVar "" <*>
+--        newTVar 9.9 <*>
+--        newTVar False <*>
+--        newTVar 1 <*>
+--        newTVar 1 <*>
+--        newTVar Up <*>
+--        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
 -- | Internal
-newBreed :: String -> Int -> CSTM Turtle
-newBreed b x = do
-  rpc <- random_primary_color
-  rih <- random_integer_heading
-  lift $ MkTurtle <$>
-       return x <*>
-       return b <*>
-       newTVar rpc <*>          --  random primary color
-       newTVar (fromInteger rih) <*> --  random integer heading
-       newTVar 0 <*>
-       newTVar 0 <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up
+-- newBreed :: String -> Int -> Int -> CSTM Turtle
+-- newBreed b x to = do
+--   rpc <- random_primary_color
+--   rih <- random_integer_heading
+--   lift $ MkTurtle <$>
+--        return x <*>
+--        return b <*>
+--        newTVar rpc <*>          --  random primary color
+--        newTVar (fromInteger rih) <*> --  random integer heading
+--        newTVar 0 <*>
+--        newTVar 0 <*>
+--        newTVar "default" <*>
+--        newTVar "" <*>
+--        newTVar 9.9 <*>
+--        newTVar False <*>
+--        newTVar 1 <*>
+--        newTVar 1 <*>
+--        newTVar Up <*>
+--        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
 
 -- | Internal
-newOrderedTurtle :: Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> CSTM Turtle
-newOrderedTurtle i o x = newOrderedBreed i o "turtles" x
+-- newOrderedTurtle :: Int -> Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle
+-- newOrderedTurtle i o x to = do
+--     let rpc = primary_colors !! ((i-1) `mod` 14)
+--     let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
+--     MkTurtle <$>
+--              return x <*>
+--              return "turtles" <*>
+--              newTVar rpc <*>          --  ordered primary color
+--              newTVar rdh <*> --  ordered double heading
+--              newTVar 0 <*>
+--              newTVar 0 <*>
+--              newTVar "default" <*>
+--              newTVar "" <*>
+--              newTVar 9.9 <*>
+--              newTVar False <*>
+--              newTVar 1 <*>
+--              newTVar 1 <*>
+--              newTVar Up <*>
+--             (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
 -- | Internal
-newOrderedBreed :: Int -> Int -> String -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> CSTM Turtle
-newOrderedBreed i o b x = do
+newOrderedBreed :: Int -> Int -> String -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> CSTM Turtle
+newOrderedBreed i o b x to = do
   let rpc = primary_colors !! ((i-1) `mod` 14)
   let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
   MkTurtle <$>
@@ -255,8 +272,8 @@ newOrderedBreed i o b x = do
        newTVar False <*>
        newTVar 1 <*>
        newTVar 1 <*>
-       newTVar Up
-
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
 
 -- | Reports the agentset consisting of all patches. 
@@ -317,85 +334,85 @@ back n = forward (-n)
 bk = back
 
 -- | Creates number new turtles at the origin. New turtles have random integer headings and the color is randomly selected from the 14 primary colors. 
-create_turtles :: Int -> CSTM [AgentRef]
-create_turtles n = do
-  (gs, tw, _, _, _) <- ask
-  let who = gs ! 0
-  oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
-  ns <- newTurtles oldWho n
-  lift $ modifyTVar' tw (addTurtles ns) 
-  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-        where
-                      newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                              t <- newTurtle i
-                                                                              return (i, t)
-                                                                             | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+-- create_turtles :: Int -> CSTM [AgentRef]
+-- create_turtles n = do
+--   (gs, tw, _, _, _) <- ask
+--   let who = gs ! 0
+--   oldWho <- lift $ liftM round $ readTVar who
+--   lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
+--   ns <- newTurtles oldWho n
+--   lift $ modifyTVar' tw (addTurtles ns) 
+--   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+--         where
+--                       newTurtles w n = return . IM.fromAscList =<< sequence [do
+--                                                                               t <- newTurtle i 0
+--                                                                               return (i, t)
+--                                                                              | i <- [w..w+n-1]]
+--                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_breeds :: String -> Int -> CSTM [AgentRef]
-create_breeds b n = do
-  (gs, tw, _, _, _) <- ask
-  let who = gs ! 0
-  oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
-  ns <- newBreeds oldWho n
-  lift $ modifyTVar' tw (addTurtles ns) 
-  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-        where
-                      newBreeds w n = return . IM.fromAscList =<< sequence [do
-                                                                              t <- newBreed b i
-                                                                              return (i, t)
-                                                                             | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+-- create_breeds :: String -> Int -> CSTM [AgentRef]
+-- create_breeds b n = do
+--   (gs, tw, _, _, _) <- ask
+--   let who = gs ! 0
+--   oldWho <- lift $ liftM round $ readTVar who
+--   lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
+--   ns <- newBreeds oldWho n
+--   lift $ modifyTVar' tw (addTurtles ns) 
+--   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+--         where
+--                       newBreeds w n = return . IM.fromAscList =<< sequence [do
+--                                                                               t <- newBreed b i 0
+--                                                                               return (i, t)
+--                                                                              | i <- [w..w+n-1]]
+--                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 
-{-# INLINE crt #-}
--- | alias for 'create_turtles'
-crt = create_turtles
+-- {-# INLINE crt #-}
+-- -- | alias for 'create_turtles'
+-- crt = create_turtles
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_ordered_breeds :: String -> Int -> CSTM [AgentRef]
-create_ordered_breeds b n = do
-  (gs, tw, _, _, _) <- ask
-  let who = gs ! 0
-  lift $ do
-    oldWho <- liftM round $ readTVar who
-    modifyTVar' who (\ ow -> fromIntegral n + ow)
-    ns <- newTurtles oldWho n
-    modifyTVar' tw (addTurtles ns) 
-    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-        where
-                      newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                              t <- newOrderedBreed i n b j 
-                                                                              return (j, t)
-                                                                             | i <- [1..n] | j <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+-- create_ordered_breeds :: String -> Int -> CSTM [AgentRef]
+-- create_ordered_breeds b n = do
+--   (gs, tw, _, _, _) <- ask
+--   let who = gs ! 0
+--   lift $ do
+--     oldWho <- liftM round $ readTVar who
+--     modifyTVar' who (\ ow -> fromIntegral n + ow)
+--     ns <- newTurtles oldWho n
+--     modifyTVar' tw (addTurtles ns) 
+--     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+--         where
+--                       newTurtles w n = return . IM.fromAscList =<< sequence [do
+--                                                                               t <- newOrderedBreed i n b j 0
+--                                                                               return (j, t)
+--                                                                              | i <- [1..n] | j <- [w..w+n-1]]
+--                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 
 
 -- |  Creates number new turtles. New turtles start at position (0, 0), are created with the 14 primary colors, and have headings from 0 to 360, evenly spaced. 
-create_ordered_turtles :: Int -> CSTM [AgentRef]
-create_ordered_turtles n = do
-  (gs, tw, _, _, _) <- ask
-  let who = gs ! 0
-  lift $ do
-    oldWho <- liftM round $ readTVar who
-    modifyTVar' who (\ ow -> fromIntegral n + ow)
-    ns <- newTurtles oldWho n
-    modifyTVar' tw (addTurtles ns) 
-    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-        where
-                      newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                              t <- newOrderedTurtle i n j 
-                                                                              return (j, t)
-                                                                             | i <- [1..n] | j <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+-- create_ordered_turtles :: Int -> CSTM [AgentRef]
+-- create_ordered_turtles n = do
+--   (gs, tw, _, _, _) <- ask
+--   let who = gs ! 0
+--   lift $ do
+--     oldWho <- liftM round $ readTVar who
+--     modifyTVar' who (\ ow -> fromIntegral n + ow)
+--     ns <- newTurtles oldWho n
+--     modifyTVar' tw (addTurtles ns) 
+--     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+--         where
+--                       newTurtles w n = return . IM.fromAscList =<< sequence [do
+--                                                                               t <- newOrderedTurtle i n j 0
+--                                                                               return (j, t)
+--                                                                              | i <- [1..n] | j <- [w..w+n-1]]
+--                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
-{-# INLINE cro #-}
--- | alias for 'create_ordered_turtles'
-cro = create_ordered_turtles
+-- {-# INLINE cro #-}
+-- -- | alias for 'create_ordered_turtles'
+-- cro = create_ordered_turtles
 
 -- | Reports the agentset consisting of all turtles. 
 turtles :: CSTM [AgentRef]

@@ -29,8 +29,8 @@ data Turtle = MkTurtle {
       hiddenp_ :: TVar Bool,
       size_ :: TVar Double,
       pen_size_ :: TVar Double,
-      pen_mode_ :: TVar PenMode --,
-      --tvars_ :: Array Int (TVar Double)
+      pen_mode_ :: TVar PenMode,
+      tvars_ :: Array Int (TVar Double)
     }
               deriving (Eq)
 

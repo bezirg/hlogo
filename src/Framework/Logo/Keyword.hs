@@ -8,6 +8,8 @@ import Framework.Logo.Prim
 import Control.Monad.Reader
 import Control.Monad (liftM)
 import Control.Concurrent.STM
+import Control.Applicative
+import System.Random (randomR)
 import Data.Array
 import Data.List (genericLength)
 import qualified Data.Map as M
@@ -29,18 +31,55 @@ globals vs  = liftM2 (++)
 
 
 
-turtles_own vs = [d| |]
+turtles_own vs = do
+  y <- newName "y"
+  ct <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
+                                                                   (gs, tw, _, _, _) <- ask
+                                                                   let who = gs ! 0
+                                                                   let  newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                                                                                 t <- newTurtle i $(litE (integerL (genericLength vs)))
+                                                                                                                                 return (i, t)
+                                                                                                                                | i <- [w..w+n-1]]
+                                                                   let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                   oldWho <- lift $ liftM round $ readTVar who
+                                                                   lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                   ns <- newTurtles oldWho $(varE y)
+                                                                   lift $ modifyTVar' tw (addTurtles ns) 
+                                                                   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                                   |]) []]
+
+  co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| do
+                                                                           (gs, tw, _, _, _) <- ask
+                                                                           let who = gs ! 0
+                                                                           let newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
+                                                                                                                                        t <- newOrderedTurtle i n j $(litE (integerL (genericLength vs)))
+                                                                                                                                        return (j, t))
+                                                                                                                                      (zip [1..n]  [w..w+n-1])
+                                                                           let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                           lift $ do
+                                                                             oldWho <- liftM round $ readTVar who
+                                                                             modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                             ns <- newTurtles oldWho $(varE y)
+                                                                             modifyTVar' tw (addTurtles ns) 
+                                                                             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+
+                                                                        |]) []]
+
+
+  crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
+  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
+  return [ct, co]
 
 patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
-  pn <- mapM (\ (v, i) -> do
+  pg <- mapM (\ (v, i) -> do
           p <- valD (varP (mkName v)) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
           u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
           return [p,u,w]
             ) (zip vs [0..])
-  return $ pl : concat pn
+  return $ pl : concat pg
 
 
 links_own vs = [d| |]
@@ -103,3 +142,97 @@ run as = do
   [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
 
 
+-- | Internal
+random_primary_color :: CSTM Double
+random_primary_color = do
+  (_,_,_,_,ts) <- ask
+  s <- lift $ readTVar ts
+  let (v,s') = randomR (0,13) s
+  lift $ writeTVar ts s'
+  return (primary_colors !! v)
+
+-- | Internal
+random_integer_heading :: CSTM Integer
+random_integer_heading = do
+  (_,_,_,_,ts) <- ask
+  s <- lift $ readTVar ts
+  let (v,s') = randomR (0,360) s
+  lift $ writeTVar ts s'
+  return v
+
+create_breeds :: String -> Int -> CSTM [AgentRef]
+create_breeds b n = do
+  (gs, tw, _, _, _) <- ask
+  let who = gs ! 0
+  oldWho <- lift $ liftM round $ readTVar who
+  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
+  ns <- newBreeds oldWho n
+  lift $ modifyTVar' tw (addTurtles ns) 
+  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+        where
+                      newBreeds w n = return . IM.fromAscList =<< sequence [do
+                                                                              t <- newBreed b i 0
+                                                                              return (i, t)
+                                                                             | i <- [w..w+n-1]]
+                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+
+newBreed :: String -> Int -> Int -> CSTM Turtle
+newBreed b x to = do
+  rpc <- random_primary_color
+  rih <- random_integer_heading
+  lift $ MkTurtle <$>
+       return x <*>
+       return b <*>
+       newTVar rpc <*>          --  random primary color
+       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar 0 <*>
+       newTVar 0 <*>
+       newTVar "default" <*>
+       newTVar "" <*>
+       newTVar 9.9 <*>
+       newTVar False <*>
+       newTVar 1 <*>
+       newTVar 1 <*>
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+newTurtle x to = do
+  rpc <- random_primary_color
+  rih <- random_integer_heading
+  lift $ MkTurtle <$>
+       return x <*>
+       return "turtles" <*>
+       newTVar rpc <*>          --  random primary color
+       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar 0 <*>
+       newTVar 0 <*>
+       newTVar "default" <*>
+       newTVar "" <*>
+       newTVar 9.9 <*>
+       newTVar False <*>
+       newTVar 1 <*>
+       newTVar 1 <*>
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+newOrderedTurtle :: Int -> Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle
+newOrderedTurtle i o x to = do
+    let rpc = primary_colors !! ((i-1) `mod` 14)
+    let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
+    MkTurtle <$>
+             return x <*>
+             return "turtles" <*>
+             newTVar rpc <*>          --  ordered primary color
+             newTVar rdh <*> --  ordered double heading
+             newTVar 0 <*>
+             newTVar 0 <*>
+             newTVar "default" <*>
+             newTVar "" <*>
+             newTVar 9.9 <*>
+             newTVar False <*>
+             newTVar 1 <*>
+             newTVar 1 <*>
+             newTVar Up <*>
+            (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+create_ordered_breeds = undefined
