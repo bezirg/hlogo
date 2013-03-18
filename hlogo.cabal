@@ -16,13 +16,13 @@ library
                       Language.Logo.Syntax, Language.Logo.Parser, Language.Logo.Pretty
   other-modules:      Framework.Logo.Conf
   extensions:         TemplateHaskell
-  ghc-options:        -rtsopts -threaded
+  ghc-options:        -rtsopts -threaded -fwarn-unused-imports
   hs-source-dirs:     src
 
 executable hlogo
   main-is:             Main.hs
   build-depends:       base, containers, cmdargs, mtl, array, random, stm, threads, template-haskell
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices
+  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src
 
 test-suite test

@@ -1381,17 +1381,20 @@ with f as = do
 
 -- Type-safe Casts
 
-is_turtlep t = maybe False (\ t -> case t of
+is_turtlep :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_turtlep t = return $ maybe False (\ t -> case t of
                                     [TurtleRef _ _] -> True
                                     _ -> False)
                                          (cast t :: Maybe [AgentRef])
 
-is_patchp t = maybe False (\ t -> case t of
+is_patchp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_patchp t = return $ maybe False (\ t -> case t of
                                     [PatchRef _ _] -> True
                                     _ -> False)
                                          (cast t :: Maybe [AgentRef])
 
-is_agentp t = maybe False (\ t -> case t of -- check for a single agent
+is_agentp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_agentp t = return $ maybe False (\ t -> case t of -- check for a single agent
                                     [_] -> True
                                     _ -> False) (cast t :: Maybe [AgentRef])
 
@@ -1399,45 +1402,58 @@ is_agentp t = maybe False (\ t -> case t of -- check for a single agent
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
+is_patch_setp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
 is_patch_setp (p:_) = is_patchp p
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
+is_turtle_setp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
 is_turtle_setp (t:_) = is_turtlep t
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
-is_agentsetp (a:_) = is_patchp a || is_turtlep a || is_linkp a
+is_agentsetp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
+is_agentsetp (a:_) = do 
+  ip <- is_patchp a
+  it <- is_turtlep a 
+  il <- is_linkp a
+  return $ ip || it || il
 
 -- Not used, because EDSL, using internal lambda abstractions
 -- is_command_taskp
 -- is_reporter_taskp
 
---is_listp :: Typeable a => a -> Bool
+--is_listp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
 --is_listp :: (Typeable a, Typeable t) => t -> [a]
 --is_listp l =  (cast l :: Typeable a => Maybe [a])
 
-is_stringp s = maybe False (const True) (cast s :: Maybe String)
+is_stringp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_stringp s = return $ maybe False (const True) (cast s :: Maybe String)
 
-is_numberp n = is_intp n || is_integerp n || is_floatp n || is_doublep n
+is_numberp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_numberp n = return $ is_intp n || is_integerp n || is_floatp n || is_doublep n
                where
                  is_intp n = maybe False (const True) (cast n :: Maybe Int)
                  is_integerp n = maybe False (const True) (cast n :: Maybe Integer)
                  is_floatp n = maybe False (const True) (cast n :: Maybe Float)
                  is_doublep n = maybe False (const True) (cast n :: Maybe Double)
 
-is_linkp l = maybe False (\ l -> case l of
+is_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_linkp l = return $ maybe False (\ l -> case l of
                                     [LinkRef _ _] -> True
                                     _ -> False)
                                          (cast l :: Maybe [AgentRef])
 
-is_directed_linkp l = maybe False (\ l -> case l of
+is_directed_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_directed_linkp l = return $ maybe False (\ l -> case l of
                                     [LinkRef _ (MkLink {directed_ = d})] -> d
                                     _ -> False)
                                          (cast l :: Maybe [AgentRef])
 
-is_undirected_linkp :: Typeable a => a -> Bool
-is_undirected_linkp = not . is_directed_linkp
+is_undirected_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_undirected_linkp = liftM not . is_directed_linkp
+
+
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs

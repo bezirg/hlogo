@@ -54,7 +54,7 @@ breeds [p,s] = do
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] 
                                    (normalB [| do [s] <- self; [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y);  ts <- turtles;  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = b})) -> do x' <- lift $ readTVar x;  y' <- lift $ readTVar y; return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []]
   ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
-                                   (normalB [| maybe False (\ t -> case t of [TurtleRef _ (MkTurtle {breed_ = b})] -> b == $(litE (stringL p)); _ -> False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
+                                   (normalB [| return $ maybe False (\ t -> case t of [TurtleRef _ (MkTurtle {breed_ = b})] -> b == $(litE (stringL p)); _ -> False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
   return [sp,up,us,ss,cb,cob,th,ta, ib]
 
 
