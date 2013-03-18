@@ -82,10 +82,24 @@ patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          p <- valD (varP (mkName v)) (normalB [| do 
+                                                 (_,_,agent_ref,_,_) <- ask :: CSTM Context
+                                                 case agent_ref of
+                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVar $ pv ! $(litE (integerL i))
+                                                   TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVar $ pv ! $(litE (integerL i)) |]) []
+
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do
+                                                 (_,_,agent_ref,_,_) <- ask :: CIO Context
+                                                 case agent_ref of
+                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVarIO $ pv ! $(litE (integerL i))
+                                                   TurtleRef _ _ -> unsafe_patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVarIO $ pv ! $(litE (integerL i)) |]) []
           y <- newName "y"
-          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
+                                                 (_,_,agent_ref,_,_) <- ask :: CSTM Context
+                                                 case agent_ref of
+                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
+                                                   TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) 
+                                                                     |]) []]
           return [p,u,w]
             ) (zip vs [0..])
   return $ pl : concat pg

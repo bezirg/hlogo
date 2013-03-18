@@ -18,12 +18,23 @@ setup = do
   atomic $ create_ordered_mice 400 -- 100000
 
 go = do
-  unsafe_show_ =<< count =<< unsafe_turtles
+  ask_ (atomic $ show_ =<< p1) =<< atomic (patch 0 0)
+  ask_ (atomic $ set_p1 3) =<< atomic (patch 0 0)
+  ask_ (atomic $ show_ =<< p1) =<< atomic (patch 0 0)
+
+  -- Turtles can access the patch_here variables
+  ask_ (atomic $ show_ =<< p1) =<< atomic (turtle 0)
+  ask_ (atomic $ set_p1 5) =<< atomic (turtle 0)
+  ask_ (atomic $ show_ =<< p1) =<< atomic (turtle 0)
+
+
   ask_ (atomic $ show_ =<< b1) =<< unsafe_mouse 0 
   ask_ (atomic $ set_b1 3) =<< unsafe_mouse 0
   ask_ (atomic $ show_ =<< b1) =<< unsafe_mouse 0
-  -- ask_ (atomic $ show_ =<< heading) =<< unsafe_mouse 17
-  -- atomic $ show_ =<< count =<< mice
+  ask_ (atomic $ show_ =<< heading) =<< unsafe_mouse 17
+
+  atomic $ show_ =<< count =<< mice
+
   ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 0
   ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 1
   ask_ (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 3
@@ -42,7 +53,6 @@ go = do
   -- atomic $ show_ =<< g1
   -- atomic $ set_g1 5
   -- atomic $ show_ =<< g1
-
 
 
 behave = do
