@@ -319,7 +319,7 @@ set_ycor v = do
   lift $ writeTVar (ycor_ t) v
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
-who :: Monad m => ReaderT Context m Int
+who :: Monad m => C m Int
 who = do
   (_,_,TurtleRef i _, _, _) <- ask
   return i
@@ -331,7 +331,7 @@ color = do
   lift $ readTVar c
 
 
-breed :: Monad m => ReaderT Context m String
+breed :: Monad m => C m String
 breed = do
   (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
   return b
@@ -1085,7 +1085,7 @@ my_in_links = do
   return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
 
 -- | Reports an empty link agentset. 
-no_links :: Monad m => ReaderT Context m [AgentRef]
+no_links :: Monad m => C m [AgentRef]
 no_links = return []
 
 -- | Ties end1 and end2 of the link together. If the link is a directed link end1 is the root turtle and end2 is the leaf turtle. The movement of the root turtle affects the location and heading of the leaf turtle. If the link is undirected the tie is reciprocal so both turtles can be considered root turtles and leaf turtles. Movement or change in heading of either turtle affects the location and heading of the other turtle. 
@@ -1131,19 +1131,19 @@ with f as = do
 
 -- Type-safe Casts
 
-is_turtlep :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_turtlep :: (Monad m, Typeable a) => a -> C m Bool
 is_turtlep t = return $ maybe False (\ t -> case t of
                                     [TurtleRef _ _] -> True
                                     _ -> False)
                                          (cast t :: Maybe [AgentRef])
 
-is_patchp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_patchp :: (Monad m, Typeable a) => a -> C m Bool
 is_patchp t = return $ maybe False (\ t -> case t of
                                     [PatchRef _ _] -> True
                                     _ -> False)
                                          (cast t :: Maybe [AgentRef])
 
-is_agentp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_agentp :: (Monad m, Typeable a) => a -> C m Bool
 is_agentp t = return $ maybe False (\ t -> case t of -- check for a single agent
                                     [_] -> True
                                     _ -> False) (cast t :: Maybe [AgentRef])
@@ -1152,17 +1152,17 @@ is_agentp t = return $ maybe False (\ t -> case t of -- check for a single agent
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
-is_patch_setp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
+is_patch_setp :: (Monad m, Typeable a) => [a] -> C m Bool
 is_patch_setp (p:_) = is_patchp p
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
-is_turtle_setp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
+is_turtle_setp :: (Monad m, Typeable a) => [a] -> C m Bool
 is_turtle_setp (t:_) = is_turtlep t
 
 -- | Checks only the 1st element
 -- | todo: would require a datatype distinction between agentrefs
-is_agentsetp :: (Monad m, Typeable a) => [a] -> ReaderT Context m Bool
+is_agentsetp :: (Monad m, Typeable a) => [a] -> C m Bool
 is_agentsetp (a:_) = do 
   ip <- is_patchp a
   it <- is_turtlep a 
@@ -1173,14 +1173,14 @@ is_agentsetp (a:_) = do
 -- is_command_taskp
 -- is_reporter_taskp
 
---is_listp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+--is_listp :: (Monad m, Typeable a) => a -> C m Bool
 --is_listp :: (Typeable a, Typeable t) => t -> [a]
 --is_listp l =  (cast l :: Typeable a => Maybe [a])
 
-is_stringp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_stringp :: (Monad m, Typeable a) => a -> C m Bool
 is_stringp s = return $ maybe False (const True) (cast s :: Maybe String)
 
-is_numberp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_numberp :: (Monad m, Typeable a) => a -> C m Bool
 is_numberp n = return $ is_intp n || is_integerp n || is_floatp n || is_doublep n
                where
                  is_intp n = maybe False (const True) (cast n :: Maybe Int)
@@ -1188,19 +1188,19 @@ is_numberp n = return $ is_intp n || is_integerp n || is_floatp n || is_doublep 
                  is_floatp n = maybe False (const True) (cast n :: Maybe Float)
                  is_doublep n = maybe False (const True) (cast n :: Maybe Double)
 
-is_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_linkp :: (Monad m, Typeable a) => a -> C m Bool
 is_linkp l = return $ maybe False (\ l -> case l of
                                     [LinkRef _ _] -> True
                                     _ -> False)
                                          (cast l :: Maybe [AgentRef])
 
-is_directed_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_directed_linkp :: (Monad m, Typeable a) => a -> C m Bool
 is_directed_linkp l = return $ maybe False (\ l -> case l of
                                     [LinkRef _ (MkLink {directed_ = d})] -> d
                                     _ -> False)
                                          (cast l :: Maybe [AgentRef])
 
-is_undirected_linkp :: (Monad m, Typeable a) => a -> ReaderT Context m Bool
+is_undirected_linkp :: (Monad m, Typeable a) => a -> C m Bool
 is_undirected_linkp = liftM not . is_directed_linkp
 
 
