@@ -29,7 +29,8 @@ data Turtle = MkTurtle {
       hiddenp_ :: TVar Bool,
       size_ :: TVar Double,
       pen_size_ :: TVar Double,
-      pen_mode_ :: TVar PenMode
+      pen_mode_ :: TVar PenMode --,
+      --tvars_ :: Array Int (TVar Double)
     }
               deriving (Eq)
 
@@ -41,7 +42,8 @@ data Patch = MkPatch {
       pycor_ :: Int,             -- on creation
       pcolor_ :: TVar Double,
       plabel_ :: TVar String,
-      plabel_color_ :: TVar Double
+      plabel_color_ :: TVar Double,
+      pvars_ :: Array Int (TVar Double)
       }
            deriving (Eq)
 
@@ -56,7 +58,8 @@ data Link = MkLink {
       lbreed_ :: String,
       thickness_ :: TVar Double,
       lshape_ :: TVar String,
-      tie_mode :: TVar TieMode
+      tie_mode :: TVar TieMode --,
+--      lvars_ :: Array Int (TVar Double)
     }
           deriving (Eq)
 

@@ -779,10 +779,12 @@ clear_patches :: CSTM ()
 clear_patches = do
   (_, tw, _, _, _) <- ask
   (MkWorld ps ts _) <- lift $ readTVar tw
-  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc)  -> do
+  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc to)  -> do
                               writeTVar tc 0
                               writeTVar tl ""
-                              writeTVar tlc 9.9) ps
+                              writeTVar tlc 9.9
+                              mapM_ (flip writeTVar 0) (elems to) -- patches-own to 0
+                           ) ps
   return ()
 
 {-# INLINE cp #-}

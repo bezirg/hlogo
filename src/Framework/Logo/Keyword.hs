@@ -31,7 +31,17 @@ globals vs  = liftM2 (++)
 
 turtles_own vs = [d| |]
 
-patches_own vs = [d| |]
+patches_own vs = do
+  pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+  pn <- mapM (\ (v, i) -> do
+          p <- valD (varP (mkName v)) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CSTM Context; lift $ readTVar (pv ! $(litE (integerL i))) |]) []
+          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}) ,_,_) <- ask :: CIO Context; lift $ readTVarIO (pv ! $(litE (integerL i))) |]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (_,_,PatchRef _ (MkPatch {pvars_ = pv}),_,_) <- ask :: CSTM Context; lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) |]) []]
+          return [p,u,w]
+            ) (zip vs [0..])
+  return $ pl : concat pn
+
 
 links_own vs = [d| |]
 
@@ -90,6 +100,6 @@ undirected_link_breed [p,s] = do
 link_breeds_own ls vs = [d| |]
 
 run as = do 
-  [d| main = do c <- cInit $(varE (mkName "globals_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
+  [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
 
 
