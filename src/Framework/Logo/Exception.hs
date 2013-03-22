@@ -5,28 +5,33 @@ module Framework.Logo.Exception
     (throw,                     
      catch,
      catchIO,
+     -- * The type class
+     Exception,
      -- * Built-in exceptions imported from Haskell base
-     IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock,
+     SomeException, IOException , ArithException (..) , AssertionFailed (..), AsyncException (..), NestedAtomically (..) , BlockedIndefinitelyOnSTM (..) , Deadlock (..),
     -- * Exceptions specific to HLogo
-     ContextException, TypeException
+     ContextException (..) , TypeException (..)
     )
         where
 
 import Framework.Logo.Base
-import Control.Exception (Exception, throw, IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock)
+import Control.Exception (Exception, throw, SomeException, IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock)
 import qualified Control.Exception as E (catch)
 import Control.Concurrent.STM
 import Data.Typeable
+import Control.Monad.Trans.Reader
 
 {-# INLINE catch #-}
 -- | Catches an Exception in STM monad
-catch :: Exception e => STM a -> (e -> STM a) -> STM a
-catch = catchSTM
+--catch :: Exception e => CSTM a -> (e -> CSTM a) -> CSTM a
+--catch :: Exception e => CSTM a -> (e -> CSTM a) -> CSTM a
+catch :: Exception e => CSTM a -> (e -> CSTM a) -> CSTM a
+catch = liftCatch catchSTM
 
 {-# INLINE catchIO #-}
 -- | Catches an Exception in IO monad
-catchIO :: Exception e => IO a -> (e -> IO a) -> IO a
-catchIO = E.catch
+catchIO :: Exception e => CIO a -> (e -> CIO a) -> CIO a
+catchIO = liftCatch E.catch
 
 -- | Thrown when a primitive procedure expected a different calling context.
 -- Used as ContextException ExpectedString GotInsteadAgentRef

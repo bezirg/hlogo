@@ -3,7 +3,7 @@
 module Framework.Logo.Base where
 
 import Control.Concurrent.STM
-import Control.Monad.Reader
+import Control.Monad.Trans.Reader
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import Data.Array

@@ -5,7 +5,7 @@ module Framework.Logo.Core (
 import Control.Concurrent (forkIO)
 import Control.Monad (forever)
 import Control.Applicative
-import Control.Monad.Reader (lift)
+import Control.Monad.Trans.Class (lift)
 import Control.Concurrent.STM
 import Framework.Logo.Conf
 import Framework.Logo.Base

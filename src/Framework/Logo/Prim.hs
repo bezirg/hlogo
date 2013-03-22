@@ -2,7 +2,7 @@
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, is_agentsetp, 
+                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die,
 
                            -- * Turtle related
                            turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles, is_turtlep, is_turtle_setp,
@@ -20,7 +20,7 @@ module Framework.Logo.Prim (
                            primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
-                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_stringp,
+                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, 
 
                            -- * Math
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
@@ -39,8 +39,10 @@ module Framework.Logo.Prim (
 
 import Framework.Logo.Base
 import Framework.Logo.Conf
+import Framework.Logo.Exception
 import Control.Concurrent.STM
-import Control.Monad.Reader
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Thread as Thread
 import qualified Control.Concurrent.Thread.Group as ThreadGroup
@@ -54,12 +56,17 @@ import Control.Monad (forM_)
 import Data.Function
 import Data.Maybe (maybe, fromJust)
 import Data.Typeable
+import Control.Monad (liftM, liftM2, filterM)
 
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (_, _, a, _, _) <- ask
-  return [a]
+  case a of
+    TurtleRef _ _ -> return [a]
+    PatchRef _ _ -> return [a]
+    _ -> throw (ContextException "turtle or patch" a)
+
 
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
 other :: Monad m => [AgentRef] -> C m [AgentRef]
@@ -71,7 +78,9 @@ other as = do
 turtles_here :: CSTM [AgentRef]
 turtles_here = do
   [s] <- self
-  [PatchRef (px,py) _] <- patch_here
+  [PatchRef (px,py) _] <- case s of
+                           TurtleRef _ _ -> patch_here
+                           patch -> return [patch]
   ts <- turtles
   filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
              x' <- lift $ readTVar x
@@ -82,7 +91,6 @@ turtles_here = do
 -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
 turtles_at :: Double -> Double -> CSTM [AgentRef] -- ^ dx -> dy -> CSTM (Set AgentRef)
 turtles_at x y = do
-  (_, _, a, _, _) <- ask
   [PatchRef (px, py) _] <- patch_at x y
   ts <- turtles
   filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
@@ -108,6 +116,11 @@ print_ a = do
   lift $ writeTChan p $ show a
                            
 
+-- | Runs commands1. If a runtime error occurs inside commands1, NetLogo won't stop and alert the user that an error occurred. It will suppress the error and run commands2 instead. 
+-- | todo
+carefully :: CSTM a -> CSTM a -> CSTM a
+carefully c c' = catch c (\ e -> let _ = (e :: SomeException) in c')
+
 -- | Reports the patch at (dx, dy) from the caller, that is, the patch containing the point dx east and dy patches north of this agent. 
 patch_at :: Double -> Double ->  CSTM [AgentRef]
 patch_at x y = do
@@ -117,14 +130,18 @@ patch_at x y = do
     TurtleRef _ _ -> do
                  [PatchRef (px, py) _] <- patch_here
                  patch (fromIntegral px + x) (fromIntegral py +y)
+    _ -> throw $ ContextException "turtle or patch" a
 
 -- | patch-here reports the patch under the turtle. 
 patch_here :: CSTM [AgentRef]
 patch_here = do
-  (_,_,TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}), _, _) <- ask
-  x' <- lift $ readTVar x
-  y' <- lift $ readTVar y
-  patch x' y'
+  (_,_, a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
+               x' <- lift $ readTVar x
+               y' <- lift $ readTVar y
+               patch x' y'
+    _ -> throw $ ContextException "patch" a
 
 
 -- | Reports the single patch that is the given distance "ahead" of this turtle, that is, along the turtle's current heading. 
@@ -186,10 +203,12 @@ primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan
 
 -- | Reports the number of agents in the given agentset. 
 count :: Monad m => [AgentRef] -> C m Int
-count = return . length
+count [Nobody] = throw $ TypeException "agent" Nobody
+count as = return $ length as
 
 -- | Reports true if the given agentset is non-empty, false otherwise. 
 anyp :: Monad m => [AgentRef] -> C m Bool
+anyp [Nobody] = throw $ TypeException "agent" Nobody
 anyp as = return $ not $ null as
 
 -- | Reports the agentset consisting of all patches. 
@@ -218,22 +237,30 @@ patch x y = do
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> CSTM ()
 jump n = do
-  (_,_, TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, heading_ = h}), _, _) <- ask
-  h' <- lift $ readTVar h
-  lift $ modifyTVar' x (+ (sin_ h' * n)) >>  modifyTVar' y (+ (cos_ h' * n))
-
+  (_,_, a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, heading_ = h}) -> do
+           h' <- lift $ readTVar h
+           lift $ modifyTVar' x (+ (sin_ h' * n)) >>  modifyTVar' y (+ (cos_ h' * n))
+    _ -> throw $ ContextException "turtle" a
 
 
 -- | The turtle sets its x-coordinate to x and its y-coordinate to y. 
 setxy :: Double -> Double -> CSTM ()
 setxy x' y' = do
-  (_,_, TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}), _, _) <- ask
-  lift $ writeTVar x x' >> writeTVar y y'
+  (_,_, a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> lift $ writeTVar x x' >> writeTVar y y'
+    _ -> throw $ ContextException "turtle" a
 
 
 -- | The turtle moves forward by number steps, one step at a time. (If number is negative, the turtle moves backward.) 
 forward :: Double -> CSTM ()
-forward n | n == 0 = return ()
+forward n | n == 0 = do
+  (_,_, a, _, _) <- ask
+  case a of
+    TurtleRef _ _ -> return ()
+    _ -> throw $ ContextException "turtle" a
           | n > 1 = jump 1 >> forward (n-1)
           | n < -1 = jump (-1) >> forward (n+1)
           | (0 < n && n <= 1) || (-1 <= n && n < 0) = jump n
@@ -258,6 +285,18 @@ bk = back
 -- -- | alias for 'create_ordered_turtles'
 -- cro = create_ordered_turtles
 
+die :: CSTM ()
+die = do
+ (_,tw,a,_,_) <- ask
+ case a of
+   TurtleRef t _ -> do
+          (MkWorld ps ts ls) <- lift $ readTVar tw
+          lift $ writeTVar tw $ MkWorld ps (IM.delete t ts) ls
+   PatchRef p _ -> do
+          (MkWorld ps ts ls) <- lift $ readTVar tw
+          lift $ writeTVar tw $ MkWorld (M.delete p ps) ts ls
+   _ -> throw $ ContextException "turtle or patch" a
+
 -- | Reports the agentset consisting of all turtles. 
 turtles :: CSTM [AgentRef]
 turtles = do
@@ -270,73 +309,109 @@ turtle :: Int -> CSTM [AgentRef]
 turtle n = do
   (_, tw,_, _, _) <- ask
   (MkWorld _ ts _) <- lift $ readTVar tw
-  return [TurtleRef n (ts IM.! n)]
+  return $ maybe [Nobody] (return . TurtleRef n) $ IM.lookup n ts
 
 
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 turtle_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
-turtle_set ts = sequence ts >>= return . concat
+turtle_set ts = sequence ts >>= return . foldr (\ x acc -> 
+                                                if x == Nobody -- filter Nobody
+                                                then acc
+                                                else case x of -- type check
+                                                       TurtleRef _ _ -> if x `elem` acc -- nub
+                                                                      then acc
+                                                                      else (x:acc)
+                                                       _ -> throw $ ContextException "turtle" x
+                                               ) [] . concat
 
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 patch_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
-patch_set = turtle_set
+patch_set ts = sequence ts >>= return . foldr (\ x acc -> 
+                                                if x == Nobody -- filter Nobody
+                                                then acc
+                                                else case x of -- type check
+                                                       PatchRef _ _ -> if x `elem` acc -- nub
+                                                                      then acc
+                                                                      else (x:acc)
+                                                       _ -> throw $ ContextException "patch" x
+                                               ) [] . concat
+
 
 -- | Reports true if this turtle can move distance in the direction it is facing without violating the topology; reports false otherwise. 
 can_movep :: Double -> CSTM Bool
-can_movep n = patch_ahead n >>= \ p -> return (p /= [Nobody])
+can_movep n = patch_ahead n >>= return . ( /= [Nobody])
 
 
 -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
 heading :: CSTM Double
 heading = do
-  (_,_,TurtleRef _ (MkTurtle {heading_ = h}), _, _) <- ask
-  lift $ readTVar h
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVar h
+    _ -> throw (ContextException "turtle" a)
 
 set_heading :: Double -> CSTM ()
 set_heading v = do
-  (_,_,TurtleRef _ t, _, _) <- ask
-  lift $ writeTVar (heading_ t) v
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (heading_ t) v
+    _ -> throw $ ContextException "turtle" a
 
 -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
 xcor :: CSTM Double
 xcor = do
-  (_,_,TurtleRef _ (MkTurtle {xcor_ = x}), _, _) <- ask
-  lift $ readTVar x
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVar x
+    _ -> throw $ ContextException "turtle" a
 
 set_xcor :: Double -> CSTM ()
 set_xcor v = do
-  (_,_,TurtleRef _ t, _, _) <- ask
-  lift $ writeTVar (xcor_ t) v
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (xcor_ t) v
+    _ -> throw $ ContextException "turtle" a
 
 
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: CSTM Double
 ycor = do
-  (_,_,TurtleRef _ (MkTurtle {ycor_ = y}), _, _) <- ask
-  lift $ readTVar y
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVar y
+    _ -> throw $ ContextException "turtle" a
 
 set_ycor :: Double -> CSTM ()
 set_ycor v = do
-  (_,_,TurtleRef _ t, _, _) <- ask
-  lift $ writeTVar (ycor_ t) v
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (ycor_ t) v
+    _ -> throw $ ContextException "turtle" a
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: Monad m => C m Int
 who = do
-  (_,_,TurtleRef i _, _, _) <- ask
-  return i
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef i _ -> return i
+    _ -> throw $ ContextException "turtle" a
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 color :: CSTM Double
 color = do
-  (_,_,TurtleRef _ (MkTurtle {color_ = c}), _, _) <- ask
-  lift $ readTVar c
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVar c
+    _ -> throw $ ContextException "turtle" a
 
 
 breed :: Monad m => C m String
 breed = do
-  (_,_,TurtleRef _ (MkTurtle {breed_ = b}), _, _) <- ask
-  return b
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {breed_ = b}) -> return b
+    LinkRef _ (MkLink {lbreed_ = b}) -> return b
+    _ -> throw $ ContextException "turtle or link" a
 
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: CSTM Double
@@ -437,6 +512,7 @@ distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
   x <- lift $ readTVar tx
   y <- lift $ readTVar ty
   distancexy x y
+distance [a] = throw $ TypeException "turtle or patch" a
 
 delta a1 a2 aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
@@ -444,10 +520,11 @@ delta a1 a2 aboundary =
 -- | Reports the distance from this agent to the point (xcor, ycor). 
 distancexy :: Double -> Double -> CSTM Double
 distancexy x' y' = do
-  (_,_,ref,_,_) <- ask
-  (x,y) <- case ref of
+  (_,_,a,_,_) <- ask
+  (x,y) <- case a of
             PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
             TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+            _ -> throw $ ContextException "turtle or patch" a
   return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
 
 
@@ -483,8 +560,10 @@ towardsxy = undefined
 -- | The turtle makes itself invisible. 
 hide_turtle :: CSTM ()
 hide_turtle = do
-  (_,_,TurtleRef _ (MkTurtle {hiddenp_ = th}), _, _) <- ask
-  lift $ writeTVar th True
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {hiddenp_ = th}) -> lift $ writeTVar th True
+    _ -> throw $ ContextException "turtle" a
 
 {-# INLINE ht #-}
 -- | alias for 'hide_turtle'
@@ -493,8 +572,10 @@ ht = hide_turtle
 -- | The turtle becomes visible again. 
 show_turtle :: CSTM ()
 show_turtle = do
-  (_,_,TurtleRef _ (MkTurtle {hiddenp_ = th}), _, _) <- ask
-  lift $ writeTVar th False
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {hiddenp_ = th}) -> lift $ writeTVar th False
+    _ -> throw $ ContextException "turtle" a
 
 {-# INLINE st #-}
 -- | alias for 'show_turtle'
@@ -503,8 +584,10 @@ st = show_turtle
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_down :: CSTM ()
 pen_down = do
-  (_,_,TurtleRef _ (MkTurtle {pen_mode_ = tp}), _, _) <- ask
-  lift $ writeTVar tp Down
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Down
+    _ -> throw $ ContextException "turtle" a
 
 {-# INLINE pd #-}
 -- | alias for 'pen_down'
@@ -513,8 +596,10 @@ pd = pen_down
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_up :: CSTM ()
 pen_up = do
-  (_,_,TurtleRef _ (MkTurtle {pen_mode_ = tp}), _, _) <- ask
-  lift $ writeTVar tp Up
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Up
+    _ -> throw $ ContextException "turtle" a
 
 {-# INLINE pu #-}
 -- | alias for 'pen_up'
@@ -523,8 +608,10 @@ pu = pen_up
 pen_erase :: CSTM ()
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_erase = do
-  (_,_,TurtleRef _ (MkTurtle {pen_mode_ = tp}), _, _) <- ask
-  lift $ writeTVar tp Erase
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Erase
+    _ -> throw $ ContextException "turtle" a
 
 {-# INLINE pe #-}
 -- | alias for 'pen_erase'
@@ -533,10 +620,11 @@ pe = pen_erase
 -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
 in_radius :: [AgentRef] -> Double -> CSTM [AgentRef]
 in_radius as n = do
-  (_, _, ref, _, _) <- ask
-  (x, y) <- case ref of
+  (_, _, a, _, _) <- ask
+  (x, y) <- case a of
              PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
              TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+             _ -> throw $ ContextException "turtle or patch" a
   filterM (\ (TurtleRef _ (MkTurtle {xcor_ = tx', ycor_ = ty'})) -> do 
              x' <- lift $ readTVar tx'
              y' <- lift $ readTVar ty'
@@ -599,13 +687,19 @@ ca = clear_all
 
 -- | Clears every plot in the model.
 -- | todo
-clear_all_plots =
-    return ()
+clear_all_plots = do
+    (_, _, a, _, _) <- ask
+    case a of
+      ObserverRef -> return ()
+      _ -> throw $ ContextException "observer" a
 
 -- | Clears all lines and stamps drawn by turtles. 
 -- | todo
-clear_drawing = 
-    return ()
+clear_drawing = do
+    (_, _, a, _, _) <- ask
+    case a of
+      ObserverRef -> return ()
+      _ -> throw $ ContextException "observer" a
 
 {-# INLINE cd #-}
 -- | alias for 'clear_drawing'
@@ -613,16 +707,23 @@ cd = clear_drawing
 
 -- | Clears all text from the model's output area, if it has one. Otherwise does nothing. 
 -- | todo
-clear_output =
-    return ()
+clear_output = do
+    (_, _, a, _, _) <- ask
+    case a of
+      ObserverRef -> return ()
+      _ -> throw $ ContextException "observer" a
+
 
 -- | Kills all turtles.
 -- Also resets the who numbering, so the next turtle created will be turtle 0.
 clear_turtles :: CSTM ()
 clear_turtles = do
-  (_, tw, _, _, _) <- ask
-  (MkWorld ps _ ls) <- lift $ readTVar tw
-  lift $ writeTVar tw (MkWorld ps IM.empty ls)
+  (_, tw, a, _, _) <- ask
+  case a of
+    ObserverRef -> do
+                  (MkWorld ps _ ls) <- lift $ readTVar tw
+                  lift $ writeTVar tw (MkWorld ps IM.empty ls)
+    _ -> throw $ ContextException "observer" a
 
 {-# INLINE ct #-}
 -- | alias for 'clear_turtles'
@@ -631,22 +732,28 @@ ct = clear_turtles
 -- | Kills all links.
 clear_links :: CSTM ()
 clear_links = do
-  (_, tw, _, _, _) <- ask
-  (MkWorld ps ts _) <- lift $ readTVar tw
-  lift $ writeTVar tw (MkWorld ps ts M.empty)
+  (_, tw, a, _, _) <- ask
+  case a of
+    ObserverRef -> do
+                (MkWorld ps ts _) <- lift $ readTVar tw
+                lift $ writeTVar tw (MkWorld ps ts M.empty)
+    _ -> throw $ ContextException "observer" a
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: CSTM ()
 clear_patches = do
-  (_, tw, _, _, _) <- ask
-  (MkWorld ps ts _) <- lift $ readTVar tw
-  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc to)  -> do
+  (_, tw, a, _, _) <- ask
+  case a of
+    ObserverRef -> do
+                  (MkWorld ps ts _) <- lift $ readTVar tw
+                  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc to)  -> do
                               writeTVar tc 0
                               writeTVar tl ""
                               writeTVar tlc 9.9
                               mapM_ (flip writeTVar 0) (elems to) -- patches-own to 0
                            ) ps
-  return ()
+                  return ()
+    _ -> throw $ ContextException "observer" a
 
 {-# INLINE cp #-}
 -- | alias for 'clear_patches'
@@ -657,14 +764,18 @@ cp = clear_patches
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: CSTM ()
 clear_ticks = do
-    (gs, _, _, _, _) <- ask
-    lift $ writeTVar (gs ! 1) undefined
+    (gs, _, a, _, _) <- ask
+    case a of
+      ObserverRef -> lift $ writeTVar (gs ! 1) undefined
+      _ -> throw $ ContextException "observer" a
 
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: CSTM ()
 reset_ticks = do
-    (gs, _, _, _, _) <- ask
-    lift $ writeTVar (gs ! 1) 0
+    (gs, _, a, _, _) <- ask
+    case a of
+      ObserverRef -> lift $ writeTVar (gs ! 1) 0
+      _ -> throw $ ContextException "observer" a
 
 -- | Advances the tick counter by one and updates all plots. 
 tick :: CSTM ()
@@ -674,8 +785,10 @@ tick = tick_advance 1
 -- todo: dynamic typing, float
 tick_advance :: Double -> CSTM ()
 tick_advance n = do
-  (gs, _, _, _, _) <- ask
-  lift $ modifyTVar' (gs ! 1) (+n)
+  (gs, _, a, _, _) <- ask
+  case a of
+    ObserverRef -> lift $ modifyTVar' (gs ! 1) (+n)
+    _ -> throw $ ContextException "observer" a
 
 -- | Reports the current value of the tick counter. The result is always a number and never negative. 
 -- todo: dynamic typing, integer or float
@@ -992,27 +1105,34 @@ sum_ = sum
 -- | The link makes itself invisible. 
 hide_link :: CSTM ()
 hide_link = do
-  (_, _, LinkRef _ (MkLink {lhiddenp_ = h}), _, _) <- ask
-  lift $ writeTVar h True
+  (_, _, a, _, _) <- ask
+  case a of
+    LinkRef _ (MkLink {lhiddenp_ = h}) -> lift $ writeTVar h True
+    _ -> throw $ ContextException "link" a
 
 -- | The turtle becomes visible again. 
 show_link :: CSTM ()
 show_link = do
-  (_, _, LinkRef _ (MkLink {lhiddenp_ = h}), _, _) <- ask
-  lift $ writeTVar h False
+  (_, _, a, _, _) <- ask
+  case a of
+    LinkRef _ (MkLink {lhiddenp_ = h}) -> lift $ writeTVar h False
+    _ -> throw $ ContextException "link" a
 
 
 -- | Reports the distance between the endpoints of the link. 
 link_length :: CSTM Double
 link_length = do
-  (_, tw, LinkRef (f,t) _, _, _) <- ask
-  [TurtleRef _ (MkTurtle {xcor_ = fx, ycor_ = fy})] <- turtle f
-  [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] <- turtle t
-  x <- lift $ readTVar fx
-  y <- lift $ readTVar fy
-  x' <- lift $ readTVar tx
-  y' <- lift $ readTVar ty
-  return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+  (_, tw, a, _, _) <- ask
+  case a of
+    LinkRef (f,t) _ -> do
+                [TurtleRef _ (MkTurtle {xcor_ = fx, ycor_ = fy})] <- turtle f
+                [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] <- turtle t
+                x <- lift $ readTVar fx
+                y <- lift $ readTVar fy
+                x' <- lift $ readTVar tx
+                y' <- lift $ readTVar ty
+                return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+    _ -> throw $ ContextException "link" a
 
 -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
 link :: Int -> Int -> CSTM [AgentRef]
@@ -1044,47 +1164,62 @@ link_with [TurtleRef x _] = do
 -- | Report the directed link from turtle to the caller. If no link exists then it reports nobody. 
 in_link_from :: [AgentRef] -> CSTM [AgentRef]
 in_link_from [TurtleRef x _] = do
-  (_, _, TurtleRef y _, _, _) <- ask
-  lxy <- link x y
-  lyx <- link y x
-  return $ case (lxy,lyx) of
-             ([Nobody], _) -> [Nobody]
-             (_, [Nobody]) -> lxy
-             ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+  (_, _, a, _, _) <- ask
+  case a of
+    TurtleRef y _ -> do
+           lxy <- link x y
+           lyx <- link y x
+           return $ case (lxy,lyx) of
+                      ([Nobody], _) -> [Nobody]
+                      (_, [Nobody]) -> lxy
+                      ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+    _ -> throw $ ContextException "turtle" a
 
 
 -- | Reports the directed link from the caller to turtle. If no link exists then it reports nobody. 
 out_link_to :: [AgentRef] -> CSTM [AgentRef]
 out_link_to [TurtleRef x _] = do
-  (_, _, TurtleRef y _, _, _) <- ask
-  lxy <- link x y
-  lyx <- link y x
-  return $ case (lyx,lxy) of
-             ([Nobody], _) -> [Nobody]
-             (_, [Nobody]) -> lyx
-             ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+  (_, _, a, _, _) <- ask
+  case a of
+    TurtleRef y _ -> do
+           lxy <- link x y
+           lyx <- link y x
+           return $ case (lyx,lxy) of
+                      ([Nobody], _) -> [Nobody]
+                      (_, [Nobody]) -> lyx
+                      ([LinkRef _ _], [LinkRef _ _]) -> error "undirected link"
+    _ -> throw $ ContextException "turtle" a
 
 
 -- | Reports an agentset of all undirected links connected to the caller. 
 my_links :: CSTM [AgentRef]
 my_links = do
-  (_, tw, TurtleRef x _, _, _) <- ask 
-  (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
+  (_, tw,a, _, _) <- ask 
+  case a of
+     TurtleRef x _ -> do
+             (MkWorld _ _ ls) <- lift $ readTVar tw
+             return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
+     _ -> throw $ ContextException "turtle" a
 
 -- | Reports an agentset of all the directed links going out from the caller to other nodes. 
 my_out_links :: CSTM [AgentRef]
 my_out_links = do
-  (_, tw, TurtleRef x _, _, _) <- ask 
-  (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
+  (_, tw, a, _, _) <- ask 
+  case a of
+    TurtleRef x _ -> do
+                 (MkWorld _ _ ls) <- lift $ readTVar tw
+                 return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
+    _ -> throw $ ContextException "turtle" a
 
 -- |  Reports an agentset of all the directed links coming in from other nodes to the caller. 
 my_in_links :: CSTM [AgentRef]
 my_in_links = do
-  (_, tw, TurtleRef x _, _, _) <- ask 
-  (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
+  (_, tw, a, _, _) <- ask 
+  case a of
+    TurtleRef x _ -> do
+                (MkWorld _ _ ls) <- lift $ readTVar tw
+                return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
+    _ -> throw $ ContextException "turtle" a
 
 -- | Reports an empty link agentset. 
 no_links :: Monad m => C m [AgentRef]
@@ -1093,15 +1228,18 @@ no_links = return []
 -- | Ties end1 and end2 of the link together. If the link is a directed link end1 is the root turtle and end2 is the leaf turtle. The movement of the root turtle affects the location and heading of the leaf turtle. If the link is undirected the tie is reciprocal so both turtles can be considered root turtles and leaf turtles. Movement or change in heading of either turtle affects the location and heading of the other turtle. 
 tie :: CSTM ()
 tie = do
-  (_, _, LinkRef _ (MkLink {tie_mode = t}), _, _) <- ask
-  lift $ writeTVar t Fixed
+  (_, _, a, _, _) <- ask
+  case a of
+    LinkRef _ (MkLink {tie_mode = t}) -> lift $ writeTVar t Fixed
+    _ -> throw $ ContextException "link" a
 
 -- | Unties end2 from end1 (sets tie-mode to "none") if they were previously tied together. If the link is an undirected link, then it will untie end1 from end2 as well. It does not remove the link between the two turtles. 
 untie :: CSTM ()
 untie = do
-  (_, _, LinkRef _ (MkLink {tie_mode = t}), _, _) <- ask
-  lift $ writeTVar t None
-
+  (_, _, a, _, _) <- ask
+  case a of
+    LinkRef _ (MkLink {tie_mode = t}) -> lift $ writeTVar t None
+    _ -> throw $ ContextException "link" a
 
 
 -- | lifting STM to IO, a wrapper to atomically
@@ -1111,7 +1249,10 @@ atomic = mapReaderT atomically
 -- | The specified agent or agentset runs the given commands. 
 ask_ :: CIO a -> [AgentRef] -> CIO ()
 ask_ f as = do
- (gs, tw, _, p, s) <- ask
+ (gs, tw, a, p, s) <- ask
+ case a of
+   Nobody -> throw $ ContextException "agent" Nobody
+   _ -> return ()
  tg <- lift ThreadGroup.new
  lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, s)) | a <- as]
  lift $ ThreadGroup.wait tg
@@ -1120,7 +1261,10 @@ ask_ f as = do
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
 of_ :: CIO a -> [AgentRef] -> CIO [a]
 of_ f as = do
-  (gs, tw, _, p, s) <- ask
+  (gs, tw, a, p, s) <- ask
+  case a of
+    Nobody -> throw $ ContextException "agent" Nobody
+    _ -> return ()
   xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, s)) | a <- as]
   lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
 
@@ -1152,24 +1296,29 @@ is_agentp t = return $ maybe False (\ t -> case t of -- check for a single agent
 
 -- alternative but slower implementation is_agentp a = is_turtlep a || is_patchp a
 
--- | Checks only the 1st element
--- | todo: would require a datatype distinction between agentrefs
+
+-- | Reports true if value is of the given type, false otherwise. 
 is_patch_setp :: (Monad m, Typeable a) => [a] -> C m Bool
-is_patch_setp (p:_) = is_patchp p
+is_patch_setp ps = do
+  res <- mapM is_patchp ps
+  return $ and res
 
--- | Checks only the 1st element
--- | todo: would require a datatype distinction between agentrefs
+
+-- | Reports true if value is of the given type, false otherwise. 
 is_turtle_setp :: (Monad m, Typeable a) => [a] -> C m Bool
-is_turtle_setp (t:_) = is_turtlep t
+is_turtle_setp ps = do
+  res <- mapM is_turtlep ps
+  return $ and res
 
--- | Checks only the 1st element
--- | todo: would require a datatype distinction between agentrefs
+-- | Reports true if value is of the given type, false otherwise.  
 is_agentsetp :: (Monad m, Typeable a) => [a] -> C m Bool
-is_agentsetp (a:_) = do 
-  ip <- is_patchp a
-  it <- is_turtlep a 
-  il <- is_linkp a
-  return $ ip || it || il
+is_agentsetp ps = do 
+  res <- mapM (\ a -> do
+                ip <- is_patchp a
+                it <- is_turtlep a 
+                il <- is_linkp a
+                return $ ip || it || il) ps
+  return $ and res
 
 -- Not used, because EDSL, using internal lambda abstractions
 -- is_command_taskp
@@ -1178,6 +1327,8 @@ is_agentsetp (a:_) = do
 --is_listp :: (Monad m, Typeable a) => a -> C m Bool
 --is_listp :: (Typeable a, Typeable t) => t -> [a]
 --is_listp l =  (cast l :: Typeable a => Maybe [a])
+-- | todo: not currently implemented
+is_listp = undefined
 
 is_stringp :: (Monad m, Typeable a) => a -> C m Bool
 is_stringp s = return $ maybe False (const True) (cast s :: Maybe String)
@@ -1238,6 +1389,7 @@ unsafe_patch_at x y = do
     TurtleRef _ _ -> do
                  [PatchRef (px, py) _] <- unsafe_patch_here
                  unsafe_patch (fromIntegral px + x) (fromIntegral py +y)
+    _ -> throw $ ContextException "turtle or patch" a
                  
 
 unsafe_patches :: CIO [AgentRef]
@@ -1267,10 +1419,13 @@ unsafe_turtles = do
 
 unsafe_patch_here :: CIO [AgentRef]
 unsafe_patch_here = do
-  (_,_,TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}), _, _) <- ask
-  x' <- lift $ readTVarIO x
-  y' <- lift $ readTVarIO y
-  unsafe_patch x' y'
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
+                      x' <- lift $ readTVarIO x
+                      y' <- lift $ readTVarIO y
+                      unsafe_patch x' y'
+    _ -> throw $ ContextException "turtle" a
 
 unsafe_turtle :: Int -> CIO [AgentRef]
 unsafe_turtle n = do
@@ -1307,23 +1462,31 @@ unsafe_dy = liftM cos_ unsafe_heading
 
 unsafe_heading :: CIO Double
 unsafe_heading = do
-  (_,_,TurtleRef _ (MkTurtle {heading_ = h}), _, _) <- ask
-  lift $ readTVarIO h
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVarIO h
+    _ -> throw (ContextException "turtle" a)
 
 unsafe_xcor :: CIO Double
 unsafe_xcor = do
-  (_,_,TurtleRef _ (MkTurtle {xcor_ = x}), _, _) <- ask
-  lift $ readTVarIO x
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVarIO x
+    _ -> throw $ ContextException "turtle" a
 
 unsafe_ycor :: CIO Double
 unsafe_ycor = do
-  (_,_,TurtleRef _ (MkTurtle {ycor_ = y}), _, _) <- ask
-  lift $ readTVarIO y
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVarIO y
+    _ -> throw $ ContextException "turtle" a
 
 unsafe_color :: CIO Double
 unsafe_color = do
-  (_,_,TurtleRef _ (MkTurtle {color_ = c}), _, _) <- ask
-  lift $ readTVarIO c
+  (_,_,a, _, _) <- ask
+  case a of
+    TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVarIO c
+    _ -> throw $ ContextException "turtle" a
 
 
 unsafe_random_xcor :: CIO Double
@@ -1386,6 +1549,7 @@ unsafe_turtles_on ps@(PatchRef _ _ : _) = do
   with (liftM (flip elem ps . head) unsafe_patch_here) =<< unsafe_turtles
 unsafe_turtles_on ts@(TurtleRef _ _ : _) = do
   unsafe_turtles_on =<< of_ (liftM head unsafe_patch_here) ts
+unsafe_turtle_on (a:_) = throw $ ContextException "turtle or patch agentset" a
 
 unsafe_right :: Double -> CIO Double
 unsafe_right n = do
@@ -1404,13 +1568,15 @@ unsafe_distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
   x <- lift $ readTVarIO tx
   y <- lift $ readTVarIO ty
   unsafe_distancexy x y
+unsafe_distance (a:_) = throw $ ContextException "single turtle or patch" a
 
 unsafe_distancexy :: Double -> Double -> CIO Double
 unsafe_distancexy x' y' = do
-  (_,_,ref,_,_) <- ask
-  (x,y) <- case ref of
+  (_,_,a,_,_) <- ask
+  (x,y) <- case a of
             PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
             TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+            _ -> throw $ ContextException "turtle or patch" a
   return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
       where
         delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
@@ -1429,10 +1595,11 @@ unsafe_towardsxy = undefined
 
 unsafe_in_radius :: [AgentRef] -> Double -> CIO [AgentRef]
 unsafe_in_radius as n = do
-  (_,_,ref,_,_) <- ask
-  (x, y) <- case ref of
+  (_,_,a,_,_) <- ask
+  (x, y) <- case a of
     PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
     TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+    _ -> throw $ ContextException "turtle or patch" a
   with (unsafe_distancexy x y >>= \ d -> return $ d <= n) as
 
 unsafe_in_cone = undefined
