@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- | The module defines the macros of the HLogo language using TemplateHaskell (lisp-like macros).
 module Framework.Logo.Keyword where
 
 import Language.Haskell.TH
