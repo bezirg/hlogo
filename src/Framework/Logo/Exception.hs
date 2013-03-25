@@ -10,7 +10,7 @@ module Framework.Logo.Exception
      -- * Built-in exceptions imported from Haskell base
      SomeException, IOException , ArithException (..) , AssertionFailed (..), AsyncException (..), NestedAtomically (..) , BlockedIndefinitelyOnSTM (..) , Deadlock (..),
     -- * Exceptions specific to HLogo
-     ContextException (..) , TypeException (..)
+     ContextException (..) , TypeException (..), StopException (..),
     )
         where
 
@@ -45,15 +45,22 @@ data TypeException = TypeException String AgentRef
                         deriving (Typeable)
 
 
+-- | The error thrown by the stop primitive. It is a trick and should be catched in an upper caller primitive.
+data StopException = StopException
+                   deriving (Typeable)
+
 instance Exception ContextException
 instance Exception TypeException     
-
+instance Exception StopException
 
 instance Show ContextException where
     show (ContextException expected got) = "Expected:" ++ expected ++ " Got:" ++ fromAgentRef got
                                                             
 instance Show TypeException where
     show (TypeException expected got) = "Expected:" ++ expected ++ " Got:" ++ fromAgentRef got
+
+instance Show StopException where
+    show StopException = "Stop called and has not be catched. This should not normally happen"
 
 
 -- Helper functions

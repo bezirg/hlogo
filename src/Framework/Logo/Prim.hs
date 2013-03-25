@@ -20,13 +20,13 @@ module Framework.Logo.Prim (
                            primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
-                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, 
+                           sum_, anyp, item, one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp,
 
                            -- * Math
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
 
                            -- * Misc
-                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, 
+                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, repeat_, report, loop, stop, while, 
 
                            -- * Input/Output
                            show_, unsafe_show_, print_, unsafe_print_, read_from_string,
@@ -56,7 +56,7 @@ import Control.Monad (forM_)
 import Data.Function
 import Data.Maybe (maybe, fromJust)
 import Data.Typeable
-import Control.Monad (liftM, liftM2, filterM)
+import Control.Monad (liftM, liftM2, filterM, forever)
 
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
@@ -827,6 +827,18 @@ fput = (:)
 -- | todo
 histogram = undefined
 
+-- | Runs commands number times. 
+repeat_ :: Int -> IO a -> IO ()
+repeat_ 0 _ = return ()
+repeat_ n c = c >> repeat_ (n-1) c
+
+{-# INLINE report #-}
+-- | Immediately exits from the current to-report procedure and reports value as the result of that procedure. report and to-report are always used in conjunction with each other. 
+-- | NB: IN HLogo, It does not exit the procedure, but it will if the report primitive happens to be the last statement called from the procedure
+report :: Monad m => a -> m a
+report = return
+
+
 {-# INLINE item #-}
 -- | On lists, reports the value of the item in the given list with the given index. 
 item i l = l !! (i-1)
@@ -1274,6 +1286,29 @@ with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
 with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then (a:l) else l) [] (zip as res)
+
+-- |  Runs the list of commands forever, or until the current procedure exits through use of the stop command or the report command. 
+-- NB: Report command will not stop it in HLogo, only the stop primitive. 
+-- | todo: use MaybeT or ErrorT
+-- This command is only run in IO, bcs the command has been implemented
+-- using exceptions and exceptions don't work the same in STM. Also
+-- it avoids common over-logging that can happen in STM.
+loop :: CIO a -> CIO ()
+loop c = catchIO (forever c) (\ e -> let _ = e :: StopException in return ())
+
+-- | This agent exits immediately from the enclosing procedure, ask, or ask-like construct (e.g. crt, hatch, sprout). Only the current procedure stops, not all execution for the agent. 
+stop = throw StopException
+
+-- | If reporter reports false, exit the loop. Otherwise run commands and repeat. 
+-- | todo: use MaybeT or ErrorT
+-- This command is only run in IO, bcs the command has been implemented
+-- using exceptions and exceptions don't work the same in STM. Also
+-- it avoids common over-logging that can happen in STM.
+while :: CIO Bool -> CIO a -> CIO ()
+while r c = r >>= (\ res -> if res 
+                           then catchIO (c >> while r c) (\ e -> let _ = e :: StopException in return ())
+                           else return ())
+
 
 -- Type-safe Casts
 
