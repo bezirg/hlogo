@@ -266,6 +266,12 @@ run as = do
   [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
 
 
+runT as = do c <- cInit 1 0 -- $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); 
+             runReaderT as c
+             
+
+
+
 -- | Internal
 random_primary_color :: CSTM Double
 random_primary_color = do

@@ -5,6 +5,7 @@ module Framework.Logo.Exception
     (throw,                     
      catch,
      catchIO,
+     evaluate,
      -- * The type class
      Exception,
      -- * Built-in exceptions imported from Haskell base
@@ -15,11 +16,13 @@ module Framework.Logo.Exception
         where
 
 import Framework.Logo.Base
-import Control.Exception (Exception, throw, SomeException, IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock)
+import Control.Exception (Exception, throw, SomeException, IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock, evaluate)
 import qualified Control.Exception as E (catch)
 import Control.Concurrent.STM
 import Data.Typeable
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
+import Control.Monad
 
 {-# INLINE catch #-}
 -- | Catches an Exception in STM monad
@@ -47,20 +50,26 @@ data TypeException = TypeException String AgentRef
 
 -- | The error thrown by the stop primitive. It is a trick and should be catched in an upper caller primitive.
 data StopException = StopException
-                   deriving (Typeable)
+                   deriving (Eq, Typeable)
 
 instance Exception ContextException
 instance Exception TypeException     
 instance Exception StopException
 
 instance Show ContextException where
-    show (ContextException expected got) = "Expected:" ++ expected ++ " Got:" ++ fromAgentRef got
+    show (ContextException expected _) = "ContextException " ++ expected
                                                             
 instance Show TypeException where
-    show (TypeException expected got) = "Expected:" ++ expected ++ " Got:" ++ fromAgentRef got
+    show (TypeException expected _) = "TypeException " ++ expected
 
 instance Show StopException where
     show StopException = "Stop called and has not be catched. This should not normally happen"
+
+instance Eq ContextException where
+    (ContextException _ _) == (ContextException _ _) = True
+
+instance Eq TypeException where
+    (TypeException _ _) == (TypeException _ _) = True
 
 
 -- Helper functions
@@ -71,4 +80,3 @@ fromAgentRef a = case a of
                    LinkRef _ _ -> "link"
                    ObserverRef -> "observer"
                    Nobody -> "nobody"
-

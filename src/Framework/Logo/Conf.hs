@@ -6,7 +6,11 @@ import System.IO.Unsafe
 import System.Console.CmdArgs
 
 -- easier to have a top-level state for the conf
-conf = unsafePerformIO getConf
+conf = let c = unsafePerformIO getConf
+       in case c of
+            -- trick to check for unset coordinates
+            Conf {max_pxcor_ = 0, max_pycor_ = 0 , min_pxcor_ =0, min_pycor_ = 0} -> c {max_pxcor_ = 16, max_pycor_ = 16, min_pxcor_ = -16, min_pycor_ = -16}
+            _ -> c
 
 getConf = cmdArgs confOpt
 

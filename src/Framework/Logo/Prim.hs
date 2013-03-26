@@ -2,16 +2,16 @@
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, other, count, distance, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die,
+                           self, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
                            turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, unsafe_no_turtles, is_turtlep, is_turtle_setp,
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches, is_patchp, is_patch_setp,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, unsafe_no_patches, is_patchp, is_patch_setp, pxcor, pycor,
 
                            -- * Link related
-                           hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, 
+                           hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set,
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -65,7 +65,8 @@ self = do
   case a of
     TurtleRef _ _ -> return [a]
     PatchRef _ _ -> return [a]
-    _ -> throw (ContextException "turtle or patch" a)
+    LinkRef _ _ -> return [a]
+    _ -> throw (ContextException "agent" a)
 
 
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
@@ -313,6 +314,7 @@ turtle n = do
 
 
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
+-- | NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
 turtle_set ts = sequence ts >>= return . foldr (\ x acc -> 
                                                 if x == Nobody -- filter Nobody
@@ -321,10 +323,11 @@ turtle_set ts = sequence ts >>= return . foldr (\ x acc ->
                                                        TurtleRef _ _ -> if x `elem` acc -- nub
                                                                       then acc
                                                                       else (x:acc)
-                                                       _ -> throw $ ContextException "turtle" x
+                                                       _ -> throw $ TypeException "turtle" x
                                                ) [] . concat
 
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
+-- | NB: HLogo no support for nested turtle_set concatenation/flattening
 patch_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
 patch_set ts = sequence ts >>= return . foldr (\ x acc -> 
                                                 if x == Nobody -- filter Nobody
@@ -333,7 +336,7 @@ patch_set ts = sequence ts >>= return . foldr (\ x acc ->
                                                        PatchRef _ _ -> if x `elem` acc -- nub
                                                                       then acc
                                                                       else (x:acc)
-                                                       _ -> throw $ ContextException "patch" x
+                                                       _ -> throw $ TypeException "patch" x
                                                ) [] . concat
 
 
@@ -363,6 +366,22 @@ xcor = do
   (_,_,a, _, _) <- ask
   case a of
     TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVar x
+    _ -> throw $ ContextException "turtle" a
+
+-- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
+pxcor :: (Monad m) => C m Int
+pxcor = do
+  (_,_,a, _, _) <- ask
+  case a of
+    PatchRef _ (MkPatch {pxcor_ = x}) -> return x
+    _ -> throw $ ContextException "patch" a
+
+-- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
+pycor :: (Monad m) => C m Int
+pycor = do
+  (_,_,a, _, _) <- ask
+  case a of
+    PatchRef _ (MkPatch {pycor_ = y}) -> return y
     _ -> throw $ ContextException "turtle" a
 
 set_xcor :: Double -> CSTM ()
@@ -527,6 +546,10 @@ distancexy x' y' = do
             _ -> throw $ ContextException "turtle or patch" a
   return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
 
+
+-- | This is a special value which some primitives such as turtle, one-of, max-one-of, etc. report to indicate that no agent was found. Also, when a turtle dies, it becomes equal to nobody. 
+nobody :: Monad m => m [AgentRef]
+nobody = return [Nobody]
 
 -- | Moves the turtle to the neighboring patch with the lowest value for patch-variable. 
 -- If no neighboring patch has a smaller value than the current patch, the turtle stays put. 
@@ -896,7 +919,7 @@ one_of [] = error "empty list"
 one_of l = do
   (_,_,_,_,ts) <- ask
   s <- lift $ readTVar ts
-  let (v,s') = randomR (0, length l) s
+  let (v,s') = randomR (0, length l -1) s
   lift $ writeTVar ts s'
   return (l !! v)
 
@@ -943,13 +966,14 @@ shuffle l = shuffle' l (length l) where
 
 {-# INLINE sort_ #-}
 -- | Reports a sorted list of numbers, strings, or agents. 
-sort_ :: Ord a => [a] -> [a]
-sort_ = sort
+sort_ :: (Monad m, Ord a) => [a] -> m [a]
+sort_ = return . sort
 
 {-# INLINE sort_by #-}
 -- | If the input is a list, reports a new list containing the same items as the input list, in a sorted order defined by the boolean reporter task. 
 -- | todo: requires dynamic typing
-sort_by = sortBy
+sort_by :: Monad m => (a -> a -> Ordering) -> [a] -> m [a]
+sort_by c l = return $ sortBy c l
 
 -- | Reports a list of agents, sorted according to each agent's value for reporter. Ties are broken randomly. 
 sort_on :: Ord a => CSTM a -> [AgentRef] -> CSTM [AgentRef]
@@ -1158,7 +1182,10 @@ links :: CSTM [AgentRef]
 links = do
   (_,tw,_, _, _) <- ask
   (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+  return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+      where
+        checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = True})) (LinkRef (e1',e2') (MkLink {directed_ = True})) = e1 == e2' && e1' == e2
+        checkForUndirected _ _ = False
 
 
 -- | Report the undirected link between turtle and the caller. If no link exists then it reports nobody. 
@@ -1253,6 +1280,18 @@ untie = do
     LinkRef _ (MkLink {tie_mode = t}) -> lift $ writeTVar t None
     _ -> throw $ ContextException "link" a
 
+-- | Reports an agentset containing all of the links anywhere in any of the inputs.
+-- | NB: HLogo no support for nested turtle_set concatenation/flattening
+link_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
+link_set ts = sequence ts >>= return . foldr (\ x acc -> 
+                                                if x == Nobody -- filter Nobody
+                                                then acc
+                                                else case x of -- type check
+                                                       LinkRef _ _ -> if x `elem` acc -- nub
+                                                                      then acc
+                                                                      else (x:acc)
+                                                       _ -> throw $ TypeException "link" x
+                                               ) [] . concat
 
 -- | lifting STM to IO, a wrapper to atomically
 atomic :: CSTM a -> CIO a
@@ -1277,6 +1316,7 @@ of_ f as = do
   case a of
     Nobody -> throw $ ContextException "agent" Nobody
     _ -> return ()
+  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
   xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, s)) | a <- as]
   lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
 

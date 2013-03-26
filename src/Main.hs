@@ -2,6 +2,9 @@ module Main where
 
 import Framework.Logo.Keyword
 import Framework.Logo.Prim
+import Framework.Logo.Exception
+import Framework.Logo.Base
+import Control.Monad
 
 globals ["g1", "g2", "g3"]
 turtles_own ["t1", "t2"]
@@ -18,7 +21,8 @@ setup = do
   atomic $ create_ordered_mice 400 -- 100000
 
 go = do
-  while (return True) (unsafe_show_ 3 >> stop)
+  unsafe_show_ =<<  of_ (atomic $ link_set [self]) =<< atomic (link 0 2)
+  atomic $ show_ =<< count =<< patches
 
 behave = do
     atomic (forward 1 >> forward 1)
