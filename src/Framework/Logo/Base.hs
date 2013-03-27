@@ -18,7 +18,7 @@ data PenMode = Down | Up | Erase
 -- For now only the default turtle attributes are supported.
 data Turtle = MkTurtle {
       who_ :: Int,               -- on creation
-      breed_ :: String,          -- on creation
+      breed_ :: TVar String,          -- on creation
       color_ :: TVar Double,
       heading_ :: TVar Double,
       xcor_ :: TVar Double,
@@ -92,8 +92,8 @@ data AgentRef = PatchRef (Int,Int) Patch
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq, Ord, Typeable)
 
--- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, and the current random seed in a TVar
-type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen)
+-- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, the current random seed in a TVar and the CallerRef (myself)
+type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen, AgentRef)
 
 type C m a = ReaderT Context m a
 

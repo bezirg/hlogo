@@ -5,7 +5,7 @@ import Test.Framework
 import AgentsetBuilding
 -- import Interaction
 -- import  RandomOrderInitialization
--- import  Agentsets
+import  Agentsets
 -- import  Layouts
 -- import  Repeat
 -- import  AnyAll
@@ -76,8 +76,8 @@ import AgentsetBuilding
 
 
 main = defaultMain [
-        agentsetbuildingTestGroup -- ,         interactionTestGroup,  randomOrderInitializationTestGroup,
-       --  agentsetsTestGroup,                layoutsTestGroup,      repeatTestGroup,
+        agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
+        agentsetsTestGroup --,                layoutsTestGroup,      repeatTestGroup,
        --  anyallTestGroup,                   letTestGroup,          reportertasksTestGroup,
        --  askTestGroup,                      linksTestGroup,        resizeworldTestGroup,
        --  booleanoperatorsTestGroup,         listsTestGroup,        rgbTestGroup,

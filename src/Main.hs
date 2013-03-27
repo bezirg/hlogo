@@ -18,11 +18,14 @@ link_breeds_own "arcs" ["a1", "a2"]
 link_breeds_own "edges" ["e1", "e2"]
 
 setup = do
-  atomic $ create_ordered_mice 400 -- 100000
+  return ()
 
 go = do
-  unsafe_show_ =<<  of_ (atomic $ link_set [self]) =<< atomic (link 0 2)
-  atomic $ show_ =<< count =<< patches
+  atomic $ crt 10
+  ask_ (atomic $ create_link_with =<< turtle 3) =<< unsafe_turtle 1
+  --ask_ (atomic $ die) =<< unsafe_links
+  atomic $ show_ =<< count =<< links
+  unsafe_wait 1
 
 behave = do
     atomic (forward 1 >> forward 1)

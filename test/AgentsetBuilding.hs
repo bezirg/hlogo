@@ -97,7 +97,7 @@ case_PatchSet2_2D = runT $ do
    
    a3 <- atomic $ one_of =<< patch_set [patch 0 0]
    e3 <- atomic $ patch 0 0
-   lift $ e3 @=? [a3]
+   lift $ e3 @=? a3
 
    a4 <- atomic $ patches
    e4 <- atomic $ patch_set [patch 0 0, patches]

@@ -25,3 +25,13 @@ assertContextException action = catchIO
                             )
     where 
       af = lift $ assertFailure $ "Expected exception: ContextException" 
+
+
+-- For HUnit
+assertErrorCall action = catchIO 
+                            (action >> af)
+                            (\ e -> let _ = e :: ErrorCall
+                                   in return ()
+                            )
+    where 
+      af = lift $ assertFailure $ "Expected exception: ErrorCall" 

@@ -9,14 +9,14 @@ module Framework.Logo.Exception
      -- * The type class
      Exception,
      -- * Built-in exceptions imported from Haskell base
-     SomeException, IOException , ArithException (..) , AssertionFailed (..), AsyncException (..), NestedAtomically (..) , BlockedIndefinitelyOnSTM (..) , Deadlock (..),
+     SomeException, IOException , ArithException (..) , AssertionFailed (..), AsyncException (..), NestedAtomically (..) , BlockedIndefinitelyOnSTM (..) , Deadlock (..), ErrorCall (..),
     -- * Exceptions specific to HLogo
      ContextException (..) , TypeException (..), StopException (..),
     )
         where
 
 import Framework.Logo.Base
-import Control.Exception (Exception, throw, SomeException, IOException, ArithException, AssertionFailed, AsyncException, NestedAtomically, BlockedIndefinitelyOnSTM, Deadlock, evaluate)
+import Control.Exception hiding (catch)
 import qualified Control.Exception as E (catch)
 import Control.Concurrent.STM
 import Data.Typeable
