@@ -54,6 +54,25 @@ turtles_own vs = do
                                                                    lift $ modifyTVar' tw (addTurtles ns) 
                                                                    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
                                                                    |]) []]
+  sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
+                                                           (gs, tw, a, _, _,_) <- ask
+                                                           case a of
+                                                             PatchRef (px,py) _ -> do
+                                                                 let who = gs ! 0
+                                                                 let  newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                                                                              t <- newSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py)
+                                                                                                                              return (i, t)
+                                                                                                                             | i <- [w..w+n-1]]
+                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                 oldWho <- lift $ liftM round $ readTVar who
+                                                                 lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                 ns <- newTurtles oldWho $(varE y)
+                                                                 lift $ modifyTVar' tw (addTurtles ns) 
+                                                                 return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                             _ -> throw $ ContextException "patch" a
+                                                         |]) []]
+
+
 
   co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| do
                                                                            (gs, tw, a, _, _,_) <- ask
@@ -101,7 +120,7 @@ turtles_own vs = do
                                                                      |]) []]
           return [p,u,w]
             ) (zip vs [0..])
-  return $ ct : co : crt : cro: concat pg
+  return $ sp : ct : co : crt : cro: concat pg
 
 patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
@@ -388,6 +407,28 @@ newTurtle x to = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+-- | Internal
+newSprout w to x y = do
+  rpc <- random_primary_color
+  rih <- random_integer_heading
+  lift $ MkTurtle <$>
+       return w <*>
+       newTVar "turtles" <*>
+       newTVar rpc <*>          --  random primary color
+       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar x <*>
+       newTVar y <*>
+       newTVar "default" <*>
+       newTVar "" <*>
+       newTVar 9.9 <*>
+       newTVar False <*>
+       newTVar 1 <*>
+       newTVar 1 <*>
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
+
+
 
 -- | Internal
 newOrderedTurtle :: Int -> Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle

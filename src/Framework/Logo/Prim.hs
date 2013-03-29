@@ -2,10 +2,10 @@
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
+                           self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, allp, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, unsafe_turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, 
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, 
 
                            -- * Patch related
                            patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor, neighbors, neighbors4, set_plabel,
@@ -223,6 +223,14 @@ count as = return $ length as
 anyp :: Monad m => [AgentRef] -> C m Bool
 anyp [Nobody] = throw $ TypeException "agent" Nobody
 anyp as = return $ not $ null as
+
+allp :: CIO Bool -> [AgentRef] -> CIO Bool
+allp _ [] = return True
+allp r as = do
+  res <- with r as
+  return $ if length as == length res
+           then True
+           else False
 
 -- | Reports the agentset consisting of all patches. 
 patches :: CSTM [AgentRef]
@@ -1788,13 +1796,13 @@ unsafe_random_poisson m = undefined
 
 
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
-unsafe_turtles_on :: [AgentRef] -> CIO [AgentRef]
-unsafe_turtles_on [] = return []
-unsafe_turtles_on ps@(PatchRef _ _ : _) = do
+turtles_on :: [AgentRef] -> CIO [AgentRef]
+turtles_on [] = return []
+turtles_on ps@(PatchRef _ _ : _) = do
   with (liftM (flip elem ps . head) unsafe_patch_here) =<< unsafe_turtles
-unsafe_turtles_on ts@(TurtleRef _ _ : _) = do
-  unsafe_turtles_on =<< of_ (liftM head unsafe_patch_here) ts
-unsafe_turtle_on (a:_) = throw $ ContextException "turtle or patch agentset" a
+turtles_on ts@(TurtleRef _ _ : _) = do
+  turtles_on =<< of_ (liftM head unsafe_patch_here) ts
+turtles_on (a:_) = throw $ ContextException "turtle or patch agentset" a
 
 unsafe_right :: Double -> CIO Double
 unsafe_right n = do

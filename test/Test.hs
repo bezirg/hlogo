@@ -8,10 +8,10 @@ import AgentsetBuilding
 import  Agentsets
 -- import  Layouts
 -- import  Repeat
--- import  AnyAll
+import  AnyAll
 -- import  Let
 -- import  ReporterTasks
--- import  Ask
+import  Ask
 -- import  Links
 -- import  ResizeWorld
 -- import  BooleanOperators
@@ -77,9 +77,9 @@ import  Agentsets
 
 main = defaultMain [
         agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
-        agentsetsTestGroup --,                layoutsTestGroup,      repeatTestGroup,
-       --  anyallTestGroup,                   letTestGroup,          reportertasksTestGroup,
-       --  askTestGroup,                      linksTestGroup,        resizeworldTestGroup,
+        agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
+       anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
+       askTestGroup -- ,                      linksTestGroup,        resizeworldTestGroup,
        --  booleanoperatorsTestGroup,         listsTestGroup,        rgbTestGroup,
        --  breedsTestGroup,                   mathTestGroup,         runTestGroup,
        --  canmoveTestGroup,                  memberTestGroup,       selfmyselfTestGroup,
