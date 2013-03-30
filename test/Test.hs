@@ -17,7 +17,7 @@ import  Ask
 import  BooleanOperators
 -- import  Lists
 -- import  RGB
--- import  Breeds
+import  Breeds
 -- import  Math
 -- import  Run
 -- import  CanMove
@@ -80,8 +80,8 @@ main = defaultMain [
         agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
        anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
        askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
-       booleanoperatorsTestGroup --,         listsTestGroup,        rgbTestGroup,
-       --  breedsTestGroup,                   mathTestGroup,         runTestGroup,
+       booleanoperatorsTestGroup ,--         listsTestGroup,        rgbTestGroup,
+       breedsTestGroup --,                   mathTestGroup,         runTestGroup,
        --  canmoveTestGroup,                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
        --  comparingagentsTestGroup,          movetoTestGroup,       stacktracesTestGroup,
