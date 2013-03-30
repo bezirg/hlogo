@@ -90,7 +90,7 @@ data AgentRef = PatchRef (Int,Int) Patch
               | LinkRef (Int,Int) Link
               | ObserverRef     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions. 
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
-                deriving (Eq, Ord, Typeable)
+                deriving (Eq, Typeable)
 
 -- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, the current random seed in a TVar and the CallerRef (myself)
 type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen, AgentRef)
@@ -119,3 +119,12 @@ instance Show AgentRef where
     show (LinkRef (x,y) _) = "LinkRef (" ++ show x ++ "," ++ show y ++ ")"
     show (ObserverRef) = "ObserverRef"
     show Nobody = "nobody"
+
+instance Ord AgentRef where
+    (TurtleRef w1 _) `compare` (TurtleRef w2 _) = compare w1 w2
+    (PatchRef (x1,y1) _) `compare` (PatchRef (x2,y2) _) = let c1 = compare x1 x2
+                                                          in if c1 == EQ
+                                                             then compare y2 y1
+                                                             else c1
+    (LinkRef (x1,y1) _) `compare` (LinkRef (x2,y2) _) = compare (x1,y1) (x2,y2)
+    _ `compare` _ = error "Not comparable, because not the same type of agent"

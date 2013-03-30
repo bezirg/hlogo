@@ -26,7 +26,7 @@ import  CanMove
 -- import  CommandTasks
 -- import  MinMaxNOf
 -- import  Sort
--- import  ComparingAgents
+import  ComparingAgents
 -- import  MoveTo
 -- import  StackTraces
 -- import  ControlStructures
@@ -82,9 +82,9 @@ main = defaultMain [
        askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
        booleanoperatorsTestGroup ,--         listsTestGroup,        rgbTestGroup,
        breedsTestGroup , --                   mathTestGroup,         runTestGroup,
-       canmoveTestGroup --,                  memberTestGroup,       selfmyselfTestGroup,
+       canmoveTestGroup , --                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
-       --  comparingagentsTestGroup,          movetoTestGroup,       stacktracesTestGroup,
+       comparingagentsTestGroup --,          movetoTestGroup,       stacktracesTestGroup,
        --  controlstructuresTestGroup,        neighborsTestGroup,    stopTestGroup,
        --  deadturtlesTestGroup,              noagentsTestGroup,     sumTestGroup,
        --  diffuseTestGroup,                  nsumTestGroup,         ticksTestGroup,

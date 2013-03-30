@@ -101,11 +101,11 @@ case_PatchSet2_2D = runT $ do
 
    a4 <- atomic $ patches
    e4 <- atomic $ patch_set [patch 0 0, patches]
-   lift $ e4 @=? a4
+   lift $ [] @=? e4 \\ a4 
 
    a5 <- atomic $ patches
    e5 <- atomic $ patch_set [patch 0 0, sort_ =<< patches]
-   lift $ e5 @=? a5
+   lift $ [] @=? e5 \\ a5
 
    a6 <- atomic $ patch_set [sort_ =<< turtles, patch 0 0]
    assertTypeException (lift $ evaluate a6)
