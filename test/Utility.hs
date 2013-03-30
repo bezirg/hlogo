@@ -35,3 +35,15 @@ assertErrorCall action = catchIO
                             )
     where 
       af = lift $ assertFailure $ "Expected exception: ErrorCall" 
+
+
+-- For HUnit
+assertSomeException action = catchIO 
+                            (action >> af)
+                            (\ e -> let _ = e :: SomeException
+                                   in return ()
+                            )
+    where 
+      af = lift $ assertFailure $ "Expected exception: SomeException" 
+
+

@@ -14,7 +14,7 @@ import  AnyAll
 import  Ask
 -- import  Links
 -- import  ResizeWorld
--- import  BooleanOperators
+import  BooleanOperators
 -- import  Lists
 -- import  RGB
 -- import  Breeds
@@ -79,8 +79,8 @@ main = defaultMain [
         agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
         agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
        anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
-       askTestGroup -- ,                      linksTestGroup,        resizeworldTestGroup,
-       --  booleanoperatorsTestGroup,         listsTestGroup,        rgbTestGroup,
+       askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
+       booleanoperatorsTestGroup --,         listsTestGroup,        rgbTestGroup,
        --  breedsTestGroup,                   mathTestGroup,         runTestGroup,
        --  canmoveTestGroup,                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
