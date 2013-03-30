@@ -20,7 +20,7 @@ import  BooleanOperators
 import  Breeds
 -- import  Math
 -- import  Run
--- import  CanMove
+import  CanMove
 -- import  Member
 -- import  SelfMyself
 -- import  CommandTasks
@@ -81,8 +81,8 @@ main = defaultMain [
        anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
        askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
        booleanoperatorsTestGroup ,--         listsTestGroup,        rgbTestGroup,
-       breedsTestGroup --,                   mathTestGroup,         runTestGroup,
-       --  canmoveTestGroup,                  memberTestGroup,       selfmyselfTestGroup,
+       breedsTestGroup , --                   mathTestGroup,         runTestGroup,
+       canmoveTestGroup --,                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
        --  comparingagentsTestGroup,          movetoTestGroup,       stacktracesTestGroup,
        --  controlstructuresTestGroup,        neighborsTestGroup,    stopTestGroup,

@@ -118,3 +118,4 @@ instance Show AgentRef where
     show (TurtleRef w _) = "TurtleRef " ++ show w
     show (LinkRef (x,y) _) = "LinkRef (" ++ show x ++ "," ++ show y ++ ")"
     show (ObserverRef) = "ObserverRef"
+    show Nobody = "nobody"

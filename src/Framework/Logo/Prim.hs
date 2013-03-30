@@ -247,7 +247,7 @@ patch x y = do
   (_, tw,_, _, _,_) <- ask
   (MkWorld ps _ _) <- lift $ readTVar tw
   return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-           then error "wrap"
+           then [Nobody]
            else
                [PatchRef (x'', y'') (ps M.! (x'', y''))]
          where
@@ -1634,7 +1634,7 @@ unsafe_patch x y = do
   (_, tw,_, _, _,_) <- ask
   (MkWorld ps _ _) <- lift $ readTVarIO tw
   return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-           then error "wrap"
+           then [Nobody]
            else
                [PatchRef (x'', y'') (ps M.! (x'', y''))]
          where

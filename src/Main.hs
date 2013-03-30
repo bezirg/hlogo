@@ -21,11 +21,11 @@ setup = do
   return ()
 
 go = do
-  atomic $ crt 10
-  ask_ (atomic $ create_link_with =<< turtle 3) =<< unsafe_turtle 1
-  --ask_ (atomic $ die) =<< unsafe_links
-  atomic $ show_ =<< count =<< links
-  unsafe_wait 1
+  atomic $ crt 1
+  ask_ (atomic $ set_heading 0  >> fd 5.1) =<< unsafe_turtle 0
+  [a2] <- of_ (atomic $ patch_ahead 11.5) =<< unsafe_turtle 0
+  unsafe_show_ a2
+
 
 behave = do
     atomic (forward 1 >> forward 1)
