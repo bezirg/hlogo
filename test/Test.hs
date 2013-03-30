@@ -29,7 +29,7 @@ import  CanMove
 import  ComparingAgents
 -- import  MoveTo
 -- import  StackTraces
--- import  ControlStructures
+import  ControlStructures
 -- import  Neighbors
 -- import  Stop
 -- import  DeadTurtles
@@ -84,8 +84,8 @@ main = defaultMain [
        breedsTestGroup , --                   mathTestGroup,         runTestGroup,
        canmoveTestGroup , --                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
-       comparingagentsTestGroup --,          movetoTestGroup,       stacktracesTestGroup,
-       --  controlstructuresTestGroup,        neighborsTestGroup,    stopTestGroup,
+       comparingagentsTestGroup ,--          movetoTestGroup,       stacktracesTestGroup,
+       controlstructuresTestGroup --,        neighborsTestGroup,    stopTestGroup,
        --  deadturtlesTestGroup,              noagentsTestGroup,     sumTestGroup,
        --  diffuseTestGroup,                  nsumTestGroup,         ticksTestGroup,
        --  distanceTestGroup,                 observerTestGroup,     tieTestGroup,
