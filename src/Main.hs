@@ -21,11 +21,13 @@ setup = do
   return ()
 
 go = do
-  atomic $ crt 1
-  ask_ (atomic $ set_heading 0  >> fd 5.1) =<< unsafe_turtle 0
-  [a2] <- of_ (atomic $ patch_ahead 11.5) =<< unsafe_turtle 0
-  unsafe_show_ a2
+  t0 <- atomic $ crt 1
+  ask_ (atomic $ setxy (-1) (-1)) t0
 
+  t1 <- atomic $ crt 1
+  ask_ (atomic $ setxy 0 0) t1
+
+  unsafe_show_ =<< of_ (atomic (towards =<< turtle 0)) =<< unsafe_turtle 1
 
 behave = do
     atomic (forward 1 >> forward 1)

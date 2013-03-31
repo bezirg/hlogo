@@ -5,7 +5,7 @@ module Framework.Logo.Prim (
                            self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, allp, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_color, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_color, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, left, lt, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size,
 
                            -- * Patch related
                            patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor, unsafe_pcolor, neighbors, neighbors4, set_plabel, set_pcolor,
@@ -522,6 +522,14 @@ set_xcor v = do
     _ -> throw $ ContextException "turtle" a
 
 
+set_size :: Double -> CSTM ()
+set_size v = do
+  (_,_,a, _, _,_) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (size_ t) v
+    _ -> throw $ ContextException "turtle" a
+
+
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: CSTM Double
 ycor = do
@@ -649,17 +657,18 @@ home :: CSTM ()
 home = setxy 0 0
 
 -- | The turtle turns right by number degrees. (If number is negative, it turns left.) 
-right :: Double -> CSTM Double
+right :: Double -> CSTM ()
 right n = do
-  h <- heading
-  return $ mod_ (h + n) 360
+  (_, _, a, _, _ ,_) <- ask
+  case a of
+    TurtleRef _ t -> lift $ modifyTVar' (heading_ t) (\ h -> mod_ (h+n) 360)
 
 {-# INLINE rt #-}
 -- | alias for 'right'
 rt = right
 
 -- | The turtle turns left by number degrees. (If number is negative, it turns right.) 
-left :: Double -> CSTM Double
+left :: Double -> CSTM ()
 left n = do
   right (-n)
 
@@ -713,11 +722,40 @@ downhill4 = undefined
 
 -- | Set the caller's heading towards agent. 
 face :: [AgentRef] -> CSTM ()
-face a = set_heading (towards a)
+face a = set_heading =<< towards a
 
 -- | Reports the heading from this agent to the given agent. 
 -- | todo: wrapping
-towards = undefined
+towards :: [AgentRef] -> CSTM Double
+towards a = do
+  (_, _, s, _, _, _) <- ask
+  (x1,y1) <- case s of
+            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+                   x <- lift $ readTVar tx
+                   y <- lift $ readTVar ty
+                   return (x,y)
+            _ -> throw $ ContextException "turtle or patch" s
+  (x2,y2) <- case a of
+              [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
+              [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
+                   x <- lift $ readTVar tx
+                   y <- lift $ readTVar ty
+                   return (x,y)
+              _ -> throw $ ContextException "turtle or patch" (head a)
+  let dx = x2 - x1
+  let dy = y2 - y1
+  return $ if (dx == 0)
+            then
+                if dy > 0 
+                then 0 
+                else 180
+            else
+                if (dy == 0)
+                then if dx > 0 
+                     then 90 
+                     else 270
+                else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
 
 -- | Reports the heading from the turtle or patch towards the point (x,y). 
 -- | todo
@@ -995,7 +1033,7 @@ fput = (:)
 histogram = undefined
 
 -- | Runs commands number times. 
-repeat_ :: Int -> IO a -> IO ()
+repeat_ :: (Monad m) => Int -> m a -> m ()
 repeat_ 0 _ = return ()
 repeat_ n c = c >> repeat_ (n-1) c
 
@@ -1316,7 +1354,29 @@ standard_deviation l = undefined
 
 -- | Computes the difference between the given headings, that is, the number of degrees in the smallest angle by which heading2 could be rotated to produce heading1. 
 -- | todo 
-subtract_headings = undefined
+subtract_headings :: (Monad m) => Double -> Double -> C m Double
+subtract_headings h1 h2 = let 
+    h1' = if (h1 < 0 || h1 >= 360)
+          then (h1 `mod_` 360 + 360) `mod_` 360
+          else h1
+    h2' = if (h2 < 0 || h2 >= 360)
+          then (h2 `mod_` 360 + 360) `mod_` 360
+          else h2
+    diff = h1' - h2'
+                           in return $
+                             if (diff > -180 && diff <= 180)
+                             then diff
+                             else if (diff > 0)
+                                  then diff - 360
+                                  else diff + 360
+
+-- let r1 = h2 - h1 `mod_` 180
+                          --     r2 = h1 - h2 `mod_` 180
+                          -- in return $
+                          --   if abs r1 < abs r2
+                          --   then if h2 > 180 then -r1 else r1
+                          --   else if h2 > 180 then -r2 else r2
+
 
 {-# INLINE sum_ #-}
 -- | Reports the sum of the items in the list. 
@@ -1883,15 +1943,6 @@ turtles_on ts@(TurtleRef _ _ : _) = do
   turtles_on =<< of_ (liftM head unsafe_patch_here) ts
 turtles_on (a:_) = throw $ ContextException "turtle or patch agentset" a
 
-unsafe_right :: Double -> CIO Double
-unsafe_right n = do
-  h <- unsafe_heading
-  return $ mod_ (h + n) 360
-
-unsafe_left :: Double -> CIO Double
-unsafe_left n = do
-  unsafe_right (-n)
-
 
 unsafe_distance :: [AgentRef] -> CIO Double
 unsafe_distance [PatchRef (x,y) _] = do
@@ -1919,8 +1970,37 @@ unsafe_downhill = undefined
 -- | todo
 unsafe_downhill4 = undefined
 
--- | todo
-unsafe_towards = undefined
+unsafe_towards :: [AgentRef] -> CIO Double
+unsafe_towards a = do
+  (_, _, s, _, _, _) <- ask
+  (x1,y1) <- case s of
+            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+                   x <- lift $ readTVarIO tx
+                   y <- lift $ readTVarIO ty
+                   return (x,y)
+            _ -> throw $ ContextException "turtle or patch" s
+  (x2,y2) <- case a of
+              [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
+              [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
+                   x <- lift $ readTVarIO tx
+                   y <- lift $ readTVarIO ty
+                   return (x,y)
+              _ -> throw $ ContextException "turtle or patch" (head a)
+  let dx = x2 - x1
+  let dy = y2 - y1
+  return $ if (dx == 0)
+            then
+                if dy > 0 
+                then 0 
+                else 180
+            else
+                if (dy == 0)
+                then if dx > 0 
+                     then 90 
+                     else 270
+                else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
+
 
 -- | todo
 unsafe_towardsxy = undefined
@@ -1963,11 +2043,11 @@ unsafe_ticks = do
   (gs, _, _, _, _,_) <- ask
   lift $ readTVarIO (gs ! 1)
 
-unsafe_one_of :: [a] -> CIO a
+unsafe_one_of :: [a] -> CIO [a]
 unsafe_one_of [] = error "empty list"
 unsafe_one_of l = do
-  v <- lift $ randomRIO (0, length l)
-  return (l !! v)
+  v <- lift $ randomRIO (0, length l -1)
+  return [(l !! v)]
 
 -- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
 unsafe_shuffle :: Eq a => [a] -> CIO [a]
@@ -1975,7 +2055,7 @@ unsafe_shuffle [] = return []
 unsafe_shuffle l = shuffle' l (length l) where
     shuffle [x] 1 = return [x]
     shuffle' l i = do
-      x <- unsafe_one_of l
+      [x] <- unsafe_one_of l
       xs <- shuffle' (delete x l) (i-1)
       return $ x:xs
 
