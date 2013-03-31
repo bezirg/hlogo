@@ -160,6 +160,28 @@ breeds_own p vs = do
                                        (normalB [| create_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
                                                 (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  sp <- funD (mkName ("sprout_" ++ p)) [clause [varP y] (normalB [| do
+                                                           (gs, tw, a, _, _,_) <- ask
+                                                           case a of
+                                                             PatchRef (px,py) _ -> do
+                                                                 let who = gs ! 0
+                                                                 let  newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                                                                              t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
+                                                                                                                              return (i, t)
+                                                                                                                             | i <- [w..w+n-1]]
+                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                 oldWho <- lift $ liftM round $ readTVar who
+                                                                 lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                 ns <- newTurtles oldWho $(varE y)
+                                                                 lift $ modifyTVar' tw (addTurtles ns) 
+                                                                 return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                             _ -> throw $ ContextException "patch" a
+                                                         |]) []]
+
+
+
+
+
   pg <- mapM (\ (v, i) -> do
           p <- valD (varP (mkName v)) (normalB [| do 
                                                  (_,_,a ,_,_,_) <- ask :: CSTM Context; 
@@ -183,7 +205,7 @@ breeds_own p vs = do
                                                                      |]) []]
           return [p,u,w]
             ) (zip vs [0..])
-  return $ cb : cob : concat pg
+  return $ cb : sp : cob : concat pg
 
 breeds [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
@@ -204,6 +226,7 @@ breeds [p,s] = do
                                                    return $ if b == $(litE (stringL p)) 
                                                             then [TurtleRef $(varE y) t] 
                                                             else error ("turtle is not a " ++ s) |]) []]
+
   ss <- funD (mkName s) [clause [varP y] (normalB [| do 
                                                     (_,tw,_, _, _,_) <- ask :: CSTM Context
                                                     (MkWorld _ ts _) <- lift (readTVar tw)
@@ -322,7 +345,7 @@ run as = do
   [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
 
 
-runT as = do c <- cInit 1 0 -- $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); 
+runT as = do c <- cInit 1 0
              runReaderT as c
              
 
@@ -428,6 +451,25 @@ newSprout w to x y = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
+-- | Internal
+newBSprout w to x y b = do
+  rpc <- random_primary_color
+  rih <- random_integer_heading
+  lift $ MkTurtle <$>
+       return w <*>
+       newTVar b <*>
+       newTVar rpc <*>          --  random primary color
+       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar x <*>
+       newTVar y <*>
+       newTVar "default" <*>
+       newTVar "" <*>
+       newTVar 9.9 <*>
+       newTVar False <*>
+       newTVar 1 <*>
+       newTVar 1 <*>
+       newTVar Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0))
 
 
 -- | Internal

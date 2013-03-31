@@ -20,11 +20,11 @@ library
   ghc-options:        -rtsopts -threaded -fwarn-unused-imports
   hs-source-dirs:     src
 
-executable hlogo
-  main-is:             Main.hs
+executable fire
+  main-is:             Fire.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src
+  hs-source-dirs:      src, bench/HLogo/Fire
 
 test-suite test
   type:                exitcode-stdio-1.0

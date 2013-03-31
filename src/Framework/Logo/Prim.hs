@@ -5,10 +5,10 @@ module Framework.Logo.Prim (
                            self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, allp, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_color, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, unsafe_right, left, lt, unsafe_left, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to,
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor, neighbors, neighbors4, set_plabel,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor, unsafe_pcolor, neighbors, neighbors4, set_plabel, set_pcolor,
 
                            -- * Link related
                            hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, unsafe_link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, unsafe_links, end1, end2, 
@@ -176,36 +176,52 @@ patch_ahead n = do
   patch px_new py_new
 
 -- | NetLogo Constant
+black :: Double
 black = 0
 -- | NetLogo Constant
+white :: Double
 white = 9.9
 -- | NetLogo Constant
+gray :: Double
 gray = 5
 -- | NetLogo Constant
+red :: Double
 red = 15
 -- | NetLogo Constant
+orange :: Double
 orange = 25
 -- | NetLogo Constant
+brown :: Double
 brown = 35 
 -- | NetLogo Constant
+yellow :: Double
 yellow = 45
 -- | NetLogo Constant
+green :: Double
 green = 55
 -- | NetLogo Constant
+lime :: Double
 lime = 65
 -- | NetLogo Constant
+turquoise :: Double
 turquoise = 75
 -- | NetLogo Constant
+cyan :: Double
 cyan = 85
 -- | NetLogo Constant
+sky :: Double
 sky = 95
 -- | NetLogo Constant
+blue :: Double
 blue = 105
 -- | NetLogo Constant
+violet :: Double
 violet = 115
 -- | NetLogo Constant
+magenta :: Double
 magenta = 125
 -- | NetLogo Constant
+pink :: Double
 pink = 135
 
 -- approximate-rgb
@@ -418,7 +434,22 @@ pycor = do
   (_,_,a, _, _,_) <- ask
   case a of
     PatchRef _ (MkPatch {pycor_ = y}) -> return y
-    _ -> throw $ ContextException "turtle" a
+    _ -> throw $ ContextException "patch" a
+
+pcolor :: CSTM Double
+pcolor = do
+  (_,_,a, _, _,_) <- ask
+  case a of
+    PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVar tc
+    _ -> throw $ ContextException "patch" a
+
+
+unsafe_pcolor :: CIO Double
+unsafe_pcolor = do
+  (_,_,a, _, _,_) <- ask
+  case a of
+    PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVarIO tc
+    _ -> throw $ ContextException "patch" a
 
 -- | Reports an agentset containing the 8 surrounding patches
 neighbors :: CSTM [AgentRef]
@@ -461,11 +492,25 @@ set_plabel s = do
     PatchRef _ (MkPatch {plabel_ = p}) -> lift $ writeTVar p s
     _ -> throw $ ContextException "patch" a
 
+set_pcolor :: Double -> CSTM ()
+set_pcolor s = do
+  (_,_,a,_,_,_) <- ask
+  case a of
+    PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ writeTVar tc s
+    _ -> throw $ ContextException "patch" a
+
 set_breed :: String -> CSTM ()
 set_breed v = do
   (_,_,a, _, _,_) <- ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (breed_ t) v
+    _ -> throw $ ContextException "turtle" a
+
+set_color :: Double -> CSTM ()
+set_color v = do
+  (_,_,a, _, _,_) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (color_ t) v
     _ -> throw $ ContextException "turtle" a
 
 
@@ -773,23 +818,23 @@ max_pxcor :: Monad m => C m Int
 max_pxcor = return $ max_pxcor_ conf
 
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
-max_pycor :: CSTM Int
+max_pycor :: (Monad m) => C m Int
 max_pycor = return $ max_pycor_ conf
 
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
-min_pxcor :: CSTM Int
+min_pxcor :: (Monad m ) => C m Int
 min_pxcor = return $ min_pxcor_ conf
 
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
-min_pycor :: CSTM Int
+min_pycor :: (Monad m) => C m Int
 min_pycor = return $ min_pycor_ conf
 
 -- | This reporter gives the total width of the NetLogo world. 
-world_width :: CSTM Int
+world_width :: (Monad m) => C m Int
 world_width = return $ (max_pxcor_ conf) - (min_pxcor_ conf) + 1
 
 -- | This reporter gives the total height of the NetLogo world. 
-world_height :: CSTM Int
+world_height :: (Monad m) => C m Int
 world_height = return $ (max_pycor_ conf) - (min_pycor_ conf) + 1
 
 
@@ -1594,6 +1639,7 @@ is_link_setp (l:_) = is_linkp l
 
 
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
+hatch :: Int -> CSTM [AgentRef]
 hatch n = do
   (gs, tw, a, _, _,_) <- ask
   case a of
@@ -1608,6 +1654,24 @@ hatch n = do
             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 
     _ -> throw $ ContextException "turtle" a
+
+-- | The turtle sets its x and y coordinates to be the same as the given agent's.
+-- (If that agent is a patch, the effect is to move the turtle to the center of that patch.) 
+move_to :: [AgentRef] -> CSTM ()
+move_to a = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+              case a of
+                [PatchRef (px, py) _] -> lift $ writeTVar tx (fromIntegral px) >> writeTVar ty (fromIntegral py)
+                [TurtleRef _ (MkTurtle {xcor_ = tx', ycor_ = ty'})] -> lift $ do
+                                                                      x' <- readTVar tx'
+                                                                      y' <- readTVar ty'
+                                                                      writeTVar tx x'
+                                                                      writeTVar ty y'
+                _ -> throw $ TypeException "turtle or patch" (head a)
+    _ -> throw $ ContextException "turtle" s
+
 -- Unsafe
 --
 
