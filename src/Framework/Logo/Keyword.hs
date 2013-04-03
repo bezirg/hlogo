@@ -30,7 +30,10 @@ globals vs  = liftM2 (++)
                       u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (gs,_,_,_,_,_) <- ask :: CIO Context; lift $ readTVarIO (gs ! $(litE (integerL i))) |]) []
                       y <- newName "y"
                       w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (gs,_,_,_,_,_) <- ask :: CSTM Context; lift $ writeTVar (gs ! $(litE (integerL i))) $(varE y) |]) []]
-                      return [p,u,w]
+                      x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do (gs,_,_,_,_,_) <- ask :: CSTM Context; lift $ modifyTVar' (gs ! $(litE (integerL i))) $(varE y) |]) []]
+
+
+                      return [p,u,w,x]
                     )  (zip vs [2..]))
 
 
@@ -118,7 +121,14 @@ turtles_own vs = do
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
-          return [p,u,w]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do
+                                                                       (_,_,a,_,_,_) <- ask :: CSTM Context; 
+                                                                       case a of
+                                                                         TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                         _ -> throw $ ContextException "turtle" a
+                                                                     |]) []]
+
+          return [p,u,w,x]
             ) (zip vs [0..])
   return $ sp : ct : co : crt : cro: concat pg
 
@@ -149,7 +159,14 @@ patches_own vs = do
                                                    TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                    _ -> throw $ ContextException "turtle or patch" a
                                                                      |]) []]
-          return [p,u,w]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                 (_,_,a,_,_,_) <- ask :: CSTM Context
+                                                 case a of
+                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                   TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                   _ -> throw $ ContextException "turtle or patch" a
+                                                                     |]) []]
+          return [p,u,w,x]
             ) (zip vs [0..])
   return $ pl : concat pg
 
@@ -203,7 +220,14 @@ breeds_own p vs = do
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
-          return [p,u,w]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,_,a,_,_,_) <- ask :: CSTM Context; 
+                                                                       case a of
+                                                                         TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                         _ -> throw $ ContextException "turtle" a
+                                                                     |]) []]
+
+          return [p,u,w,x]
             ) (zip vs [0..])
   return $ cb : sp : cob : concat pg
 
@@ -307,7 +331,14 @@ links_own vs = do
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) 
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
-          return [p,u,w]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,_,a,_,_,_) <- ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y) 
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+
+          return [p,u,w,x]
             ) (zip vs [0..])
   return $ cls : cts : cfs : cl : ct : cf : concat pg
 
@@ -336,7 +367,14 @@ link_breeds_own p vs = do
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
-          return [p,u,w]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,_,a,_,_,_) <- ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+
+          return [p,u,w,x]
             ) (zip vs [0..])
   return $ cls : cts : cfs : concat pg
 

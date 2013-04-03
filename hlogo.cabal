@@ -36,9 +36,28 @@ executable fire
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Fire
 
+executable flocking
+  main-is:             Flocking.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Flocking
+
 executable ising
   main-is:             Ising.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Ising
+
+
+executable termites
+  main-is:             Termites.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Termites
+
+executable wolfsheep
+  main-is:             WolfSheep.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/WolfSheep
 

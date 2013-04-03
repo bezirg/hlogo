@@ -5,10 +5,10 @@ module Framework.Logo.Prim (
                            self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, allp, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, set_color, set_xcor, unsafe_xcor, heading, set_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, left, lt, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size,
+                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, unsafe_xcor, heading, set_heading, with_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, left, lt, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size, with_size, with_shape,
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor, unsafe_pcolor, neighbors, neighbors4, set_plabel, set_pcolor,
+                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor, unsafe_pcolor, neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color,
 
                            -- * Link related
                            hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, unsafe_link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, unsafe_links, end1, end2, 
@@ -441,7 +441,10 @@ pcolor = do
   (_,_,a, _, _,_) <- ask
   case a of
     PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVar tc
-    _ -> throw $ ContextException "patch" a
+    TurtleRef _ _ -> do
+           [PatchRef _ (MkPatch {pcolor_ = tc})] <- patch_here
+           lift $ readTVar tc
+    _ -> throw $ ContextException "turtle or patch" a
 
 
 unsafe_pcolor :: CIO Double
@@ -449,6 +452,9 @@ unsafe_pcolor = do
   (_,_,a, _, _,_) <- ask
   case a of
     PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVarIO tc
+    TurtleRef _ _ -> do
+           [PatchRef _ (MkPatch {pcolor_ = tc})] <- unsafe_patch_here
+           lift $ readTVarIO tc
     _ -> throw $ ContextException "patch" a
 
 -- | Reports an agentset containing the 8 surrounding patches
@@ -497,7 +503,10 @@ set_pcolor s = do
   (_,_,a,_,_,_) <- ask
   case a of
     PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ writeTVar tc s
-    _ -> throw $ ContextException "patch" a
+    TurtleRef _ _ -> do
+                 [PatchRef _ (MkPatch {pcolor_ = tc})] <- patch_here
+                 lift $ writeTVar tc s
+    _ -> throw $ ContextException "turtle or patch" a
 
 set_breed :: String -> CSTM ()
 set_breed v = do
@@ -511,7 +520,16 @@ set_color v = do
   (_,_,a, _, _,_) <- ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (color_ t) v
-    _ -> throw $ ContextException "turtle" a
+    LinkRef _ (MkLink {lcolor_ = c}) -> lift $ writeTVar c v
+    _ -> throw $ ContextException "turtle or link" a
+
+set_label_color :: Double -> CSTM ()
+set_label_color v = do
+  (_,_,a, _, _,_) <- ask
+  case a of
+    TurtleRef _ t -> lift $ writeTVar (label_color_ t) v
+    LinkRef _ (MkLink {llabel_color_ = c}) -> lift $ writeTVar c v
+    _ -> throw $ ContextException "turtle or link" a
 
 
 set_xcor :: Double -> CSTM ()
@@ -2076,3 +2094,76 @@ unsafe_print_ a = do
 
 
 
+with_breed :: (String -> String) -> CSTM ()
+with_breed f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {breed_ = tb}) -> lift $ modifyTVar' tb f
+    --LinkRef _ (MkLink {lbreed_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle" s
+
+with_color :: (Double -> Double) -> CSTM ()
+with_color f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {color_ = tb}) -> lift $ modifyTVar' tb f
+    LinkRef _ (MkLink {lcolor_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle or link" s
+
+with_heading :: (Double -> Double) -> CSTM ()
+with_heading f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {heading_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle" s
+
+with_shape :: (String -> String) -> CSTM ()
+with_shape f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {shape_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle" s
+
+with_label :: (String -> String) -> CSTM ()
+with_label f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {label_ = tb}) -> lift $ modifyTVar' tb f
+    LinkRef _ (MkLink {llabel_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle or link" s
+
+with_label_color :: (Double -> Double) -> CSTM ()
+with_label_color f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {label_color_ = tb}) -> lift $ modifyTVar' tb f
+    LinkRef _ (MkLink {llabel_color_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle or link" s
+
+with_size :: (Double -> Double) -> CSTM ()
+with_size f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    TurtleRef _ (MkTurtle {size_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "turtle" s
+
+with_pcolor :: (Double -> Double) -> CSTM ()
+with_pcolor f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    PatchRef _ (MkPatch {pcolor_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "patch" s
+
+with_plabel :: (String -> String) -> CSTM ()
+with_plabel f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    PatchRef _ (MkPatch {plabel_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "patch" s
+
+with_plabel_color :: (Double -> Double) -> CSTM ()
+with_plabel_color f = do
+  (_,_,s,_,_,_) <- ask
+  case s of
+    PatchRef _ (MkPatch {plabel_color_ = tb}) -> lift $ modifyTVar' tb f
+    _ -> throw $ ContextException "patch" s
