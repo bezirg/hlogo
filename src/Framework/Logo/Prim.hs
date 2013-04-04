@@ -17,7 +17,7 @@ module Framework.Logo.Prim (
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, random_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
 
                            -- * Color
-                           primary_colors, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
+                           primary_colors, extract_rgb, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink,
 
                            -- * List related
                            sum_, anyp, item, one_of, min_one_of, unsafe_one_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last_, length_, list, lput, map_, memberp, position, reduce, remove_duplicates, reverse_, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp,
@@ -26,13 +26,13 @@ module Framework.Logo.Prim (
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
 
                            -- * Misc
-                           max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, repeat_, report, loop, stop, while, 
+                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, repeat_, report, loop, stop, while, 
 
                            -- * Input/Output
                            show_, unsafe_show_, print_, unsafe_print_, read_from_string,
 
                            -- * IO Operations
-                           atomic, ask_, of_, with
+                           atomic, ask_, of_, with, snapshot
 
 
 ) where
@@ -57,6 +57,14 @@ import Data.Function
 import Data.Maybe (maybe, fromJust)
 import Data.Typeable
 import Control.Monad (liftM, liftM2, filterM, forever, when)
+import Data.Word (Word8)
+-- For diagrams
+
+import qualified Diagrams.Prelude as Diag
+import Diagrams.Backend.SVG
+import qualified Data.ByteString.Lazy as BS
+import Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
+import Data.Colour.SRGB (sRGB24)
 
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
@@ -868,6 +876,9 @@ no_patches = return []
 -- | Reports true if either boolean1 or boolean2 is true, but not when both are true. 
 xor p q = (p || q) && not (p && q)
 
+
+patch_size :: Monad m => C m Int
+patch_size = return $ patch_size_ conf
 
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
 max_pxcor :: Monad m => C m Int
@@ -2167,3 +2178,70 @@ with_plabel_color f = do
   case s of
     PatchRef _ (MkPatch {plabel_color_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "patch" s
+
+snapshot :: CIO ()
+snapshot = do
+  (_, tw, s, _, _, _) <- ask
+  case s of
+    ObserverRef -> do
+             t <- unsafe_ticks
+             w <- lift $ readTVarIO tw
+             p <- patch_size
+             max_x <- max_pxcor
+             min_x <- min_pycor
+             let sizeSpec = Diag.Width (fromIntegral (p * (max_x + abs min_x + 1)))
+             let output = ("snapshot" ++ show (round t) ++ ".svg")
+             prs <- unsafe_patches
+             diagPatches <- lift $ mapM (\ (PatchRef (px,py) p) -> do 
+                                   c <- readTVarIO $ pcolor_ p
+                                   let [r,g,b] = extract_rgb c
+                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram SVG Diag.R2)
+                                ) prs
+             trs <- unsafe_turtles
+             diagTurtles <- lift $ mapM (\ (TurtleRef _ t) -> do 
+                                          x <- readTVarIO $ xcor_ t
+                                          y <- readTVarIO $ ycor_ t
+                                          c <- readTVarIO $ color_ t
+                                          h <- readTVarIO $ heading_ t
+                                          let [r,g,b] = extract_rgb c
+                                          return (Diag.p2 (x, y), Diag.eqTriangle 1 Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (Diag.Deg (-h)) :: Diag.Diagram SVG Diag.R2)
+                                ) trs
+
+             
+             let build = Diag.renderDia SVG (SVGOptions sizeSpec) ((Diag.position diagTurtles) `Diag.atop` (Diag.position diagPatches))
+             lift $ BS.writeFile output  (renderSvg build)
+    _ -> throw $ ContextException "observer" s
+  
+
+extract_rgb :: Double -> [Word8]
+extract_rgb c | c == 0 = [0,0,0]
+              | c == 9.9 = [255,255,255]
+              | otherwise = let colorTimesTen = truncate(c * 10)
+                                baseIndex = colorTimesTen `div` 100
+                                colorsRGB = [
+                                 140, 140, 140, -- gray (5)
+                                 215, 48, 39, -- red (15)
+                                 241, 105, 19, -- orange (25)
+                                 156, 109, 70, -- brown (35)
+                                 237, 237, 47, -- yellow (45)
+                                 87, 176, 58, -- green (55)
+                                 42, 209, 57, -- lime (65)
+                                 27, 158, 119, -- turquoise (75)
+                                 82, 196, 196, -- cyan (85)
+                                 43, 140, 190, -- sky (95)
+                                 50, 92, 168, -- blue (105)
+                                 123, 78, 163, -- violet (115)
+                                 166, 25, 105, -- magenta (125)
+                                 224, 126, 149, -- pink (135)
+                                 0, 0, 0, -- black
+                                 255, 255, 255 -- white
+                                          ]
+                                r = colorsRGB !! (baseIndex * 3 + 0)
+                                g = colorsRGB !! (baseIndex * 3 + 1)
+                                b = colorsRGB !! (baseIndex * 3 + 2)
+                                step = (fromIntegral (colorTimesTen `rem` 100 - 50)) / 50.48 + 0.012
+                            in
+                              if step < 0
+                              then [truncate(fromIntegral r * step) +r, truncate(fromIntegral g*step)+g, truncate(fromIntegral b*step)+b]
+                              else [truncate((255 - fromIntegral r)*step)+r, truncate((255 - fromIntegral g)*step)+g, truncate((255 - fromIntegral b)*step)+b]
+

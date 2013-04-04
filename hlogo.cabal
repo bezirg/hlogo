@@ -10,7 +10,7 @@ build-type:            Simple
 cabal-version:         >= 1.4
                       
 library
-  build-depends:      base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  build-depends:      base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
   exposed-modules:    Framework.Logo.Base, Framework.Logo.Core, 
                       Framework.Logo.Keyword, Framework.Logo.Prim, 
                       Framework.Logo.Exception,
@@ -27,12 +27,21 @@ test-suite test
   ghc-options:
   hs-source-dirs:      src, test                        
 
+-- Main
+executable hlogo
+  main-is:             Main.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
+  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src
+
+
+
 
 -- Benchmarks
 
 executable fire
   main-is:             Fire.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Fire
 
@@ -44,20 +53,20 @@ executable flocking
 
 executable ising
   main-is:             Ising.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Ising
 
 
 executable termites
   main-is:             Termites.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Termites
 
 executable wolfsheep
   main-is:             WolfSheep.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell, blaze-svg, bytestring, diagrams-core, diagrams-lib, diagrams-svg, colour
   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/WolfSheep
 

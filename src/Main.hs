@@ -18,16 +18,21 @@ link_breeds_own "arcs" ["a1", "a2"]
 link_breeds_own "edges" ["e1", "e2"]
 
 setup = do
-  return ()
+  t <- atomic $ crt 100
+  ask_ (atomic $ do
+          x <- random_xcor
+          y <- random_xcor
+          setxy x y
+       ) t
+  atomic $ reset_ticks
 
 go = do
-  t0 <- atomic $ crt 1
-  ask_ (atomic $ setxy (-1) (-1)) t0
-
-  t1 <- atomic $ crt 1
-  ask_ (atomic $ setxy 0 0) t1
-
-  unsafe_show_ =<< of_ (atomic (towards =<< turtle 0)) =<< unsafe_turtle 1
+  ask_ (atomic $ do 
+          px <- pxcor
+          py <- pycor
+          when (even px && even py) (set_pcolor yellow))
+      =<< unsafe_patches
+  snapshot
 
 behave = do
     atomic (forward 1 >> forward 1)
