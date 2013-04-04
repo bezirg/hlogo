@@ -4,6 +4,7 @@ import Framework.Logo.Keyword
 import Framework.Logo.Prim
 import Framework.Logo.Exception
 import Framework.Logo.Base
+import Framework.Logo.Conf
 import Control.Monad
 
 globals ["g1", "g2", "g3"]
@@ -18,13 +19,19 @@ link_breeds_own "arcs" ["a1", "a2"]
 link_breeds_own "edges" ["e1", "e2"]
 
 setup = do
-  t <- atomic $ crt 100
+  t <- atomic $ crt 1
   ask_ (atomic $ do
-          x <- random_xcor
-          y <- random_xcor
-          setxy x y
+          set_color white
+          set_heading 0
+          fd 16.5
+          show_ =<< ycor
+          fd 1
+          show_ =<< ycor
        ) t
+  unsafe_show_ $ horizontal_wrap_ conf
+  unsafe_show_ $ vertical_wrap_ conf
   atomic $ reset_ticks
+  snapshot
 
 go = do
   ask_ (atomic $ do 
@@ -39,4 +46,4 @@ behave = do
     atomic (back 1 >> forward 1)
 
 
-run ['setup, 'go]
+run ['setup] --, 'go]

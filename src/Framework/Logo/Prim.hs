@@ -61,9 +61,7 @@ import Data.Word (Word8)
 -- For diagrams
 
 import qualified Diagrams.Prelude as Diag
-import Diagrams.Backend.SVG
-import qualified Data.ByteString.Lazy as BS
-import Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
+import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
 -- |  Reports this turtle or patch. 
@@ -292,9 +290,30 @@ jump :: Double -> CSTM ()
 jump n = do
   (_,_, a, _, _,_) <- ask
   case a of
-    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, heading_ = h}) -> do
-           h' <- lift $ readTVar h
-           lift $ modifyTVar' x (+ (sin_ h' * n)) >>  modifyTVar' y (+ (cos_ h' * n))
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty, heading_ = th}) -> do
+           x <- lift $ readTVar tx
+           y <- lift $ readTVar ty
+           h <- lift $ readTVar th
+           let x' = x + sin_ h * n
+           let y' = y + cos_ h * n
+           let max_x = max_pxcor_ conf
+           let dmax_x = fromIntegral max_x
+           let min_x = min_pxcor_ conf
+           let dmin_x = fromIntegral min_x
+           let max_y = max_pycor_ conf
+           let dmax_y = fromIntegral max_y
+           let min_y = min_pycor_ conf
+           let dmin_y = fromIntegral min_y
+           if horizontal_wrap_ conf
+             then
+               lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+             else
+               when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ lift $ writeTVar tx x'
+           if vertical_wrap_ conf
+             then
+                 lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+             else
+               when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ lift $ writeTVar ty y'
     _ -> throw $ ContextException "turtle" a
 
 
@@ -303,7 +322,29 @@ setxy :: Double -> Double -> CSTM ()
 setxy x' y' = do
   (_,_, a, _, _,_) <- ask
   case a of
-    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> lift $ writeTVar x x' >> writeTVar y y'
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+                let max_x = max_pxcor_ conf
+                let dmax_x = fromIntegral max_x
+                let min_x = min_pxcor_ conf
+                let dmin_x = fromIntegral min_x
+                let max_y = max_pycor_ conf
+                let dmax_y = fromIntegral max_y
+                let min_y = min_pycor_ conf
+                let dmin_y = fromIntegral min_y
+                if horizontal_wrap_ conf
+                  then
+                    lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+                  else
+                      if (dmin_x -0.5 < x' && x' < dmax_x + 0.5) 
+                      then lift $ writeTVar tx x'
+                      else error "wrap"
+                if vertical_wrap_ conf
+                  then
+                      lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+                  else
+                      if (dmin_y -0.5  < y' && y' < dmax_y + 0.5) 
+                      then lift $ writeTVar ty y'
+                      else error "wrap"
     _ -> throw $ ContextException "turtle" a
 
 
@@ -541,10 +582,21 @@ set_label_color v = do
 
 
 set_xcor :: Double -> CSTM ()
-set_xcor v = do
+set_xcor x' = do
   (_,_,a, _, _,_) <- ask
   case a of
-    TurtleRef _ t -> lift $ writeTVar (xcor_ t) v
+    TurtleRef _ (MkTurtle {xcor_ = tx}) -> do
+               let max_x = max_pxcor_ conf
+               let dmax_x = fromIntegral max_x
+               let min_x = min_pxcor_ conf
+               let dmin_x = fromIntegral min_x
+               if horizontal_wrap_ conf
+                 then
+                     lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+                 else
+                     if (dmin_x -0.5 < x' && x' < dmax_x + 0.5) 
+                     then lift $ writeTVar tx x'
+                     else error "wrap"
     _ -> throw $ ContextException "turtle" a
 
 
@@ -565,10 +617,21 @@ ycor = do
     _ -> throw $ ContextException "turtle" a
 
 set_ycor :: Double -> CSTM ()
-set_ycor v = do
+set_ycor y' = do
   (_,_,a, _, _,_) <- ask
   case a of
-    TurtleRef _ t -> lift $ writeTVar (ycor_ t) v
+    TurtleRef _ (MkTurtle {ycor_ = ty}) -> do
+               let max_y = max_pycor_ conf
+               let dmax_y = fromIntegral max_y
+               let min_y = min_pycor_ conf
+               let dmin_y = fromIntegral min_y
+               if vertical_wrap_ conf
+                 then
+                     lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+                 else
+                     if (dmin_y -0.5 < y' && y' < dmax_y + 0.5) 
+                     then lift $ writeTVar ty y'
+                     else error "wrap"
     _ -> throw $ ContextException "turtle" a
 
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
@@ -1922,7 +1985,7 @@ unsafe_random_pxcor = lift $ getStdRandom $ randomR (min_pxcor_ conf, max_pxcor_
 unsafe_random_pycor :: CIO Int
 unsafe_random_pycor = lift $ getStdRandom $ randomR (min_pycor_ conf, max_pycor_ conf)
 
-unsafe_random :: Int -> CIO Int
+unsafe_random               :: (Random a , Eq a, Ord a, Num a) => a -> CIO a
 unsafe_random x | x == 0 = return 0
          | x < 0 = lift $ getStdRandom $ randomR (x,0)
          | x > 0 = lift $ getStdRandom $ randomR (0,x)
@@ -2190,12 +2253,12 @@ snapshot = do
              max_x <- max_pxcor
              min_x <- min_pycor
              let sizeSpec = Diag.Width (fromIntegral (p * (max_x + abs min_x + 1)))
-             let output = ("snapshot" ++ show (round t) ++ ".svg")
+             let output = ("snapshot" ++ show (round t) ++ ".eps")
              prs <- unsafe_patches
              diagPatches <- lift $ mapM (\ (PatchRef (px,py) p) -> do 
                                    c <- readTVarIO $ pcolor_ p
                                    let [r,g,b] = extract_rgb c
-                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram SVG Diag.R2)
+                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript Diag.R2)
                                 ) prs
              trs <- unsafe_turtles
              diagTurtles <- lift $ mapM (\ (TurtleRef _ t) -> do 
@@ -2203,13 +2266,13 @@ snapshot = do
                                           y <- readTVarIO $ ycor_ t
                                           c <- readTVarIO $ color_ t
                                           h <- readTVarIO $ heading_ t
+                                          s <- readTVarIO $ size_ t
                                           let [r,g,b] = extract_rgb c
-                                          return (Diag.p2 (x, y), Diag.eqTriangle 1 Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (Diag.Deg (-h)) :: Diag.Diagram SVG Diag.R2)
+                                          return (Diag.p2 (x, y), Diag.eqTriangle s Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (Diag.Deg (-h)) :: Diag.Diagram Postscript Diag.R2)
                                 ) trs
 
              
-             let build = Diag.renderDia SVG (SVGOptions sizeSpec) ((Diag.position diagTurtles) `Diag.atop` (Diag.position diagPatches))
-             lift $ BS.writeFile output  (renderSvg build)
+             lift $ Diag.renderDia Postscript (PostscriptOptions output sizeSpec EPS) (Diag.position diagTurtles `Diag.atop` Diag.position diagPatches)
     _ -> throw $ ContextException "observer" s
   
 
