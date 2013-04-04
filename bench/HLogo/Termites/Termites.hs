@@ -5,6 +5,8 @@ import Framework.Logo.Prim
 import Framework.Logo.Exception
 import Framework.Logo.Base
 import Control.Monad
+import System.Exit
+import Control.Monad.Trans.Class (lift)
 
 globals []
 patches_own []
@@ -19,27 +21,35 @@ setup = do
          when (r < density) $ atomic $ set_pcolor yellow) =<< unsafe_patches
 
   ts <- atomic $ create_turtles number
-  ask_ (atomic $ do
-          set_color white
-          liftM2 setxy random_xcor random_ycor
-          set_size 5) ts
+  ask_ (do
+         x <- unsafe_random_xcor
+         y <- unsafe_random_ycor
+         atomic $ do
+           set_color white
+           setxy x y
+           set_size 5) ts
   atomic $ reset_ticks
 
 
-go = forever $ do
+go = do
+  ask_ (do 
+        check_ticks
+      ) =<< unsafe_turtles
+  unsafe_print_ "reached"
+
+check_ticks = forever $ do
   t <- unsafe_ticks
-  when (t > 1000) (do
+  when (t > 400) (do
                     unsafe_show_ t
                     unsafe_show_ =<< count =<< unsafe_turtles
                     stop
                   )
-  ask_ (do 
-        search_for_chip
-        find_new_pile
-        put_down_chip
-      ) =<< unsafe_turtles
+  w <- atomic $ who
+  unsafe_print_ t
+  search_for_chip
+  find_new_pile
+  put_down_chip
   atomic $ tick
-
 
 search_for_chip = do
   c <- unsafe_pcolor
@@ -49,36 +59,42 @@ search_for_chip = do
       set_color orange
       fd 20
     else do
-      atomic $ wiggle
+      wiggle
       search_for_chip
 
 find_new_pile = do
   c <- unsafe_pcolor
   when (c /= yellow) $ do
-                  atomic $ wiggle
+                  wiggle
                   find_new_pile
 
 put_down_chip = do
   c <- unsafe_pcolor
   if (c == black) 
-    then atomic $ do
-      set_pcolor yellow
-      set_color white
+    then do
+      atomic $ do
+           set_pcolor yellow
+           set_color white
       get_away
     else do
       r <- unsafe_random 360
-      atomic $ rt (fromIntegral r) >> fd 1
+      atomic $ rt r >> fd 1
       put_down_chip
     
 get_away = do
-  rt =<< random 360
-  fd 20
-  c <- pcolor
+  r <- unsafe_random 360
+  atomic $ do
+    rt r
+    fd 20
+  c <- unsafe_pcolor
   when (c /= black) get_away
 
 wiggle = do
-  fd 1
-  rt =<< random 50
-  lt =<< random 50
+  r1 <- unsafe_random 50
+  r2 <- unsafe_random 50
+  atomic $ do
+           fd 1
+           rt r1
+           lt r2
 
 run ['setup, 'go]
