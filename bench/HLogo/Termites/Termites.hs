@@ -5,8 +5,6 @@ import Framework.Logo.Prim
 import Framework.Logo.Exception
 import Framework.Logo.Base
 import Control.Monad
-import System.Exit
-import Control.Monad.Trans.Class (lift)
 
 globals []
 patches_own []
@@ -30,26 +28,20 @@ setup = do
            set_size 5) ts
   atomic $ reset_ticks
 
-
-go = do
-  ask_ (do 
-        check_ticks
-      ) =<< unsafe_turtles
-  unsafe_print_ "reached"
-
-check_ticks = forever $ do
+go = forever $ do
   t <- unsafe_ticks
-  when (t > 400) (do
+  when (t > 50) (do
                     unsafe_show_ t
                     unsafe_show_ =<< count =<< unsafe_turtles
                     stop
                   )
-  w <- atomic $ who
-  unsafe_print_ t
-  search_for_chip
-  find_new_pile
-  put_down_chip
+  ask_ (do 
+        search_for_chip
+        find_new_pile
+        put_down_chip
+      ) =<< unsafe_turtles
   atomic $ tick
+
 
 search_for_chip = do
   c <- unsafe_pcolor
@@ -93,8 +85,8 @@ wiggle = do
   r1 <- unsafe_random 50
   r2 <- unsafe_random 50
   atomic $ do
-           fd 1
-           rt r1
-           lt r2
+    fd 1
+    rt r1
+    lt r2
 
 run ['setup, 'go]

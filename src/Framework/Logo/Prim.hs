@@ -51,7 +51,7 @@ import qualified Data.IntMap as IM
 import qualified Data.Map as M
 import Data.Array
 import Control.Applicative
-import System.Random hiding (random)
+import System.Random hiding (random, split)
 import Control.Monad (forM_)
 import Data.Function
 import Data.Maybe (maybe, fromJust)
@@ -1656,9 +1656,21 @@ ask_ f as = do
    Nobody -> throw $ ContextException "agent" Nobody
    _ -> return ()
  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
- tg <- lift ThreadGroup.new
- lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
- lift $ ThreadGroup.wait tg
+ --let (as1, as2) = split as 
+ (tid1, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as])
+ --(tid2, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
+ lift wait1
+ --lift wait2
+ return ()
+ -- tg <- lift ThreadGroup.new
+ -- lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
+ -- lift $ ThreadGroup.wait tg
+
+-- | Internal
+split :: [a] -> ([a], [a])
+split [] = ([], [])
+split [x] = ([x], [])
+split (x:y:xys) = (x:xs, y:ys) where (xs, ys) = split xys
 
 -- | For an agent, reports the value of the reporter for that agent (turtle or patch). 
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
@@ -1669,8 +1681,15 @@ of_ f as = do
     Nobody -> throw $ ContextException "agent" Nobody
     _ -> return ()
   if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
-  xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
-  lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
+  --let (as1, as2) = split as 
+  (tid1, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as])
+  --(tid2, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
+  r1 <- lift $ Thread.result =<< wait1
+  --r2 <- lift $ Thread.result =<< wait2
+  return $ r1 -- ++ r2
+
+  -- xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
+  -- lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
 
 -- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
 -- in other words, the agents satisfying the given condition. 

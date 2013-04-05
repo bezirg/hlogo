@@ -20,58 +20,70 @@ library
   ghc-options:        -rtsopts -threaded -fwarn-unused-imports
   hs-source-dirs:     src
 
-test-suite test
-  type:                exitcode-stdio-1.0
-  main-is:             Test.hs
-  build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
-  ghc-options:
-  hs-source-dirs:      src, test                        
+-- test-suite test
+--   type:                exitcode-stdio-1.0
+--   main-is:             Test.hs
+--   build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
+--   ghc-options:
+--   hs-source-dirs:      src, test                        
 
 -- Main
-executable hlogo
-  main-is:             Main.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src
+-- executable hlogo
+--   main-is:             Main.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+--   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src
 
 
 
 
 -- Benchmarks
 
-executable fire
-  main-is:             Fire.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Fire
+-- executable fire
+--   main-is:             Fire.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+--   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src, bench/HLogo/Fire
 
-executable flocking
-  main-is:             Flocking.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Flocking
+-- executable flocking
+--   main-is:             Flocking.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+--   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src, bench/HLogo/Flocking
 
-executable ising
-  main-is:             Ising.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Ising
+-- executable ising
+--   main-is:             Ising.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+--   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src, bench/HLogo/Ising
 
 
 executable termites
   main-is:             Termites.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  ghc-options:         -prof -auto-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Termites
 
-executable wolfsheep
-  main-is:             WolfSheep.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/WolfSheep
+-- executable wolfsheep
+--   main-is:             WolfSheep.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+--   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src, bench/HLogo/WolfSheep
 
-executable custom
-  main-is:             Custom.hs
+executable custom1
+  main-is:             Custom1.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Custom
+  ghc-options:         -prof -auto-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Custom1
+
+executable custom2
+  main-is:             Custom2.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -prof -auto-all -caf-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Custom2
+
+-- executable custom
+--   main-is:             Custom.hs
+--   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+--   ghc-options:         -O3 -fth -ddump-splices -fwarn-unused-imports
+--   hs-source-dirs:      src, bench/HLogo/Custom
