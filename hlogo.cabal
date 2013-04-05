@@ -61,7 +61,7 @@ library
 executable termites
   main-is:             Termites.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -prof -auto-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  ghc-options:         -prof -auto-all -caf-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Termites
 
 -- executable wolfsheep
@@ -73,7 +73,7 @@ executable termites
 executable custom1
   main-is:             Custom1.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -prof -auto-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
+  ghc-options:         -prof -auto-all -caf-all -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Custom1
 
 executable custom2
