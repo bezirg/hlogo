@@ -1,5 +1,6 @@
-install:
-	cabal install --enable-library-profiling
+default:
+	cabal configure --enable-tests
+	cabal build
 
 clean:
 	cabal clean

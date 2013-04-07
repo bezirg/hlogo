@@ -38,7 +38,7 @@ to setup
 end
 
 to go
-  if ticks > 10000 [print timer stop]
+  if ticks > 10000 [print count sheep print count wolves print timer stop]
   if not any? turtles [ stop ]
   ask sheep [
     move

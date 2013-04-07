@@ -19,12 +19,12 @@ library
   ghc-options:        -rtsopts -threaded -fwarn-unused-imports
   hs-source-dirs:     src
 
-test-suite test
-  type:                exitcode-stdio-1.0
-  main-is:             Test.hs
-  build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
-  ghc-options:
-  hs-source-dirs:      src, test                        
+-- test-suite test
+--   type:                exitcode-stdio-1.0
+--   main-is:             Test.hs
+--   build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
+--   ghc-options:
+--   hs-source-dirs:      src, test                        
 
 
 -- Benchmarks
@@ -48,26 +48,26 @@ test-suite test
 --   hs-source-dirs:      src, bench/HLogo/Ising
 
 
--- executable termites
---   main-is:             Termites.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Termites
+executable termites
+  main-is:             Termites.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Termites
 
--- executable wolfsheep
---   main-is:             WolfSheep.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -fth -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/WolfSheep
+executable wolfsheep
+  main-is:             WolfSheep.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/WolfSheep
 
--- executable custom1
---   main-is:             Custom1.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Custom1
+executable simple1
+  main-is:             Simple1.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Simple1
 
--- executable custom2
---   main-is:             Custom2.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Custom2  
+executable simple2
+  main-is:             Simple2.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Simple2

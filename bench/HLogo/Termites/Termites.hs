@@ -31,7 +31,7 @@ setup = do
 
 go = forever $ do
   t <- unsafe_ticks
-  when (t > 50) (do
+  when (t > 100) (do
                     unsafe_show_ t
                     unsafe_show_ =<< count =<< unsafe_turtles
                     stop

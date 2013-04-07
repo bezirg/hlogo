@@ -268,6 +268,14 @@ breeds [p,s] = do
                                                                   y' <- lift $ readTVar y
                                                                   b <- lift $ readTVar tb
                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
+  uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
+                                                                     [s] <- self
+                                                                     h <- unsafe_patch_here
+                                                                     ts <- $(varE (mkName ("unsafe_" ++ p)))
+                                                                     res <- with (return . ( == h) =<< unsafe_patch_here) ts
+                                                                     return (s:res)
+                                                                   |]) []
+
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] (normalB [| do 
                                                                        [s] <- self; 
                                                                        [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y)
@@ -283,7 +291,7 @@ breeds [p,s] = do
                                                                                       b <- lift $ readTVar tb
                                                                                       return $ b == $(litE (stringL p))
                                                                                     _ -> return False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
-  return [sp,up,us,ss,th,ta, ib]
+  return [sp,up,us,ss,th,uth,ta, ib]
 
 
 directed_link_breed [p,s] = do

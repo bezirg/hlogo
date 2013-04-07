@@ -1,78 +1,42 @@
 to setup
-  clear-all
-  ;; randomly distribute wood chips
-  ask patches
-  [ if random-float 100 < density
-    [ set pcolor yellow ] ]
-  ;; randomly distribute termites
-  create-turtles number [
-    set color white
-    setxy random-xcor random-ycor
-    set size 5  ;; easier to see
-  ]
+  reset-timer
   reset-ticks
+  create-turtles 100000
 end
 
 to go
-  if ticks > 100 [print timer stop]
-  ask turtles [
-  search-for-chip
-  find-new-pile
-  put-down-chip
-  ]
+  if (ticks = 8) [print timer stop]
+  ask turtles [behave]
   tick
 end
 
-to search-for-chip  ;; turtle procedure -- "picks up chip" by turning orange
-  ifelse pcolor = yellow
-  [ set pcolor black
-    set color orange
-    fd 20 ]
-  [ wiggle
-    search-for-chip ]
+to behave
+         fd 1
+         fd 1
+         back 1
+         forward 1
+         fd 1
+         fd 1
+         back 1
+         forward 1
+         fd 1
+         fd 1
+         back 1
+         forward 1
+         fd 1
+         fd 1
+         back 1
+         forward 1   
 end
-
-to find-new-pile  ;; turtle procedure -- look for yellow patches
-  if pcolor != yellow
-  [ wiggle
-    find-new-pile ]
-end
-
-to put-down-chip  ;; turtle procedure -- finds empty spot & drops chip
-  ifelse pcolor = black
-  [ set pcolor yellow
-    set color white
-    get-away ]
-  [ rt random 360
-    fd 1
-    put-down-chip ]
-end
-
-to get-away  ;; turtle procedure -- escape from yellow piles
-  rt random 360
-  fd 20
-  if pcolor != black
-    [ get-away ]
-end
-
-to wiggle ; turtle procedure
-  fd 1
-  rt random 50
-  lt random 50
-end
-
-
-; Copyright 1997 Uri Wilensky.
-; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-200
+210
 10
-612
-443
+2833
+2654
 100
 100
-2.0
+13.0
 1
 10
 1
@@ -86,20 +50,20 @@ GRAPHICS-WINDOW
 100
 -100
 100
-0
-0
+1
+1
 1
 ticks
 30.0
 
 BUTTON
-100
-115
-165
-148
-go
-go
-T
+44
+52
+107
+85
+NIL
+setup
+NIL
 1
 T
 OBSERVER
@@ -110,13 +74,13 @@ NIL
 1
 
 BUTTON
-25
-115
-90
-148
-setup
-setup
+69
+143
+132
+176
 NIL
+go
+T
 1
 T
 OBSERVER
@@ -126,104 +90,42 @@ NIL
 NIL
 1
 
-SLIDER
-10
-30
-185
-63
-number
-number
-1
-2000
-400
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-10
-70
-185
-103
-density
-density
-0.0
-100.0
-20
-1.0
-1
-%
-HORIZONTAL
-
 @#$#@#$#@
 ## WHAT IS IT?
 
-This project is inspired by the behavior of termites gathering wood chips into piles. The termites follow a set of simple rules. Each termite starts wandering randomly. If it bumps into a wood chip, it picks the chip up, and continues to wander randomly. When it bumps into another wood chip, it finds a nearby empty space and puts its wood chip down.  With these simple rules, the wood chips eventually end up in a single pile.
+(a general understanding of what the model is trying to show or explain)
+
+## HOW IT WORKS
+
+(what rules the agents use to create the overall behavior of the model)
 
 ## HOW TO USE IT
 
-Click the SETUP button to set up the termites (white) and wood chips (yellow). Click the GO button to start the simulation.  The termites turn orange when they are carrying a wood chip.
-
-The NUMBER slider controls the number of termites. (Note: Changes in the NUMBER slider do not take effect until the next setup.) The DENSITY slider controls the initial density of wood chips.
+(how to use the model, including a description of each of the items in the Interface tab)
 
 ## THINGS TO NOTICE
 
-As piles of wood chips begin to form, the piles are not "protected" in any way. That is, termites sometimes take chips away from existing piles. That strategy might seem counter-productive. But if the piles were "protected", you would end up with lots of little piles, not one big one.
-
-The final piles are roughly round.  Why is this?  What other physical situations also produce round things?
-
-In general, the number of piles decreases with time. Why? Some piles disappear, when termites carry away all of the chips. And there is no way to start a new pile from scratch, since termites always put their wood chips near other wood chips. So the number of piles must decrease over time. (The only way a "new" pile starts is when an existing pile splits into two.)
-
-This project is a good example of a "decentralized" strategy. There is no termite in charge, and no special pre-designated site for the piles. Each termite follows a set of simple rules, but the colony as a whole accomplishes a rather sophisticated task.
+(suggested things for the user to notice while running the model)
 
 ## THINGS TO TRY
 
-Do the results change if you use just a single termite?  What if you use several thousand termites?
-
-When there are just two piles left, which of them is most likely to "win" as the single, final pile? How often does the larger of the two piles win? If one pile has only a single wood chip, and the other pile has the rest of the wood chips, what are the chances that the first pile will win?
+(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
 
 ## EXTENDING THE MODEL
 
-Can you extend the model to have the termites sort several colors of wood?
-
-Plot the number of piles, or their average size, or the number of termites carrying wood chips, as the model runs.
+(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
 
 ## NETLOGO FEATURES
 
-Notice that the wood chips do not exist as objects. They are just represented as colors in the patches. The termites update the patch colors as they pick up and put down the wood chips. In effect, the patches are being used as the data structure. This strategy is useful in many NetLogo programs.
-
-Note than when you stop the GO forever button, the termites keep moving for a little while.  This is because they are each finishing the commands in the GO procedure.  To do this, they must finish their current cycle of finding a chip, finding a pile, and then finding an empty spot near the pile.  In most models, the GO function only moves the model forward one step, but in this model, the GO function is written to advance the turtles through a full cycle of activity.  See the "Buttons" section of the Programming Guide in the User Manual for more information on turtle forever buttons.
+(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
 
 ## RELATED MODELS
 
- * Painted Desert Challenge
- * Shepherds
- * State Machine Example
+(models in the NetLogo Models Library and elsewhere which are of related interest)
 
+## CREDITS AND REFERENCES
 
-## HOW TO CITE
-
-If you mention this model in a publication, we ask that you include these citations for the model itself and for the NetLogo software:
-
-* Wilensky, U. (1997).  NetLogo Termites model.  http://ccl.northwestern.edu/netlogo/models/Termites.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
-## COPYRIGHT AND LICENSE
-
-Copyright 1997 Uri Wilensky.
-
-![CC BY-NC-SA 3.0](http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png)
-
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
-
-Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
-
-This model was created as part of the project: CONNECTED MATHEMATICS: MAKING SENSE OF COMPLEX PHENOMENA THROUGH BUILDING OBJECT-BASED PARALLEL MODELS (OBPML).  The project gratefully acknowledges the support of the National Science Foundation (Applications of Advanced Technologies Program) -- grant numbers RED #9552950 and REC #9632612.
-
-This model was developed at the MIT Media Lab using CM StarLogo.  See Resnick, M. (1994) "Turtles, Termites and Traffic Jams: Explorations in Massively Parallel Microworlds."  Cambridge, MA: MIT Press.  Adapted to StarLogoT, 1997, as part of the Connected Mathematics Project.
-
-This model was converted to NetLogo as part of the projects: PARTICIPATORY SIMULATIONS: NETWORK-BASED DESIGN FOR SYSTEMS LEARNING IN CLASSROOMS and/or INTEGRATED SIMULATION AND MODELING ENVIRONMENT. The project gratefully acknowledges the support of the National Science Foundation (REPP & ROLE programs) -- grant numbers REC #9814682 and REC-0126227. Converted from StarLogoT to NetLogo, 2001.
+(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
 @#$#@#$#@
 default
 true
@@ -417,6 +319,22 @@ Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
 
+sheep
+false
+15
+Circle -1 true true 203 65 88
+Circle -1 true true 70 65 162
+Circle -1 true true 150 105 120
+Polygon -7500403 true false 218 120 240 165 255 165 278 120
+Circle -7500403 true false 214 72 67
+Rectangle -1 true true 164 223 179 298
+Polygon -1 true true 45 285 30 285 30 240 15 195 45 210
+Circle -1 true true 3 83 150
+Rectangle -1 true true 65 221 80 296
+Polygon -1 true true 195 285 210 285 210 240 240 210 195 210
+Polygon -7500403 true false 276 85 285 105 302 99 294 83
+Polygon -7500403 true false 219 85 210 105 193 99 201 83
+
 square
 false
 0
@@ -501,6 +419,13 @@ Line -7500403 true 40 84 269 221
 Line -7500403 true 40 216 269 79
 Line -7500403 true 84 40 221 269
 
+wolf
+false
+0
+Polygon -16777216 true false 253 133 245 131 245 133
+Polygon -7500403 true true 2 194 13 197 30 191 38 193 38 205 20 226 20 257 27 265 38 266 40 260 31 253 31 230 60 206 68 198 75 209 66 228 65 243 82 261 84 268 100 267 103 261 77 239 79 231 100 207 98 196 119 201 143 202 160 195 166 210 172 213 173 238 167 251 160 248 154 265 169 264 178 247 186 240 198 260 200 271 217 271 219 262 207 258 195 230 192 198 210 184 227 164 242 144 259 145 284 151 277 141 293 140 299 134 297 127 273 119 270 105
+Polygon -7500403 true true -1 195 14 180 36 166 40 153 53 140 82 131 134 133 159 126 188 115 227 108 236 102 238 98 268 86 269 92 281 87 269 103 269 113
+
 x
 false
 0
@@ -510,29 +435,21 @@ Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
 NetLogo 5.0.3
 @#$#@#$#@
-setup
-ask turtles [ repeat 150 [ go ] ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
   <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <enumeratedValueSet variable="number">
-      <value value="400"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="density">
-      <value value="20"/>
-    </enumeratedValueSet>
   </experiment>
 </experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
 0.0
--0.2 0 0.0 1.0
+-0.2 0 1.0 0.0
 0.0 1 1.0 0.0
-0.2 0 0.0 1.0
+0.2 0 1.0 0.0
 link direction
 true
 0
@@ -540,5 +457,5 @@ Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 
 @#$#@#$#@
-1
+0
 @#$#@#$#@
