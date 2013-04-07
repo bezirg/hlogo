@@ -1656,11 +1656,11 @@ ask_ f as = do
    Nobody -> throw $ ContextException "agent" Nobody
    _ -> return ()
  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
- --let (as1, as2) = split as 
- (tid1, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as])
- --(tid2, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
+ let (as1, as2) = split as 
+ (tid1, wait1) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
+ (tid2, wait2) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
  lift wait1
- --lift wait2
+ lift wait2
  return ()
  -- tg <- lift ThreadGroup.new
  -- lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
@@ -1681,12 +1681,12 @@ of_ f as = do
     Nobody -> throw $ ContextException "agent" Nobody
     _ -> return ()
   if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
-  --let (as1, as2) = split as 
-  (tid1, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as])
-  --(tid2, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
+  let (as1, as2) = split as 
+  (tid1, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
+  (tid2, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
   r1 <- lift $ Thread.result =<< wait1
-  --r2 <- lift $ Thread.result =<< wait2
-  return $ r1 -- ++ r2
+  r2 <- lift $ Thread.result =<< wait2
+  return $ r1 ++ r2
 
   -- xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
   -- lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs

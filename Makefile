@@ -1,3 +1,5 @@
-default:
-	runghc Setup.lhs configure --enable-tests
-	runghc Setup.lhs build
+install:
+	cabal install --enable-library-profiling
+
+clean:
+	cabal clean
