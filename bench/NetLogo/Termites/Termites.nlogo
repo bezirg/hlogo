@@ -1,4 +1,5 @@
 to setup
+  reset-timer
   clear-all
   ;; randomly distribute wood chips
   ask patches

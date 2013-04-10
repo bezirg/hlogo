@@ -19,12 +19,12 @@ library
   ghc-options:        -rtsopts -threaded -fwarn-unused-imports
   hs-source-dirs:     src
 
--- test-suite test
---   type:                exitcode-stdio-1.0
---   main-is:             Test.hs
---   build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
---   ghc-options:
---   hs-source-dirs:      src, test                        
+test-suite test
+  type:                exitcode-stdio-1.0
+  main-is:             Test.hs
+  build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
+  ghc-options:
+  hs-source-dirs:      src, test                        
 
 
 -- Benchmarks
@@ -71,3 +71,9 @@ executable simple2
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
   ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Simple2
+
+executable hlogo
+  main-is:             Main.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src

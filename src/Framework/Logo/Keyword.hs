@@ -269,11 +269,14 @@ breeds [p,s] = do
                                                                   b <- lift $ readTVar tb
                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
   uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
-                                                                     [s] <- self
-                                                                     h <- unsafe_patch_here
+                                                                     (_, _, a, _, _, _) <- ask
+                                                                     h <- case a of
+                                                                             TurtleRef _ _ -> unsafe_patch_here
+                                                                             PatchRef _ _ -> return [a]
+                                                                             _ -> throw $ ContextException "turtle or patch" a
                                                                      ts <- $(varE (mkName ("unsafe_" ++ p)))
                                                                      res <- with (return . ( == h) =<< unsafe_patch_here) ts
-                                                                     return (s:res)
+                                                                     return res
                                                                    |]) []
 
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] (normalB [| do 

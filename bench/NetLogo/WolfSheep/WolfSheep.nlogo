@@ -33,7 +33,7 @@ to setup
     set energy random (2 * wolf-gain-from-food)
     setxy random-xcor random-ycor
   ]
-  set grass count patches with [pcolor = green]
+  ;set grass count patches with [pcolor = green]
   reset-ticks
 end
 
@@ -57,7 +57,7 @@ to go
     reproduce-wolves
   ]
   if grass? [ ask patches [ grow-grass ] ]
-  set grass count patches with [pcolor = green]
+  ;set grass count patches with [pcolor = green]
   tick
 end
 
@@ -119,10 +119,10 @@ end
 GRAPHICS-WINDOW
 350
 10
-819
-500
-25
-25
+2169
+1850
+100
+100
 9.0
 1
 14
@@ -133,12 +133,12 @@ GRAPHICS-WINDOW
 1
 1
 1
--25
-25
--25
-25
-1
-1
+-100
+100
+-100
+100
+0
+0
 1
 ticks
 30.0
@@ -197,7 +197,7 @@ initial-number-wolves
 initial-number-wolves
 0
 250
-50
+0
 1
 1
 NIL
@@ -809,7 +809,7 @@ repeat 75 [ go ]
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-number-wolves">
-      <value value="50"/>
+      <value value="0"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="show-energy?">
       <value value="false"/>

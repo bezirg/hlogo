@@ -115,7 +115,7 @@ run ['setup, 'go]
 
 Model       NetLogo (secs)  NetLogo (JVM bytecode)  HLogo (1-core)  HLogo (2-cores) 
 -----       --------------  ----------------------  --------------  ---------------
-Simple1     18.6            16.4                    4.4             2.6
+Simple1     18.6            16.4                    4.2             2
 
 ## Simple2 model
 
@@ -191,7 +191,7 @@ run ['setup, 'go]
 
 Model       NetLogo (secs)  NetLogo (JVM bytecode)  HLogo (1-core)  HLogo (2-cores, 4threads) 
 -----       --------------  ----------------------  --------------  -------------------------
-Simple2     8.9             7.4                     16              7.2
+Simple2     8.9             7.4                     14.6              6.6
 
 
 

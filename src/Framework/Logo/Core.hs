@@ -23,15 +23,17 @@ import System.Random (mkStdGen)
 cInit :: Int -> Int -> IO Context
 cInit gl po = do
   -- read dimensions from conf
-  let mx = max_pxcor_ conf
-  let my = max_pycor_ conf
+  let max_x = max_pxcor_ conf
+  let max_y = max_pycor_ conf
+  let min_x = min_pxcor_ conf
+  let min_y = min_pycor_ conf
   -- initialize globals
   gs <- return . listArray (0, fromIntegral gl+1) =<< replicateM (fromIntegral gl + 2) (newTVarIO 0)
   -- spawn patches
   ps <- sequence [do
                    p <- newPatch x y po
                    return ((x, y), p)
-                 | x <- [-mx..mx], y <- [-my..my]]
+                 | x <- [min_x..max_x], y <- [min_y..max_y]]
   -- initialize
   let ts = IM.empty
   let ls = M.empty

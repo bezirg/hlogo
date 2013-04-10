@@ -18,7 +18,7 @@ breeds_own "sheep" ["senergy"]
 grassp = True
 grass_regrowth_time = 30
 initial_number_sheep = 100
-initial_number_wolves = 50
+initial_number_wolves = 0
 sheep_gain_from_food = 4
 wolf_gain_from_food = 20
 sheep_reproduce = 4
@@ -58,32 +58,33 @@ setup = do
           set_wenergy w
           setxy x y
        ) w
+  --g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
 
-  g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
-
-  atomic $ set_grass (fromIntegral g)
+  --atomic $ set_grass (fromIntegral g)
   atomic $ reset_ticks
+
 
 go = forever $ do
   t <- unsafe_ticks
-  when (t > 1000) (unsafe_sheep >>= count >>= unsafe_show_ >> unsafe_wolves >>= count >>= unsafe_show_ >> stop)
+  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print_ >> stop)
   ask_ (do
          move
          e <- unsafe_senergy
-         atomic $ set_senergy (e -1)
-         eat_grass
-         if (e-1 < 0) then (atomic $ die) else reproduce_sheep
+         when grassp $ do
+            atomic $ set_senergy (e -1)
+            eat_grass
+         if (e-1 < 0 && grassp) then (atomic die) else reproduce_sheep
        ) =<< unsafe_sheep
   ask_ (do
          move
          e <- unsafe_wenergy
          atomic $ set_wenergy (e-1)
          catch_sheep
-         if (e-1 < 0) then (atomic $ die) else reproduce_wolves
+         if (e-1 < 0) then (atomic die) else reproduce_wolves
        ) =<< unsafe_wolves
   when grassp (ask_ grow_grass =<< unsafe_patches)
-  g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
-  atomic $ set_grass (fromIntegral g)
+  --g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
+  --atomic $ set_grass (fromIntegral g)
   atomic $ tick
 
 move = do
@@ -103,8 +104,8 @@ eat_grass = do
 reproduce_sheep = do
   r <- unsafe_random_float 100
   when (r < sheep_reproduce) $ do
-                     w <- atomic $ with_senergy (/ 2) >> hatch 1
-                     ask_ ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
+                    w <- atomic $ with_senergy (/ 2) >> hatch 1
+                    ask_ ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
 
 reproduce_wolves = do
   r <- unsafe_random_float 100

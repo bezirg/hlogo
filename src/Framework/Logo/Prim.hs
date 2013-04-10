@@ -56,7 +56,7 @@ import Control.Monad (forM_)
 import Data.Function
 import Data.Maybe (maybe, fromJust)
 import Data.Typeable
-import Control.Monad (liftM, liftM2, filterM, forever, when)
+import Control.Monad (liftM, liftM2, filterM, forever, when, replicateM)
 import Data.Word (Word8)
 -- For diagrams
 
@@ -1656,9 +1656,7 @@ ask_ f as = do
    Nobody -> throw $ ContextException "agent" Nobody
    _ -> return ()
  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
- let (as', as'') = split as 
- let (as1, as2) = split as'
- let (as3, as4) = split as''
+ let [as1,as2,as3,as4] = split 4 as
  (_, wait1) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
  (_, wait2) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
  (_, wait3) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as3])
@@ -1673,10 +1671,14 @@ ask_ f as = do
  -- lift $ ThreadGroup.wait tg
 
 -- | Internal
-split :: [a] -> ([a], [a])
-split [] = ([], [])
-split [x] = ([x], [])
-split (x:y:xys) = (x:xs, y:ys) where (xs, ys) = split xys
+split :: Int -> [a] -> [[a]]
+split n l = let (d,m) = length l `divMod` n
+                split' 0 m l = []
+                split' x 0 l = let (t, r) = splitAt d l
+                               in t : split' (x-1) 0 r
+                split' x m l = let (t, r) = splitAt (d+1) l
+                               in t : split' (x-1) (m-1) r
+            in split' n m l
 
 -- | For an agent, reports the value of the reporter for that agent (turtle or patch). 
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
@@ -1687,9 +1689,7 @@ of_ f as = do
     Nobody -> throw $ ContextException "agent" Nobody
     _ -> return ()
   if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
-  let (as', as'') = split as 
-  let (as1, as2) = split as'
-  let (as3, as4) = split as''
+  let [as1,as2,as3,as4] = split 4 as
   (_, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
   (_, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
   (_, wait3) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as3])
@@ -1828,11 +1828,16 @@ hatch n = do
   case a of
     TurtleRef _ mt -> do
             let who = gs ! 0
-            let  newTurtles w n = IM.fromAscList [(i, mt { who_ = i}) | i <- [w..w+n-1]]
+            let arr = tvars_ mt
+            let b = bounds arr
+            let newArray = return . listArray b =<< sequence [lift (newTVar =<< readTVar (arr ! i)) | i <- [fst b.. snd b]]
+            let newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                        a <- newArray
+                                                                        return (i, mt { who_ = i, tvars_ = a}) | i <- [w..w+n-1]]
             let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
             oldWho <- lift $ liftM round $ readTVar who
             lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
-            let ns = newTurtles oldWho n
+            ns <- newTurtles oldWho n
             lift $ modifyTVar' tw (addTurtles ns) 
             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 
@@ -1860,11 +1865,14 @@ move_to a = do
 
 unsafe_turtles_here :: CIO [AgentRef]
 unsafe_turtles_here = do
-  [s] <- self
-  h <- unsafe_patch_here
+  (_,_,s,_,_,_) <- ask
+  h <- case s of
+        TurtleRef _ _ -> unsafe_patch_here
+        PatchRef _ _ -> return [s]
+        _ -> throw $ ContextException "turtle or patch" s
   ts <- unsafe_turtles
-  res <- with (return . ( == h) =<< unsafe_patch_here) ts
-  return (s:res)
+  with (return . (== h) =<< unsafe_patch_here) ts
+
 
 unsafe_turtles_at :: Double -> Double -> CIO [AgentRef]
 unsafe_turtles_at x y = do
@@ -2170,7 +2178,17 @@ unsafe_one_of :: [a] -> CIO [a]
 unsafe_one_of [] = error "empty list"
 unsafe_one_of l = do
   v <- lift $ randomRIO (0, length l -1)
-  return [(l !! v)]
+  return [l !! v]
+
+-- Uses instead agent_one_of when types match
+{-# RULES "unsafe_one_of/AgentRef" unsafe_one_of = agent_unsafe_one_of #-}
+
+agent_unsafe_one_of :: [AgentRef] -> CIO [AgentRef]
+agent_unsafe_one_of [] = nobody
+agent_unsafe_one_of l = do
+  v <- lift $ randomRIO (0, length l -1)
+  return [l !! v]
+
 
 -- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
 unsafe_shuffle :: Eq a => [a] -> CIO [a]
