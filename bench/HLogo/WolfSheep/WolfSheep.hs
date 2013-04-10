@@ -18,7 +18,7 @@ breeds_own "sheep" ["senergy"]
 grassp = True
 grass_regrowth_time = 30
 initial_number_sheep = 100
-initial_number_wolves = 0
+initial_number_wolves = 50
 sheep_gain_from_food = 4
 wolf_gain_from_food = 20
 sheep_reproduce = 4
@@ -66,7 +66,7 @@ setup = do
 
 go = forever $ do
   t <- unsafe_ticks
-  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print_ >> stop)
+  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print_ >> unsafe_wolves >>= count >>= unsafe_print_ >> stop)
   ask_ (do
          move
          e <- unsafe_senergy

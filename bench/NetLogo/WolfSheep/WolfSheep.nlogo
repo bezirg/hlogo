@@ -119,10 +119,10 @@ end
 GRAPHICS-WINDOW
 350
 10
-2169
-1850
-100
-100
+819
+500
+25
+25
 9.0
 1
 14
@@ -133,10 +133,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--100
-100
--100
-100
+-25
+25
+-25
+25
 0
 0
 1
@@ -197,7 +197,7 @@ initial-number-wolves
 initial-number-wolves
 0
 250
-0
+50
 1
 1
 NIL
@@ -809,7 +809,7 @@ repeat 75 [ go ]
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-number-wolves">
-      <value value="0"/>
+      <value value="50"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="show-energy?">
       <value value="false"/>

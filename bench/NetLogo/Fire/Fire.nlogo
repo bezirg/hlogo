@@ -9,7 +9,7 @@ breed [embers ember]  ;; turtles gradually fading from red to near black
 to setup
   reset-timer 
   clear-all
-  set-default-shape turtles "square"
+  ;set-default-shape turtles "square"
   ;; make some green trees
   ask patches with [(random-float 100) < density]
     [ set pcolor green ]
@@ -25,7 +25,7 @@ end
 to go
   ;;if not any? turtles  ;; either fires or embers
     ;;[ stop ]
-  if  ticks > 200 [  print timer stop]
+  if  ticks > 500 [  print timer stop]
   ask fires
     [ ask neighbors4 with [pcolor = green]
         [ ignite ]
@@ -58,10 +58,10 @@ end
 GRAPHICS-WINDOW
 200
 10
-712
-543
-125
-125
+1412
+1243
+300
+300
 2.0
 1
 10
@@ -72,10 +72,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--125
-125
--125
-125
+-300
+300
+-300
+300
 1
 1
 1

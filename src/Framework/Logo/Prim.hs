@@ -510,35 +510,39 @@ unsafe_pcolor = do
 neighbors :: CSTM [AgentRef]
 neighbors = do
   (_, _, a, _, _, _) <- ask
-  case a of
-    PatchRef (x,y) _ ->  patch_set [p (x-1) (y-1),
-                                   p (x-1) y,
-                                   p (x-1) (y+1),
-                                   p x (y-1),
-                                   p x (y+1),
-                                   p (x+1) (y-1),
-                                   p (x+1) y,
-                                   p (x+1) (y+1)
-                                  ]
-    _ -> throw $ ContextException "patch" a
-  where p x y = if (not (horizontal_wrap_ conf) && (x > max_pxcor_ conf || x < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y > max_pycor_ conf || y < min_pycor_ conf))
+  (x,y) <- case a of
+    PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+    _ -> throw $ ContextException "turtle or patch" a
+  patch_set [p (x-1) (y-1),
+             p (x-1) y,
+             p (x-1) (y+1),
+             p x (y-1),
+             p x (y+1),
+             p (x+1) (y-1),
+             p (x+1) y,
+             p (x+1) (y+1)
+            ]
+  where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
                 then return []
-                else patch (fromIntegral x) (fromIntegral y)
+                else patch x y
 
 -- | Reports an agentset containing the 4 surrounding patches
 neighbors4 :: CSTM [AgentRef]
 neighbors4 = do
   (_, _, a, _, _, _) <- ask
-  case a of
-    PatchRef (x,y) _ ->  patch_set [p (x-1) y,
-                                   p (x+1) y,
-                                   p x (y-1),
-                                   p x (y+1)
-                                  ]
-    _ -> throw $ ContextException "patch" a
-  where p x y = if (not (horizontal_wrap_ conf) && (x > max_pxcor_ conf || x < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y > max_pycor_ conf || y < min_pycor_ conf))
+  (x,y) <- case a of
+    PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+    _ -> throw $ ContextException "turtle or patch" a
+  patch_set [p (x-1) y,
+             p (x+1) y,
+             p x (y-1),
+             p x (y+1)
+            ]
+  where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
                 then return []
-                else patch (fromIntegral x) (fromIntegral y)
+                else patch x y
 
 set_plabel :: String -> CSTM ()
 set_plabel s = do
@@ -1826,18 +1830,31 @@ hatch :: Int -> CSTM [AgentRef]
 hatch n = do
   (gs, tw, a, _, _,_) <- ask
   case a of
-    TurtleRef _ mt -> do
+    TurtleRef _ (MkTurtle w bd c h x y s l lc hp sz ps pm t) -> do
             let who = gs ! 0
-            let arr = tvars_ mt
-            let b = bounds arr
-            let newArray = return . listArray b =<< sequence [lift (newTVar =<< readTVar (arr ! i)) | i <- [fst b.. snd b]]
+            let b = bounds t
+            let newArray = return . listArray b =<< sequence [(newTVar =<< readTVar (t ! i)) | i <- [fst b.. snd b]]
             let newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                        a <- newArray
-                                                                        return (i, mt { who_ = i, tvars_ = a}) | i <- [w..w+n-1]]
+                                                                        t <- MkTurtle <$>
+                                                                            return i <*>
+                                                                            (newTVar =<< readTVar bd) <*>
+                                                                            (newTVar =<< readTVar c) <*>
+                                                                            (newTVar =<< readTVar h) <*>
+                                                                            (newTVar =<< readTVar x) <*>
+                                                                            (newTVar =<< readTVar y) <*>
+                                                                            (newTVar =<< readTVar s) <*> 
+                                                                            (newTVar =<< readTVar l) <*>
+                                                                            (newTVar =<< readTVar lc) <*>
+                                                                            (newTVar =<< readTVar hp) <*>
+                                                                            (newTVar =<< readTVar sz) <*>
+                                                                            (newTVar =<< readTVar ps) <*>
+                                                                            (newTVar =<< readTVar pm) <*>
+                                                                            newArray
+                                                                        return (i, t) | i <- [w..w+n-1]]
             let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
             oldWho <- lift $ liftM round $ readTVar who
             lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
-            ns <- newTurtles oldWho n
+            ns <- lift $ newTurtles oldWho n
             lift $ modifyTVar' tw (addTurtles ns) 
             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 

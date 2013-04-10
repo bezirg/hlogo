@@ -29,17 +29,17 @@ test-suite test
 
 -- Benchmarks
 
--- executable fire
---   main-is:             Fire.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Fire
+executable fire
+  main-is:             Fire.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Fire
 
--- executable flocking
---   main-is:             Flocking.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Flocking
+executable flocking
+  main-is:             Flocking.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
+  ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Flocking
 
 -- executable ising
 --   main-is:             Ising.hs
@@ -60,6 +60,18 @@ executable wolfsheep
   ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/WolfSheep
 
+executable sheep1
+  main-is:             Sheep1.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Sheep1
+
+executable sheep2
+  main-is:             Sheep2.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
+  hs-source-dirs:      src, bench/HLogo/Sheep2
+
 executable simple1
   main-is:             Simple1.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
@@ -71,9 +83,3 @@ executable simple2
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
   ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
   hs-source-dirs:      src, bench/HLogo/Simple2
-
-executable hlogo
-  main-is:             Main.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src
