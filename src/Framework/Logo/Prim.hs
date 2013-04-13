@@ -58,6 +58,7 @@ import Data.Maybe (maybe, fromJust)
 import Data.Typeable
 import Control.Monad (liftM, liftM2, filterM, forever, when, replicateM)
 import Data.Word (Word8)
+import GHC.Conc (numCapabilities)
 -- For diagrams
 
 import qualified Diagrams.Prelude as Diag
@@ -1660,19 +1661,8 @@ ask_ f as = do
    Nobody -> throw $ ContextException "agent" Nobody
    _ -> return ()
  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
- let [as1,as2,as3,as4] = split 4 as
- (_, wait1) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
- (_, wait2) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
- (_, wait3) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as3])
- (_, wait4) <- lift $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- as4])
- lift wait1
- lift wait2
- lift wait3
- lift wait4
- return ()
- -- tg <- lift ThreadGroup.new
- -- lift . sequence_ $ [ThreadGroup.forkIO tg (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
- -- lift $ ThreadGroup.wait tg
+ ws <- lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence_ [runReaderT f (gs, tw, a, p, g, s) | a <- asi])) (split numCapabilities as)
+ lift $ sequence_ ws 
 
 -- | Internal
 split :: Int -> [a] -> [[a]]
@@ -1693,20 +1683,10 @@ of_ f as = do
     Nobody -> throw $ ContextException "agent" Nobody
     _ -> return ()
   if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
-  let [as1,as2,as3,as4] = split 4 as
-  (_, wait1) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as1])
-  (_, wait2) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as2])
-  (_, wait3) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as3])
-  (_, wait4) <- lift $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- as4])
-  r1 <- lift $ Thread.result =<< wait1
-  r2 <- lift $ Thread.result =<< wait2
-  r3 <- lift $ Thread.result =<< wait3
-  r4 <- lift $ Thread.result =<< wait4
-  return $ r1 ++ r2 ++ r3 ++ r4
-
-  -- xs <- lift . sequence $ [Thread.forkIO (runReaderT f (gs, tw, a, p, g, s)) | a <- as]
-  -- lift $ mapM (\(_, wait) -> wait >>= Thread.result ) xs
-
+  ws <- lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [runReaderT f (gs, tw, a, p, g, s) | a <- asi])) (split numCapabilities as)
+  rs <- lift $ sequence $ [Thread.result =<< w | w <- ws]
+  return $ concat rs            -- lists traversals can be optimized
+  
 -- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
 -- in other words, the agents satisfying the given condition. 
 with :: CIO Bool -> [AgentRef] -> CIO [AgentRef]
