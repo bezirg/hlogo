@@ -29,57 +29,75 @@ test-suite test
 
 -- Benchmarks
 
-executable fire
-  main-is:             Fire.hs
+executable sheep100
+  main-is:             Sheep100.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Fire
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep100
 
-executable flocking
-  main-is:             Flocking.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell
-  ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Flocking
-
--- executable ising
---   main-is:             Ising.hs
---   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   ghc-options:         -rtsopts -threaded -ddump-splices -fwarn-unused-imports
---   hs-source-dirs:      src, bench/HLogo/Ising
-
-
-executable termites
-  main-is:             Termites.hs
+executable sheep250
+  main-is:             Sheep250.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Termites
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep250
 
-executable wolfsheep
-  main-is:             WolfSheep.hs
+executable sheep500
+  main-is:             Sheep500.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/WolfSheep
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep500
 
-executable sheep1
-  main-is:             Sheep1.hs
+executable sheep1000
+  main-is:             Sheep1000.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Sheep1
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep1000
 
-executable sheep2
-  main-is:             Sheep2.hs
+executable sheep2000
+  main-is:             Sheep2000.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Sheep2
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep2000
 
-executable simple1
-  main-is:             Simple1.hs
+executable sheep3000
+  main-is:             Sheep3000.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Simple1
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/Sheep3000
 
-executable simple2
-  main-is:             Simple2.hs
+executable redblue1000
+  main-is:             RedBlue1000.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  ghc-options:         -rtsopts -threaded -eventlog -ddump-splices -fwarn-unused-imports
-  hs-source-dirs:      src, bench/HLogo/Simple2
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue1000
+
+executable redblue2500
+  main-is:             RedBlue2500.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue2500
+
+executable redblue5000
+  main-is:             RedBlue5000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue5000
+
+executable redblue10000
+  main-is:             RedBlue10000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue10000
+
+executable redblue20000
+  main-is:             RedBlue20000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue20000
+
+executable redblue30000
+  main-is:             RedBlue30000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue30000
+
