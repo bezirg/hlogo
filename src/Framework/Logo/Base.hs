@@ -30,7 +30,8 @@ data Turtle = MkTurtle {
       size_ :: TVar Double,
       pen_size_ :: TVar Double,
       pen_mode_ :: TVar PenMode,
-      tvars_ :: Array Int (TVar Double)
+      tvars_ :: Array Int (TVar Double),
+      tgen :: TVar StdGen
     }
               deriving (Eq)
 
@@ -43,7 +44,8 @@ data Patch = MkPatch {
       pcolor_ :: TVar Double,
       plabel_ :: TVar String,
       plabel_color_ :: TVar Double,
-      pvars_ :: Array Int (TVar Double)
+      pvars_ :: Array Int (TVar Double),
+      pgen :: TVar StdGen
       }
            deriving (Eq)
 
@@ -59,7 +61,8 @@ data Link = MkLink {
       thickness_ :: TVar Double,
       lshape_ :: TVar String,
       tie_mode :: TVar TieMode,
-      lvars_ :: Array Int (TVar Double)
+      lvars_ :: Array Int (TVar Double),
+      lgen :: TVar StdGen
     }
           deriving (Eq)
 
@@ -88,12 +91,12 @@ data World = MkWorld Patches Turtles Links
 data AgentRef = PatchRef (Int,Int) Patch
               | TurtleRef Int Turtle
               | LinkRef (Int,Int) Link
-              | ObserverRef     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions. 
+              | ObserverRef (TVar StdGen)     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions.  It carries its random generator.
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq, Typeable)
 
--- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output, the current random seed in a TVar and the CallerRef (myself)
-type Context = (Globals, TVar World, AgentRef, TChan String, TVar StdGen, AgentRef)
+-- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
+type Context = (Globals, TVar World, AgentRef, TChan String, AgentRef)
 
 type Set a = ([a], Int)
 
@@ -119,7 +122,7 @@ instance Show AgentRef where
     show (PatchRef (x,y) _) = "PatchRef (" ++ show x ++ "," ++ show y ++ ")"
     show (TurtleRef w _) = "TurtleRef " ++ show w
     show (LinkRef (x,y) _) = "LinkRef (" ++ show x ++ "," ++ show y ++ ")"
-    show (ObserverRef) = "ObserverRef"
+    show (ObserverRef _) = "ObserverRef"
     show Nobody = "nobody"
 
 instance Ord AgentRef where

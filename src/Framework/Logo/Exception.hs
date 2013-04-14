@@ -78,5 +78,5 @@ fromAgentRef a = case a of
                    PatchRef _ _ -> "patch"
                    TurtleRef _ _ -> "turtle"
                    LinkRef _ _ -> "link"
-                   ObserverRef -> "observer"
+                   ObserverRef _ -> "observer"
                    Nobody -> "nobody"

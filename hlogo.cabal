@@ -65,6 +65,43 @@ executable sheep3000
   ghc-options:         -rtsopts -threaded 
   hs-source-dirs:      src, bench/HLogo/Sheep3000
 
+executable safesheep100
+  main-is:             SafeSheep100.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep100
+
+executable safesheep250
+  main-is:             SafeSheep250.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep250
+
+executable safesheep500
+  main-is:             SafeSheep500.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep500
+
+executable safesheep1000
+  main-is:             SafeSheep1000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep1000
+
+executable safesheep2000
+  main-is:             SafeSheep2000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep2000
+
+executable safesheep3000
+  main-is:             SafeSheep3000.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded 
+  hs-source-dirs:      src, bench/HLogo/SafeSheep3000
+
+
 executable redblue1000
   main-is:             RedBlue1000.hs
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
@@ -100,4 +137,10 @@ executable redblue30000
   build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
   ghc-options:         -rtsopts -threaded
   hs-source-dirs:      src, bench/HLogo/RedBlue30000
+
+executable hlogo
+  main-is:             Main.hs
+  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src
 

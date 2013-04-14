@@ -38,20 +38,20 @@ case_AskRNG_2D = runT $ do
   ask_ (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
 
   a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 0
-  let e1 = [(0,-5,95,225)]
+  let e1 = [(0,-5,65,309)]
   lift $ e1 @=? a1
 
   a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 1
-  let e2 = [(12,14,105,225)]
+  let e2 = [(-3,-2,85,204)]
   lift $ e2 @=? a2
 
 
   a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 2
-  let e3 = [(5,-4,55,268)]
+  let e3 = [(-6,-10,45,148)]
   lift $ e3 @=? a3
 
   a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 3
-  let e4 = [(-14,-1,35,195)]
+  let e4 = [(12,14,35,52)]
   lift $ e4 @=? a4
 
 
@@ -99,7 +99,7 @@ case_RecursiveCallInsideAsk2 = let
                                   lift $ e1 @=? a1
 
                                   a2 <- unsafe_glob1
-                                  let e2 = 21
+                                  let e2 = 1
                                   lift $ e2 @=? a2
           
 case_RecursionOverAsk = let

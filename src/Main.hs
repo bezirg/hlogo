@@ -20,15 +20,15 @@ link_breeds_own "arcs" ["a1", "a2"]
 link_breeds_own "edges" ["e1", "e2"]
 
 setup = do
-  return ()
+  atomic $ reset_ticks
 
 go = do
-  atomic $ crt 10
-  a2' <- atomic $ turtles
-  a2 <- of_ (atomic $ who) =<< min_one_of a2' (atomic $ who)
-  unsafe_show_ $ head a2
-
-  unsafe_show_ =<< with (who >>= \ w -> return (w < 5)) =<< unsafe_turtles
+  ts <- atomic $ crt 10
+  ask_ (atomic $ do
+          x <- random_xcor
+          y <- random_xcor
+          setxy x y) ts
+  snapshot
 
 behave = do
     atomic (forward 1 >> forward 1)

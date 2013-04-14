@@ -41,7 +41,7 @@ cInit gl po = do
   tp <- newTChanIO
   ts <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
-  return (gs, tw, ObserverRef, tp, ts, Nobody)
+  return (gs, tw, ObserverRef ts, tp, Nobody)
 
 -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
 printer:: TChan String -> IO ()
@@ -59,4 +59,5 @@ newPatch x y po = MkPatch <$>
                   newTVarIO "" <*>
                   newTVarIO 9.9 <*>
                   -- init the patches-own variables to 0
-                  (return . listArray (0, fromIntegral po -1) =<< replicateM (fromIntegral po) (newTVarIO 0))
+                  (return . listArray (0, fromIntegral po -1) =<< replicateM (fromIntegral po) (newTVarIO 0)) <*>
+                  newTVarIO (mkStdGen (x + y * 1000))
