@@ -46,7 +46,7 @@ case_Foreach1 = runT $ do
 case_While = runT $ do
   atomic $ random_seed 272
   atomic $ crt 10
-  while (anyp =<< unsafe_turtles) (ask_ (atomic $ die) =<< atomic (one_of =<< turtles))
+  while (anyp =<< unsafe_turtles) (ask (atomic $ die) =<< atomic (one_of =<< turtles))
 
   a1 <- anyp =<< unsafe_turtles
   let e1 = False

@@ -32,7 +32,7 @@ case_Agentsets1 = runT $ do
    let e1 = True
    lift $ e1 @=? a1
 
-   ask_ (atomic $ die) =<< unsafe_turtles
+   ask (atomic $ die) =<< unsafe_turtles
    a2 <- atomic $ anyp =<< turtles
    let e2 = False
    lift $ e2 @=? a2
@@ -74,7 +74,7 @@ case_Agentsets1 = runT $ do
    lift $ e9 @=? a9
 
 case_Agentsets2 = runT $ do
-  let a1 = ask_ (atomic $ die) =<< atomic (one_of =<< turtles)
+  let a1 = ask (atomic $ die) =<< atomic (one_of =<< turtles)
   
   assertTypeException (lift . evaluate =<< a1)
 
@@ -84,7 +84,7 @@ case_Agentsets2 = runT $ do
   let e2 = 0
   lift $ e2 @=? head a2
 
-  ask_ (atomic $ die) =<< with (liftM (<5) who) =<< unsafe_turtles
+  ask (atomic $ die) =<< with (liftM (<5) who) =<< unsafe_turtles
   a3' <- atomic $ turtles
   a3 <- of_ (atomic $ who) =<< min_one_of a3' (atomic $ who)
   let e3 = 5
@@ -106,8 +106,8 @@ case_Agentsets2 = runT $ do
   let e7 = 0
   lift $ e7 @=? head a7
 
-  ask_ (atomic $ set_breed "mice") =<< unsafe_turtle 7
-  ask_ (atomic $ set_breed "mice") =<< unsafe_turtle 8
+  ask (atomic $ set_breed "mice") =<< unsafe_turtle 7
+  ask (atomic $ set_breed "mice") =<< unsafe_turtle 8
   a8 <- of_ (atomic $ count =<< mice_here) =<< unsafe_turtle 7
   let e8 = 2
   lift $ e8 @=? head a8
@@ -150,8 +150,8 @@ case_Agentsets3 = runT $ do
 case_Agentsets4_2D = runT $ do
   atomic $ random_seed 29020
   atomic $ crt 100
-  ask_ (atomic $ fd 3) =<< unsafe_turtles
-  ask_ (atomic . create_links_with =<< with (do
+  ask (atomic $ fd 3) =<< unsafe_turtles
+  ask (atomic . create_links_with =<< with (do
                                               w1 <- who
                                               [w2] <- of_ who =<< myself
                                               return $ w1 > w2)  =<< unsafe_turtles)
@@ -268,7 +268,7 @@ case_AgentSetEquality = runT $ do
    lift $ e7 @=? a7
 
    atomic $ crt 10
-   ask_ (atomic . create_links_with =<< with (do
+   ask (atomic . create_links_with =<< with (do
                                                w1 <- who
                                                [w2] <- of_ who =<< myself
                                                return $ w1 > w2)  =<< unsafe_turtles)
@@ -334,9 +334,9 @@ case_AgentSetEquality = runT $ do
    
 case_SimpleLinkAgentset = runT $ do
   atomic $ crt 2
-  ask_ (atomic $ create_link_to =<< turtle 1) =<< unsafe_turtle 0
-  ask_ (atomic $ create_link_from =<< turtle 1) =<< unsafe_turtle 0
-  ask_ (atomic die) =<< unsafe_link 0 1
+  ask (atomic $ create_link_to =<< turtle 1) =<< unsafe_turtle 0
+  ask (atomic $ create_link_from =<< turtle 1) =<< unsafe_turtle 0
+  ask (atomic die) =<< unsafe_link 0 1
 
   a22 <- of_ (do
               [w1] <- of_ who =<< atomic end1
@@ -356,8 +356,8 @@ case_CountTurtlesOptimization = runT $ do
   
 case_LinkAgentsetDeadLinks = runT $ do
   atomic $ crt 10
-  ask_ (atomic $ create_links_with =<< other =<< turtles) =<< unsafe_turtles
-  ask_ (atomic $ die) =<< unsafe_links
+  ask (atomic $ create_links_with =<< other =<< turtles) =<< unsafe_turtles
+  ask (atomic $ die) =<< unsafe_links
 
   a1 <- count =<< unsafe_links
   let e1 = 0

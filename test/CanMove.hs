@@ -29,7 +29,7 @@ canmoveTestGroup = $(testGroupGenerator)
 case_CanMove2Box_2D = runT $ do
   -- box topology
   atomic $ crt 1
-  ask_ (atomic $ set_heading 0 >> fd 5.1) =<< unsafe_turtle 0
+  ask (atomic $ set_heading 0 >> fd 5.1) =<< unsafe_turtle 0
 
   [a1] <- of_ (atomic $ can_movep 12) =<< unsafe_turtle 0
   let e1 = False

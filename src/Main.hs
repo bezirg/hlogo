@@ -1,12 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Framework.Logo.Conf
-import Control.Monad
+import Framework.Logo           -- (required) this line imports the EDSL
 
 globals ["g1", "g2", "g3"] -- Introduces g1, unsafe_g1, set_g1, with_g1 etc..
 turtles_own ["t1", "t2"] -- Introduces t1, unsafe_t1, set_t1, with_t1 etc..
@@ -20,7 +12,7 @@ link_breeds_own "arcs" ["a1", "a2"] -- a1, unsafe_a1, set_a1, etc..
 link_breeds_own "edges" ["e1", "e2"] -- a1, unsafe_a1, set_a1, etc..
 
 setup = do
-  ask_ (do
+  ask (do
          [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
          atomic $ set_pcolor c) =<< unsafe_patches
   atomic $ create_turtles 10000
@@ -32,7 +24,7 @@ go = forever $ do               -- go is a forever action, so it runs recursivel
   when (t==1000) $ do
                  -- snapshot -- Uncomment this line to draw a snapshot at the last tick=1000 before stop 
                  stop
-  ask_ (behave) =<< unsafe_turtles
+  ask (behave) =<< unsafe_turtles
   atomic $ tick
 
 behave = do

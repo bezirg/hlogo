@@ -59,7 +59,7 @@ case_All3_2D = runT $ do
   lift $ e2 @=? a2
 
 case_All4 = runT $ do
-  ask_ (atomic $ sprout 1) =<< unsafe_patches
+  ask (atomic $ sprout 1) =<< unsafe_patches
   a1 <- allp (do
               s <- self
               th <- atomic $ one_of =<< turtles_here
