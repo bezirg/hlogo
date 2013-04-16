@@ -15,6 +15,7 @@ module Framework.Logo.Exception
     )
         where
 
+import Prelude hiding (catch)   -- for GHC 7.4
 import Framework.Logo.Base
 import Control.Exception hiding (catch)
 import qualified Control.Exception as E (catch)

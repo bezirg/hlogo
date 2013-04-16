@@ -37,6 +37,7 @@ module Framework.Logo.Prim (
 
 ) where
 
+import Prelude hiding (catch) -- for GHC 7.4
 import Framework.Logo.Base
 import Framework.Logo.Conf
 import Framework.Logo.Exception

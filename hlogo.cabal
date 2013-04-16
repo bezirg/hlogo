@@ -10,7 +10,7 @@ build-type:            Simple
 cabal-version:         >= 1.4
                       
 library
-  build-depends:      base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  build-depends:      base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
   exposed-modules:    Framework.Logo.Base, Framework.Logo.Core, 
                       Framework.Logo.Keyword, Framework.Logo.Prim, 
                       Framework.Logo.Exception,
@@ -28,7 +28,7 @@ test-suite test
 
 executable hlogo
   main-is:             Main.hs
-  build-depends:       base, containers, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
   ghc-options:         -rtsopts -threaded
   hs-source-dirs:      src
 
