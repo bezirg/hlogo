@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals []
 patches_own []
@@ -15,12 +8,12 @@ density = 20
 number = 400
 
 setup = do
-  ask_ (do
+  ask (do
          r <- unsafe_random_float 100
          when (r < density) $ atomic $ set_pcolor yellow) =<< unsafe_patches
 
   ts <- atomic $ create_turtles number
-  ask_ (do
+  ask (do
          x <- unsafe_random_xcor
          y <- unsafe_random_ycor
          atomic $ do
@@ -32,11 +25,11 @@ setup = do
 go = forever $ do
   t <- unsafe_ticks
   when (t > 100) (do
-                    unsafe_show_ t
-                    unsafe_show_ =<< count =<< unsafe_turtles
+                    unsafe_show t
+                    unsafe_show =<< count =<< unsafe_turtles
                     stop
                   )
-  ask_ (do 
+  ask (do 
         search_for_chip
         find_new_pile
         put_down_chip

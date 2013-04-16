@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals []
 patches_own []
@@ -18,8 +11,8 @@ setup = do
 go = forever $ do
   t <- unsafe_ticks
   when (t==8) $ stop
-  ask_ (behave) =<< unsafe_turtles
-  unsafe_show_ t
+  ask (behave) =<< unsafe_turtles
+  unsafe_show t
   atomic $ tick
 
 behave = do

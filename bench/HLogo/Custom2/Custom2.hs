@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals []
 patches_own []
@@ -16,7 +9,7 @@ setup = do
   atomic $ reset_ticks
 
 go = forever $ do
-  ask_ (behave >> behave >> behave >> behave >> behave >> behave >> behave >> behave) =<< unsafe_turtles
+  ask (behave >> behave >> behave >> behave >> behave >> behave >> behave >> behave) =<< unsafe_turtles
   stop
 
 behave = do

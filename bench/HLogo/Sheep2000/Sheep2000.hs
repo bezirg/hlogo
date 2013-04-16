@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals []
 patches_own ["countdown"]
@@ -23,8 +16,8 @@ sheep_reproduce = 4
 wolf_reproduce = 5
 
 setup = do
-  ask_ (atomic $ set_pcolor green) =<< unsafe_patches
-  when grassp $ ask_ (do
+  ask (atomic $ set_pcolor green) =<< unsafe_patches
+  when grassp $ ask (do
                        r <- unsafe_random grass_regrowth_time
                        c <- liftM head (unsafe_one_of [green, brown])
                        atomic $ do
@@ -33,7 +26,7 @@ setup = do
                      ) =<< unsafe_patches
 
   s <- atomic $ create_sheep initial_number_sheep
-  ask_ (do
+  ask (do
           s <- unsafe_random (2 * sheep_gain_from_food)
           x <- unsafe_random_xcor
           y <- unsafe_random_ycor
@@ -49,15 +42,15 @@ setup = do
 
 go = forever $ do
   t <- unsafe_ticks
-  when (t > 1000) (unsafe_sheep >>= count >>= unsafe_print_ >> stop)
-  ask_ (do
+  when (t > 1000) (unsafe_sheep >>= count >>= unsafe_print >> stop)
+  ask (do
          move
          e <- unsafe_senergy
          when grassp $ do
             atomic $ set_senergy (e -1)
             eat_grass
        ) =<< unsafe_sheep
-  when grassp (ask_ grow_grass =<< unsafe_patches)
+  when grassp (ask grow_grass =<< unsafe_patches)
   atomic $ tick
 
 move = do

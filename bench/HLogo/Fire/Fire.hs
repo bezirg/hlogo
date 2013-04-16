@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals ["initial_trees", "burned_trees"]
 patches_own []
@@ -16,8 +9,8 @@ breeds_own "fires" []
 breeds_own "embers" []
 
 setup = do
-  ask_ (atomic $ set_pcolor green) =<< (with (liftM (< 99) (unsafe_random_float 100)) =<< unsafe_patches)
-  ask_ ignite =<< (with (liftM2 (==) pxcor min_pxcor ) =<< unsafe_patches)
+  ask (atomic $ set_pcolor green) =<< (with (liftM (< 99) (unsafe_random_float 100)) =<< unsafe_patches)
+  ask ignite =<< (with (liftM2 (==) pxcor min_pxcor ) =<< unsafe_patches)
   sit <- count =<< (with (liftM (== green) unsafe_pcolor) =<< unsafe_patches)
   atomic $ set_initial_trees (fromIntegral sit)
   atomic $ set_burned_trees 0
@@ -26,8 +19,8 @@ setup = do
 go = forever $ do
   ts <- unsafe_ticks
   when (ts > 500) (stop)
-  ask_ (do
-         ask_ ignite =<< (with (liftM (== green) unsafe_pcolor) =<< atomic neighbors4)
+  ask (do
+         ask ignite =<< (with (liftM (== green) unsafe_pcolor) =<< atomic neighbors4)
          atomic $ set_breed "embers"
        ) =<< unsafe_fires
   fade_embers
@@ -35,12 +28,12 @@ go = forever $ do
 
 ignite = do
   s <- atomic $ sprout_fires 1
-  ask_ (atomic $ set_color red) s
+  ask (atomic $ set_color red) s
   atomic $ set_pcolor black
   atomic $ with_burned_trees (+1)
 
 fade_embers = do
-  ask_ (atomic $ do
+  ask (atomic $ do
           c <- liftM (\ x -> x - 0.3) color
           set_color c
           if c < red - 3.5 then set_pcolor c >> die else return ()) =<< unsafe_embers

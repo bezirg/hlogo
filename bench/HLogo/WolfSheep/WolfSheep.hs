@@ -1,11 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals ["grass"]
 patches_own ["countdown"]
@@ -25,8 +18,8 @@ sheep_reproduce = 4
 wolf_reproduce = 5
 
 setup = do
-  ask_ (atomic $ set_pcolor green) =<< unsafe_patches
-  when grassp $ ask_ (do
+  ask (atomic $ set_pcolor green) =<< unsafe_patches
+  when grassp $ ask (do
                        r <- unsafe_random grass_regrowth_time
                        c <- liftM head (unsafe_one_of [green, brown])
                        atomic $ do
@@ -35,7 +28,7 @@ setup = do
                      ) =<< unsafe_patches
 
   s <- atomic $ create_sheep initial_number_sheep
-  ask_ (do
+  ask (do
           s <- unsafe_random (2 * sheep_gain_from_food)
           x <- unsafe_random_xcor
           y <- unsafe_random_ycor
@@ -48,7 +41,7 @@ setup = do
        ) s
 
   w <- atomic $ create_wolves initial_number_wolves
-  ask_ (do
+  ask (do
          w <- unsafe_random (2 * wolf_gain_from_food)
          x <- unsafe_random_xcor
          y <- unsafe_random_ycor
@@ -66,8 +59,8 @@ setup = do
 
 go = forever $ do
   t <- unsafe_ticks
-  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print_ >> unsafe_wolves >>= count >>= unsafe_print_ >> stop)
-  ask_ (do
+  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print >> unsafe_wolves >>= count >>= unsafe_print >> stop)
+  ask (do
          move
          e <- unsafe_senergy
          when grassp $ do
@@ -75,14 +68,14 @@ go = forever $ do
             eat_grass
          if (e-1 < 0 && grassp) then (atomic die) else reproduce_sheep
        ) =<< unsafe_sheep
-  ask_ (do
+  ask (do
          move
          e <- unsafe_wenergy
          atomic $ set_wenergy (e-1)
          catch_sheep
          if (e-1 < 0) then (atomic die) else reproduce_wolves
        ) =<< unsafe_wolves
-  when grassp (ask_ grow_grass =<< unsafe_patches)
+  when grassp (ask grow_grass =<< unsafe_patches)
   --g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
   --atomic $ set_grass (fromIntegral g)
   atomic $ tick
@@ -105,18 +98,18 @@ reproduce_sheep = do
   r <- unsafe_random_float 100
   when (r < sheep_reproduce) $ do
                     w <- atomic $ with_senergy (/ 2) >> hatch 1
-                    ask_ ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
+                    ask ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
 
 reproduce_wolves = do
   r <- unsafe_random_float 100
   when (r < wolf_reproduce) $ do
                      w <- atomic $ with_wenergy (/ 2) >> hatch 1
-                     ask_ ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
+                     ask ((unsafe_random_float 360 >>= \ r -> atomic (rt r >> fd 1))) w
                      
 catch_sheep = do
   prey <- unsafe_one_of =<< unsafe_sheep_here
   when (prey /= [Nobody]) $ do
-                ask_ (atomic $ die) prey
+                ask (atomic $ die) prey
                 atomic $ with_wenergy (+ wolf_gain_from_food)
 
 grow_grass = do

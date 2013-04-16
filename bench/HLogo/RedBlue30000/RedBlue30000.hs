@@ -1,18 +1,11 @@
-{-# LANGUAGE TemplateHaskell #-}
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals []
 patches_own []
 turtles_own []
 
 setup = do
-  ask_ (do
+  ask (do
          [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
          atomic $ set_pcolor c) =<< unsafe_patches
   atomic $ create_turtles 30000
@@ -21,7 +14,7 @@ setup = do
 go = forever $ do
   t <- unsafe_ticks
   when (t==1000) $ stop
-  ask_ (behave) =<< unsafe_turtles
+  ask (behave) =<< unsafe_turtles
   atomic $ tick
 
 behave = do

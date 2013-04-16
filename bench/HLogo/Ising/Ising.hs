@@ -1,10 +1,4 @@
-module Main where
-
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Exception
-import Framework.Logo.Base
-import Control.Monad
+import Framework.Logo
 
 globals ["sum_of_spins"]
 patches_own ["spin"]
@@ -13,7 +7,7 @@ turtles_own []
 temperature = 2.24
 
 setup = do
-  ask_ (do
+  ask (do
          if ( -1 == 0) then atomic (set_spin =<< liftM head (one_of [-1,1])) else atomic (set_spin (-1))
          recolor
        ) =<< unsafe_patches
@@ -24,7 +18,7 @@ setup = do
 go = forever $ do
   t <- unsafe_ticks
   when (t > 100000) stop
-  ask_ update =<< unsafe_one_of =<< unsafe_patches
+  ask update =<< unsafe_one_of =<< unsafe_patches
   atomic $ tick
 
 update = do
