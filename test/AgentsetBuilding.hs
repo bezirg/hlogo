@@ -28,13 +28,13 @@ agentsetbuildingTestGroup = $(testGroupGenerator)
 case_TurtleSet_2D = runT $ do 
                atomic $ crt 1
                       
-               e1 <- of_ (atomic $ turtle_set [self]) =<< unsafe_turtle 0
-               a1 <- unsafe_turtles
+               e1 <- of_ (atomic $ turtle_set [self]) =<< turtle 0
+               a1 <- turtles
                lift $ concat e1 @=? a1
 
                atomic $ crt 10
                e2 <- atomic $ turtle_set [sort_ =<< turtles, turtle 0]
-               a2 <- unsafe_turtles
+               a2 <- turtles
                lift $ [] @=? e2 \\ a2
               
                let a3 = atomic $ turtle_set [sort_ =<< patches, turtle 0]
@@ -42,7 +42,7 @@ case_TurtleSet_2D = runT $ do
                assertTypeException (lift . evaluate =<< a3)
   
                e4 <- atomic $ turtle_set [turtles, turtle 0]
-               a4 <- unsafe_turtles
+               a4 <- turtles
                
                lift $ [] @=? e4 \\ a4
 
@@ -52,7 +52,7 @@ case_TurtleSet_2D = runT $ do
                lift $ e5 @=? a5
 
                let e6 = 1
-               a6 <- count =<< turtle_set [unsafe_turtle 0, unsafe_turtle 0]
+               a6 <- count =<< turtle_set [turtle 0, turtle 0]
                
                lift $ e6 @=? a6
 
@@ -63,7 +63,7 @@ case_TurtleSet_2D = runT $ do
                a7 <- count =<< turtle_set [unsafe_frogs, unsafe_mice]
                lift $ e7 @=? a7
 
-               a8 <- of_ (turtle_set [self]) =<< unsafe_patch 0 0
+               a8 <- of_ (turtle_set [self]) =<< patch 0 0
                assertTypeException (lift $ evaluate $ head a8)
 
 case_TurtleSet_3D = assertFailure "HLogo does not currently support 3D lattices"
@@ -87,10 +87,10 @@ case_TurtleSetNestedLists = assertFailure "HLogo currently does not support flat
 
 case_PatchSet2_2D = runT $ do
    atomic $ crt 1
-   a1 <- of_ (atomic $ patch_set [self])  =<< unsafe_turtle 0
+   a1 <- of_ (atomic $ patch_set [self])  =<< turtle 0
    assertTypeException (lift $ evaluate $ head a1)
 
-   ask (atomic $ set_glob1 3) =<< unsafe_patch 0 0
+   ask (atomic $ set_glob1 3) =<< patch 0 0
    a2 <- atomic $ glob1
    let e2 = 3
    lift $ e2 @=? a2
@@ -141,7 +141,7 @@ case_PatchSetNestedLists_3D = assertFailure "HLogo does not currently support 3D
 
 case_LinkSet_2D = runT $ do
    atomic $ crt 3
-   ask (atomic $ create_link_with =<< turtle 1) =<< unsafe_turtle 0
+   ask (atomic $ create_link_with =<< turtle 1) =<< turtle 0
    
    let a1 = of_ (atomic $ link_set [self]) =<< atomic (link 0 2)
    assertTypeException (lift . evaluate =<< a1)
@@ -150,7 +150,7 @@ case_LinkSet_2D = runT $ do
    e2 <- atomic $ links
    lift $ e2 @=? concat a2
 
-   ask (atomic $ create_links_with =<< other =<< turtles) =<< unsafe_turtles
+   ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
    a3 <- atomic $ link_set [sort_ =<< links, link 0 1]
    e3 <- atomic $ links
    lift $ [] @=? a3 \\ e3

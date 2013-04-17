@@ -16,13 +16,13 @@ sheep_reproduce = 4
 wolf_reproduce = 5
 
 setup = do
-  ask (atomic $ set_pcolor green) =<< unsafe_patches
+  ask (atomic $ set_pcolor green) =<< patches
   when grassp $ ask (atomic $ do
                        r <- random grass_regrowth_time
                        c <- liftM head (one_of [green, brown])
                        set_countdown r
                        set_pcolor c
-                     ) =<< unsafe_patches
+                     ) =<< patches
 
   s <- atomic $ create_sheep initial_number_sheep
   ask (atomic $ do
@@ -39,16 +39,16 @@ setup = do
 
 
 go = forever $ do
-  t <- unsafe_ticks
+  t <- ticks
   when (t > 1000) (unsafe_sheep >>= count >>= unsafe_print >> stop)
   ask (do
          move
-         e <- unsafe_senergy
+         e <- senergy
          when grassp $ do
             atomic $ set_senergy (e -1)
             eat_grass
        ) =<< unsafe_sheep
-  when grassp (ask grow_grass =<< unsafe_patches)
+  when grassp (ask grow_grass =<< patches)
   atomic $ tick
 
 move = atomic $ do
@@ -59,15 +59,15 @@ move = atomic $ do
   fd 1
 
 eat_grass = do
-  c <- unsafe_pcolor
+  c <- pcolor
   when (c == green) $ do
               atomic $ set_pcolor brown
               atomic $ with_senergy (+ sheep_gain_from_food)
 
 grow_grass = do
-  c <- unsafe_pcolor
+  c <- pcolor
   when (c == brown) $ do
-               d <- unsafe_countdown
+               d <- countdown
                atomic $ if (d <= 0)
                         then set_pcolor green >> set_countdown grass_regrowth_time
                         else set_countdown $ d -1

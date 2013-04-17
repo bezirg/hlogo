@@ -14,21 +14,21 @@ link_breeds_own "edges" ["e1", "e2"] -- a1, unsafe_a1, set_a1, etc..
 setup = do
   ask (do
          [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
-         atomic $ set_pcolor c) =<< unsafe_patches
+         atomic $ set_pcolor c) =<< patches
   atomic $ create_turtles 10000
   atomic $ reset_ticks
   -- snapshot -- Uncomment this line to draw a snapshot at tick=0.eps
 
 go = forever $ do               -- go is a forever action, so it runs recursively until stop is called
-  t <- unsafe_ticks
+  t <- ticks
   when (t==1000) $ do
                  -- snapshot -- Uncomment this line to draw a snapshot at the last tick=1000 before stop 
                  stop
-  ask (behave) =<< unsafe_turtles
+  ask (behave) =<< turtles
   atomic $ tick
 
 behave = do
-  c <- unsafe_pcolor
+  c <- pcolor
   atomic $ fd 1 >> if c == red
                    then lt 30
                    else when (c == blue) (rt 30)

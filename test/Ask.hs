@@ -28,7 +28,7 @@ breeds_own "mice" []
 askTestGroup = $(testGroupGenerator)
 case_AskRNG_2D = runT $ do 
   atomic $ random_seed 0
-  unsafe_wait 0.1  
+  wait 0.1  
   -- ask_ (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches)
   --  cannot use this because is non deterministic, ask STM
   -- instead
@@ -37,20 +37,20 @@ case_AskRNG_2D = runT $ do
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
 
-  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 0
+  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
   let e1 = [(0,-5,65,309)]
   lift $ e1 @=? a1
 
-  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 1
+  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
   let e2 = [(-3,-2,85,204)]
   lift $ e2 @=? a2
 
 
-  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 2
+  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
   let e3 = [(-6,-10,45,148)]
   lift $ e3 @=? a3
 
-  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< unsafe_turtle 3
+  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
   let e4 = [(12,14,35,52)]
   lift $ e4 @=? a4
 
@@ -62,20 +62,20 @@ case_RecursiveCallInsideAsk1 = let
       atomic $ crt 1
     go2 x =
       ask (do
-             g <- unsafe_glob1
+             g <- glob1
              atomic $ set_glob1 (g + 1)
              when (x > 0) (go2 (x - 1))
-           ) =<< unsafe_turtle 0
+           ) =<< turtle 0
 
                                in
                                  runT $ do
                                    atomic $ set_glob1 0
                                    go1
-                                   a1 <- count =<< unsafe_turtles
+                                   a1 <- count =<< turtles
                                    let e1 = 2
                                    lift $ e1 @=? a1
 
-                                   a2 <- unsafe_glob1
+                                   a2 <- glob1
                                    let e2 = 6
                                    lift $ e2 @=? a2
 
@@ -85,67 +85,67 @@ case_RecursiveCallInsideAsk2 = let
       go2
       atomic $ crt 1
     go2 = ask (do
-                 g <- unsafe_glob1
+                 g <- glob1
                  atomic $ set_glob1 (g + 1)
                  r <- atomic $ random (10 :: Int)
-                 when (r > 0) go2) =<< unsafe_turtle 0
+                 when (r > 0) go2) =<< turtle 0
                                 in runT $ do
                                   atomic $ set_glob1 0
                                   atomic $ random_seed 0
                                   go1
                                           
-                                  a1 <- count =<< unsafe_turtles
+                                  a1 <- count =<< turtles
                                   let e1 = 2
                                   lift $ e1 @=? a1
 
-                                  a2 <- unsafe_glob1
+                                  a2 <- glob1
                                   let e2 = 1
                                   lift $ e2 @=? a2
           
 case_RecursionOverAsk = let
     explore = do
-      t <- unsafe_tvar
+      t <- tvar
       when (t == 0) (do
                         atomic $ set_tvar 1
                         ns <- atomic $ neighbors
                         ask explore =<< turtles_on ns)
                         in runT $ do
-                          ask (atomic $ sprout 1) =<< unsafe_patches
+                          ask (atomic $ sprout 1) =<< patches
                           ask explore =<< atomic (one_of =<< turtles)
-                          a1 <- anyp =<< with (liftM (== 0) unsafe_tvar) =<< unsafe_turtles
+                          a1 <- anyp =<< with (liftM (== 0) tvar) =<< turtles
                           let e1 = False
                           lift $ e1 @=? a1
 
 case_AskInsideReporterProcedure = let
     foo = do
-      ask (atomic $ set_glob1 =<< liftM fromIntegral who) =<< unsafe_turtle 1
+      ask (atomic $ set_glob1 =<< liftM fromIntegral who) =<< turtle 1
       return 10
                                   in runT $ do
                                     atomic $ crt 2
-                                    [a1] <- of_ foo =<< unsafe_turtle 0
+                                    [a1] <- of_ foo =<< turtle 0
                                     let e1 = 10
                                     lift $ e1 @=? a1
                                     
-                                    a2 <- unsafe_glob1
+                                    a2 <- glob1
                                     let e2 = 1
                                     lift $ e2 @=? a2
 
 case_AskAllTurtles = runT $ do
   atomic $ crt 1
-  let a1 = ask (ask (atomic die) =<< unsafe_turtles) =<< atomic (one_of =<< patches)
+  let a1 = ask (ask (atomic die) =<< turtles) =<< atomic (one_of =<< patches)
   --assertContextException (lift . evaluate =<< a1)
 
-  let a2 = ask (ask (atomic die) =<< unsafe_turtles) =<< atomic (one_of =<< turtles)
+  let a2 = ask (ask (atomic die) =<< turtles) =<< atomic (one_of =<< turtles)
   --assertContextException (lift . evaluate =<< a2)
   lift $ assertFailure "HLogo does not have the ask limitation (Only the observer can ASK the set of all turtles or patches)"
 
 case_AskAllPatches = runT $ do
   atomic $ crt 1
                        
-  let a1 = ask (ask (atomic $ sprout 1) =<< unsafe_patches) =<< atomic (one_of =<< patches)
+  let a1 = ask (ask (atomic $ sprout 1) =<< patches) =<< atomic (one_of =<< patches)
   --assertContextException (lift . evaluate =<< a1)
 
-  let a2 = ask (ask (atomic $ sprout 1) =<< unsafe_patches) =<< atomic (one_of =<< turtles)
+  let a2 = ask (ask (atomic $ sprout 1) =<< patches) =<< atomic (one_of =<< turtles)
   -- assertContextException (lift . evaluate =<< a2)
 
   lift $ assertFailure "HLogo does not have the ask limitation (Only the observer can ASK the set of all turtles or patches)"

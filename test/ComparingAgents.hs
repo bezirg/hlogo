@@ -28,10 +28,10 @@ breeds_own "mice" []
 comparingagentsTestGroup = $(testGroupGenerator)
 case_ComparingLinks = runT $ do
   atomic $ crt 3
-  ask (atomic $ fd 5) =<< unsafe_turtles
-  ask (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 0
-  ask (atomic $ create_links_to =<< other =<< turtles) =<< unsafe_turtle 1
-  ask (atomic $ create_links_with =<< other =<< turtles) =<< unsafe_turtle 0
+  ask (atomic $ fd 5) =<< turtles
+  ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 0
+  ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 1
+  ask (atomic $ create_links_with =<< other =<< turtles) =<< turtle 0
   
   a1 <- atomic $ liftM2 (>) (link 1 0) (link 0 1)
   let e1 = True

@@ -9,9 +9,9 @@ setup = do
   atomic $ reset_ticks
 
 go = forever $ do
-  t <- unsafe_ticks
+  t <- ticks
   when (t==8) $ stop
-  ask (behave) =<< unsafe_turtles
+  ask (behave) =<< turtles
   unsafe_show t
   atomic $ tick
 

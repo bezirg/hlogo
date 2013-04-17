@@ -10,7 +10,7 @@ number = 400
 setup = do
   ask (do
          r <- unsafe_random_float 100
-         when (r < density) $ atomic $ set_pcolor yellow) =<< unsafe_patches
+         when (r < density) $ atomic $ set_pcolor yellow) =<< patches
 
   ts <- atomic $ create_turtles number
   ask (do
@@ -23,22 +23,22 @@ setup = do
   atomic $ reset_ticks
 
 go = forever $ do
-  t <- unsafe_ticks
+  t <- ticks
   when (t > 100) (do
                     unsafe_show t
-                    unsafe_show =<< count =<< unsafe_turtles
+                    unsafe_show =<< count =<< turtles
                     stop
                   )
   ask (do 
         search_for_chip
         find_new_pile
         put_down_chip
-      ) =<< unsafe_turtles
+      ) =<< turtles
   atomic $ tick
 
 
 search_for_chip = do
-  c <- unsafe_pcolor
+  c <- pcolor
   if (c == yellow)
     then atomic $ do
       set_pcolor black
@@ -49,13 +49,13 @@ search_for_chip = do
       search_for_chip
 
 find_new_pile = do
-  c <- unsafe_pcolor
+  c <- pcolor
   when (c /= yellow) $ do
                   wiggle
                   find_new_pile
 
 put_down_chip = do
-  c <- unsafe_pcolor
+  c <- pcolor
   if (c == black) 
     then do
       atomic $ do
@@ -72,7 +72,7 @@ get_away = do
   atomic $ do
     rt r
     fd 20
-  c <- unsafe_pcolor
+  c <- pcolor
   when (c /= black) get_away
 
 wiggle = do

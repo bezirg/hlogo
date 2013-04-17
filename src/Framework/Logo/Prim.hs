@@ -2,16 +2,16 @@
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Framework.Logo.Prim (
                            -- * Agent related
-                           self, myself, other, count, distance, nobody, unsafe_distance, distancexy, unsafe_distancexy, towards, unsafe_towards, allp, at_points, towardsxy, unsafe_towardsxy, in_radius, unsafe_in_radius, in_cone, unsafe_in_cone, unsafe_every, unsafe_wait, is_agentp, carefully, is_agentsetp, die, 
+                           self, myself, other, count, distance, nobody, distancexy, towards, allp, at_points, towardsxy, in_radius, in_cone, every, wait, is_agentp, carefully, is_agentsetp, die, 
 
                            -- * Turtle related
-                           turtles_here, unsafe_turtles_here, turtles_at, unsafe_turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, unsafe_turtles, turtle, unsafe_turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, unsafe_xcor, heading, set_heading, with_heading, unsafe_heading, ycor, set_ycor, unsafe_ycor, who, color, unsafe_color, breed, unsafe_breed, dx, unsafe_dx, dy, unsafe_dy, home, right, rt, left, lt, downhill, unsafe_downhill, downhill4, unsafe_downhill4,  hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size, with_size, with_shape,
+                           turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size, with_size, with_shape,
 
                            -- * Patch related
-                           patch_at, unsafe_patch_at, patch_here, unsafe_patch_here, patch_ahead, unsafe_patch_ahead, patches, unsafe_patches, patch, unsafe_patch, patch_set, can_movep, unsafe_can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor, unsafe_pcolor, neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color,
+                           patch_at, patch_here, patch_ahead, patches, patch, patch_set, can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor,  neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color,
 
                            -- * Link related
-                           hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, unsafe_link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, unsafe_links, end1, end2, 
+                           hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
 
                            -- * Random related
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, random_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
@@ -26,7 +26,7 @@ module Framework.Logo.Prim (
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
 
                            -- * Misc
-                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, unsafe_ticks, histogram, repeat_, report, loop, stop, while, 
+                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink,
 
                            -- * Input/Output
                            Framework.Logo.Prim.show, unsafe_show, Framework.Logo.Prim.print, unsafe_print, read_from_string,
@@ -66,6 +66,8 @@ import qualified Diagrams.Prelude as Diag
 import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
+{-# SPECIALIZE self :: CSTM [AgentRef] #-}
+{-# SPECIALIZE self :: CIO [AgentRef] #-}
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
@@ -77,6 +79,8 @@ self = do
     _ -> throw (ContextException "agent" a)
 
 
+{-# SPECIALIZE myself :: CSTM [AgentRef] #-}
+{-# SPECIALIZE myself :: CIO [AgentRef] #-}
 -- | "self" and "myself" are very different. "self" is simple; it means "me". "myself" means "the turtle or patch who asked me to do what I'm doing right now."
 -- When an agent has been asked to run some code, using myself in that code reports the agent (turtle or patch) that did the asking. 
 -- NB: Implemented for ask, of, with
@@ -89,36 +93,20 @@ myself = do
              LinkRef _ _ -> [m]
              _ -> throw (ContextException "agent" a)
 
+{-# SPECIALIZE other :: [AgentRef] -> CSTM [AgentRef] #-}
+{-# SPECIALIZE other :: [AgentRef] -> CIO [AgentRef] #-}
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
 other :: Monad m => [AgentRef] -> C m [AgentRef]
 other as = do
   [s] <- self
   return $ delete s as
 
--- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
-turtles_here :: CSTM [AgentRef]
-turtles_here = do
-  [s] <- self
-  [PatchRef (px,py) _] <- case s of
-                           TurtleRef _ _ -> patch_here
-                           patch -> return [patch]
-  ts <- turtles
-  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
-             x' <- lift $ readTVar x
-             y' <- lift $ readTVar y
-             return $ round x' == px && round y' == py
-          ) ts
 
--- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
-turtles_at :: Double -> Double -> CSTM [AgentRef] -- ^ dx -> dy -> CSTM (Set AgentRef)
-turtles_at x y = do
-  [PatchRef (px, py) _] <- patch_at x y
-  ts <- turtles
-  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
-             x' <- lift $ readTVar x
-             y' <- lift $ readTVar y
-             return $ round x' == px && round y' == py
-          ) ts
+
+
+
+
+
 
 -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
 show :: Show a => a -> CSTM ()
@@ -142,8 +130,10 @@ print a = do
 carefully :: CSTM a -> CSTM a -> CSTM a
 carefully c c' = catch c (\ e -> let _ = (e :: SomeException) in c')
 
+{-# SPECIALIZE patch_at :: Double -> Double -> CSTM [AgentRef] #-}
+{-# SPECIALIZE patch_at :: Double -> Double -> CIO [AgentRef] #-}
 -- | Reports the patch at (dx, dy) from the caller, that is, the patch containing the point dx east and dy patches north of this agent. 
-patch_at :: Double -> Double ->  CSTM [AgentRef]
+patch_at :: STMorIO m => Double -> Double ->  C m [AgentRef]
 patch_at x y = do
   (_, _, a, _, _) <- Reader.ask
   case a of
@@ -152,21 +142,13 @@ patch_at x y = do
                  [PatchRef (px, py) _] <- patch_here
                  patch (fromIntegral px + x) (fromIntegral py +y)
     _ -> throw $ ContextException "turtle or patch" a
-
--- | patch-here reports the patch under the turtle. 
-patch_here :: CSTM [AgentRef]
-patch_here = do
-  (_,_, a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
-               x' <- lift $ readTVar x
-               y' <- lift $ readTVar y
-               patch x' y'
-    _ -> throw $ ContextException "patch" a
+                 
 
 
+{-# SPECIALIZE patch_ahead :: Double -> CSTM [AgentRef] #-}
+{-# SPECIALIZE patch_ahead :: Double -> CIO [AgentRef] #-}
 -- | Reports the single patch that is the given distance "ahead" of this turtle, that is, along the turtle's current heading. 
-patch_ahead ::Double -> CSTM [AgentRef]
+patch_ahead :: STMorIO m => Double -> C m [AgentRef]
 patch_ahead n = do
   x <- xcor 
   y <- ycor
@@ -238,11 +220,15 @@ pink = 135
 primary_colors :: [Double]
 primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
 
+{-# SPECIALIZE count :: [AgentRef] -> CSTM Int #-}
+{-# SPECIALIZE count :: [AgentRef] -> CIO Int #-}
 -- | Reports the number of agents in the given agentset. 
 count :: Monad m => [AgentRef] -> C m Int
 count [Nobody] = throw $ TypeException "agent" Nobody
 count as = return $ length as
 
+{-# SPECIALIZE anyp :: [AgentRef] -> CSTM Bool #-}
+{-# SPECIALIZE anyp :: [AgentRef] -> CIO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
 anyp :: Monad m => [AgentRef] -> C m Bool
 anyp [Nobody] = throw $ TypeException "agent" Nobody
@@ -255,37 +241,6 @@ allp r as = do
   return $ if length as == length res
            then True
            else False
-
--- | Reports the agentset consisting of all patches. 
-patches :: CSTM [AgentRef]
-patches = do
-  (_,tw,_, _, _) <- Reader.ask
-  (MkWorld ps _ _) <- lift $ readTVar tw
-  return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
-
-
-
--- | Given the x and y coordinates of a point, reports the patch containing that point. 
-patch :: Double -> Double -> CSTM [AgentRef]
-patch x y = do
-  (_, tw,_, _, _) <- Reader.ask
-  (MkWorld ps _ _) <- lift $ readTVar tw
-  return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-           then [Nobody]
-           else
-               [PatchRef (x'', y'') (ps M.! (x'', y''))]
-         where
-           x' = round x
-           y' = round y
-           (x'',y'') = normalize x' y'
-           normalize :: Int -> Int -> (Int, Int)
-           normalize x y = (
-                            ((x + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
-                            ((y + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
-                           )
-
-
-
 
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> CSTM ()
@@ -401,21 +356,13 @@ die = do
                                               )
    _ -> throw $ ContextException "turtle or patch" a
 
--- | Reports the agentset consisting of all turtles. 
-turtles :: CSTM [AgentRef]
-turtles = do
-  (_,tw,_, _, _) <- Reader.ask
-  MkWorld _ ts _ <- lift $ readTVar tw
-  return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
-
--- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
-turtle :: Int -> CSTM [AgentRef]
-turtle n = do
-  (_, tw,_, _, _) <- Reader.ask
-  (MkWorld _ ts _) <- lift $ readTVar tw
-  return $ maybe [Nobody] (return . TurtleRef n) $ IM.lookup n ts
 
 
+
+
+
+{-# SPECIALIZE turtle_set :: [CSTM [AgentRef]] -> CSTM [AgentRef] #-}
+{-# SPECIALIZE turtle_set :: [CIO [AgentRef]] -> CIO [AgentRef] #-}
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
@@ -429,6 +376,8 @@ turtle_set ts = sequence ts >>= return . foldr (\ x acc ->
                                                        _ -> throw $ TypeException "turtle" x
                                                ) [] . concat
 
+{-# SPECIALIZE patch_set :: [CSTM [AgentRef]] -> CSTM [AgentRef] #-}
+{-# SPECIALIZE patch_set :: [CIO [AgentRef]] -> CIO [AgentRef] #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
 patch_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
@@ -443,18 +392,12 @@ patch_set ts = sequence ts >>= return . foldr (\ x acc ->
                                                ) [] . concat
 
 
+{-# SPECIALIZE can_movep :: Double -> CSTM Bool #-}
+{-# SPECIALIZE can_movep :: Double -> CIO Bool #-}
 -- | Reports true if this turtle can move distance in the direction it is facing without violating the topology; reports false otherwise. 
-can_movep :: Double -> CSTM Bool
+can_movep :: STMorIO m => Double -> C m Bool
 can_movep n = patch_ahead n >>= return . ( /= [Nobody])
 
-
--- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
-heading :: CSTM Double
-heading = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVar h
-    _ -> throw (ContextException "turtle" a)
 
 set_heading :: Double -> CSTM ()
 set_heading v = do
@@ -463,14 +406,8 @@ set_heading v = do
     TurtleRef _ t -> lift $ writeTVar (heading_ t) v
     _ -> throw $ ContextException "turtle" a
 
--- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
-xcor :: CSTM Double
-xcor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVar x
-    _ -> throw $ ContextException "turtle" a
-
+{-# SPECIALIZE pxcor :: CSTM Int #-}
+{-# SPECIALIZE pxcor :: CIO Int #-}
 -- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pxcor :: (Monad m) => C m Int
 pxcor = do
@@ -479,6 +416,8 @@ pxcor = do
     PatchRef _ (MkPatch {pxcor_ = x}) -> return x
     _ -> throw $ ContextException "patch" a
 
+{-# SPECIALIZE pycor :: CSTM Int #-}
+{-# SPECIALIZE pycor :: CIO Int #-}
 -- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pycor :: (Monad m) => C m Int
 pycor = do
@@ -487,26 +426,6 @@ pycor = do
     PatchRef _ (MkPatch {pycor_ = y}) -> return y
     _ -> throw $ ContextException "patch" a
 
-pcolor :: CSTM Double
-pcolor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVar tc
-    TurtleRef _ _ -> do
-           [PatchRef _ (MkPatch {pcolor_ = tc})] <- patch_here
-           lift $ readTVar tc
-    _ -> throw $ ContextException "turtle or patch" a
-
-
-unsafe_pcolor :: CIO Double
-unsafe_pcolor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVarIO tc
-    TurtleRef _ _ -> do
-           [PatchRef _ (MkPatch {pcolor_ = tc})] <- unsafe_patch_here
-           lift $ readTVarIO tc
-    _ -> throw $ ContextException "patch" a
 
 -- | Reports an agentset containing the 8 surrounding patches
 neighbors :: CSTM [AgentRef]
@@ -614,13 +533,8 @@ set_size v = do
     _ -> throw $ ContextException "turtle" a
 
 
--- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
-ycor :: CSTM Double
-ycor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVar y
-    _ -> throw $ ContextException "turtle" a
+
+
 
 set_ycor :: Double -> CSTM ()
 set_ycor y' = do
@@ -640,6 +554,8 @@ set_ycor y' = do
                      else error "wrap"
     _ -> throw $ ContextException "turtle" a
 
+{-# SPECIALIZE who :: CSTM Int #-}
+{-# SPECIALIZE who :: CIO Int #-}
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: Monad m => C m Int
 who = do
@@ -648,38 +564,17 @@ who = do
     TurtleRef i _ -> return i
     _ -> throw $ ContextException "turtle" a
 
--- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
-color :: CSTM Double
-color = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVar c
-    LinkRef _ (MkLink {lcolor_ = c}) -> lift $ readTVar c
-    _ -> throw $ ContextException "turtle or link" a
 
-
-breed :: CSTM String
-breed = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVar b
-    LinkRef _ (MkLink {lbreed_ = b}) -> return b
-    _ -> throw $ ContextException "turtle or link" a
-
-unsafe_breed :: CIO String
-unsafe_breed = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVarIO b
-    LinkRef _ (MkLink {lbreed_ = b}) -> return b
-    _ -> throw $ ContextException "turtle or link" a
-
+{-# SPECIALIZE dx :: CSTM Double #-}
+{-# SPECIALIZE dx :: CIO Double #-}
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
-dx :: CSTM Double
+dx :: STMorIO m => C m Double
 dx = liftM sin_ heading
 
+{-# SPECIALIZE dy :: CSTM Double #-}
+{-# SPECIALIZE dy :: CIO Double #-}
 -- | Reports the y-increment (the amount by which the turtle's ycor would change) if the turtle were to take one step forward in its current heading. 
-dy :: CSTM Double
+dy :: STMorIO m => C m Double
 dy = liftM cos_ heading
 
 random_seed :: Int -> CSTM ()
@@ -702,7 +597,7 @@ random_xcor = do
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
   s <- lift $ readTVar g
-  let (v, s') = randomR ((fromIntegral $ min_pxcor_ conf),(fromIntegral $ max_pxcor_ conf)) s
+  let (v, s') = randomR ((fromIntegral (min_pxcor_ conf) :: Double),(fromIntegral $ max_pxcor_ conf)) s
   lift $ writeTVar g s'
   return v
 
@@ -716,7 +611,7 @@ random_ycor = do
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
   s <- lift $ readTVar g
-  let (v, s') = randomR ((fromIntegral $ min_pycor_ conf),(fromIntegral $ max_pycor_ conf)) s
+  let (v, s') = randomR ((fromIntegral (min_pycor_ conf) :: Double),(fromIntegral $ max_pycor_ conf)) s
   lift $ writeTVar g s'
   return v
 
@@ -806,30 +701,12 @@ left n = do
 -- | alias for 'left'
 lt = left
 
--- | Reports the distance from this agent to the given turtle or patch. 
-distance :: [AgentRef] -> CSTM Double
-distance [PatchRef (x,y) _] = do
-  distancexy (fromIntegral x) (fromIntegral y)
-distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
-  x <- lift $ readTVar tx
-  y <- lift $ readTVar ty
-  distancexy x y
-distance [a] = throw $ TypeException "turtle or patch" a
-
 delta a1 a2 aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
--- | Reports the distance from this agent to the point (xcor, ycor). 
-distancexy :: Double -> Double -> CSTM Double
-distancexy x' y' = do
-  (_,_,a,_,_) <- Reader.ask
-  (x,y) <- case a of
-            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
-            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
-            _ -> throw $ ContextException "turtle or patch" a
-  return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
 
-
+{-# SPECIALIZE nobody :: CSTM [AgentRef] #-}
+{-# SPECIALIZE nobody :: CIO [AgentRef] #-}
 -- | This is a special value which some primitives such as turtle, one-of, max-one-of, etc. report to indicate that no agent was found. Also, when a turtle dies, it becomes equal to nobody. 
 nobody :: Monad m => m [AgentRef]
 nobody = return [Nobody]
@@ -854,38 +731,9 @@ downhill4 = undefined
 face :: [AgentRef] -> CSTM ()
 face a = set_heading =<< towards a
 
--- | Reports the heading from this agent to the given agent. 
--- | todo: wrapping
-towards :: [AgentRef] -> CSTM Double
-towards a = do
-  (_, _, s, _,  _) <- Reader.ask
-  (x1,y1) <- case s of
-            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
-            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
-                   x <- lift $ readTVar tx
-                   y <- lift $ readTVar ty
-                   return (x,y)
-            _ -> throw $ ContextException "turtle or patch" s
-  (x2,y2) <- case a of
-              [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
-              [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
-                   x <- lift $ readTVar tx
-                   y <- lift $ readTVar ty
-                   return (x,y)
-              _ -> throw $ ContextException "turtle or patch" (head a)
-  let dx = x2 - x1
-  let dy = y2 - y1
-  return $ if (dx == 0)
-            then
-                if dy > 0 
-                then 0 
-                else 180
-            else
-                if (dy == 0)
-                then if dx > 0 
-                     then 90 
-                     else 270
-                else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
+
+
+
 
 -- | Reports the heading from the turtle or patch towards the point (x,y). 
 -- | todo
@@ -952,27 +800,26 @@ pen_erase = do
 -- | alias for 'pen_erase'
 pe = pen_erase
 
--- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
-in_radius :: [AgentRef] -> Double -> CSTM [AgentRef]
-in_radius as n = do
-  (_, _, a, _, _) <- Reader.ask
-  (x, y) <- case a of
-             PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
-             TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
-             _ -> throw $ ContextException "turtle or patch" a
-  filterM (\ (TurtleRef _ (MkTurtle {xcor_ = tx', ycor_ = ty'})) -> do 
-             x' <- lift $ readTVar tx'
-             y' <- lift $ readTVar ty'
-             return $ (sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))) <= n) as
+
+
+
+
+
 
 -- | This reporter lets you give a turtle a "cone of vision" in front of itself. 
 in_cone = undefined
 
 
+
+
+{-# SPECIALIZE no_turtles :: CSTM [AgentRef] #-}
+{-# SPECIALIZE no_turtles :: CIO [AgentRef] #-}
 -- | Reports an empty turtle agentset. 
 no_turtles :: (Monad m) => C m [AgentRef]
 no_turtles = return []
 
+{-# SPECIALIZE no_patches :: CSTM [AgentRef] #-}
+{-# SPECIALIZE no_patches :: CIO [AgentRef] #-}
 -- | Reports an empty patch agentset. 
 no_patches :: (Monad m) => C m [AgentRef]
 no_patches = return []
@@ -981,29 +828,43 @@ no_patches = return []
 xor p q = (p || q) && not (p && q)
 
 
+{-# SPECIALIZE patch_size :: CSTM Int #-}
+{-# SPECIALIZE patch_size :: CIO Int #-}
 patch_size :: Monad m => C m Int
 patch_size = return $ patch_size_ conf
 
+{-# SPECIALIZE max_pxcor :: CSTM Int #-}
+{-# SPECIALIZE max_pxcor :: CIO Int #-}
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
 max_pxcor :: Monad m => C m Int
 max_pxcor = return $ max_pxcor_ conf
 
+{-# SPECIALIZE max_pycor :: CSTM Int #-}
+{-# SPECIALIZE max_pycor :: CIO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 max_pycor :: (Monad m) => C m Int
 max_pycor = return $ max_pycor_ conf
 
+{-# SPECIALIZE min_pxcor :: CSTM Int #-}
+{-# SPECIALIZE min_pxcor :: CIO Int #-}
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
 min_pxcor :: (Monad m ) => C m Int
 min_pxcor = return $ min_pxcor_ conf
 
+{-# SPECIALIZE min_pycor :: CSTM Int #-}
+{-# SPECIALIZE min_pycor :: CIO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 min_pycor :: (Monad m) => C m Int
 min_pycor = return $ min_pycor_ conf
 
+{-# SPECIALIZE world_width :: CSTM Int #-}
+{-# SPECIALIZE world_width :: CIO Int #-}
 -- | This reporter gives the total width of the NetLogo world. 
 world_width :: (Monad m) => C m Int
 world_width = return $ (max_pxcor_ conf) - (min_pxcor_ conf) + 1
 
+{-# SPECIALIZE world_height :: CSTM Int #-}
+{-# SPECIALIZE world_height :: CIO Int #-}
 -- | This reporter gives the total height of the NetLogo world. 
 world_height :: (Monad m) => C m Int
 world_height = return $ (max_pycor_ conf) - (min_pycor_ conf) + 1
@@ -1130,10 +991,9 @@ tick_advance n = do
 
 -- | Reports the current value of the tick counter. The result is always a number and never negative. 
 -- todo: dynamic typing, integer or float
-ticks :: CSTM Double
-ticks = do
-  (gs, _, _, _, _) <- Reader.ask
-  lift $ readTVar (gs ! 1)
+ticks :: STMorIO m => C m Double
+ticks = readGlobal 1
+
 
 {-# INLINE but_first #-}
 -- | When used on a list, but-first reports all of the list items of list except the first
@@ -1557,22 +1417,11 @@ link_length = do
                 return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
     _ -> throw $ ContextException "link" a
 
--- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
-link :: Int -> Int -> CSTM [AgentRef]
-link f t = do
-  (_, tw,_, _,_) <- Reader.ask
-  (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ [maybe Nobody (LinkRef (f,t)) $ M.lookup (f,t) ls]
 
--- | Reports the agentset consisting of all links. 
-links :: CSTM [AgentRef]
-links = do
-  (_,tw,_, _,_) <- Reader.ask
-  (MkWorld _ _ ls) <- lift $ readTVar tw
-  return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
-      where
-        checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
-        checkForUndirected _ _ = False
+
+
+
+
 
 
 -- | Report the undirected link between turtle and the caller. If no link exists then it reports nobody. 
@@ -1904,158 +1753,6 @@ move_to a = do
                 _ -> throw $ TypeException "turtle or patch" (head a)
     _ -> throw $ ContextException "turtle" s
 
--- Unsafe
---
-
-unsafe_turtles_here :: CIO [AgentRef]
-unsafe_turtles_here = do
-  (_,_,s,_,_) <- Reader.ask
-  h <- case s of
-        TurtleRef _ _ -> unsafe_patch_here
-        PatchRef _ _ -> return [s]
-        _ -> throw $ ContextException "turtle or patch" s
-  ts <- unsafe_turtles
-  with (return . (== h) =<< unsafe_patch_here) ts
-
-
-unsafe_turtles_at :: Double -> Double -> CIO [AgentRef]
-unsafe_turtles_at x y = do
-  (_, _, a, _, _) <- Reader.ask
-  p <- unsafe_patch_at x y
-  with (return . (== [a])  =<< unsafe_patch_here) =<< unsafe_turtles
-
-
-unsafe_patch_at :: Double -> Double -> CIO [AgentRef]
-unsafe_patch_at x y = do
-  (_, _, a, _, _) <- Reader.ask
-  case a of
-    PatchRef (px, py) _ -> unsafe_patch (fromIntegral px) (fromIntegral py)
-    TurtleRef _ _ -> do
-                 [PatchRef (px, py) _] <- unsafe_patch_here
-                 unsafe_patch (fromIntegral px + x) (fromIntegral py +y)
-    _ -> throw $ ContextException "turtle or patch" a
-                 
-
-unsafe_patches :: CIO [AgentRef]
-unsafe_patches = do
-  (_,tw,_, _, _) <- Reader.ask
-  (MkWorld ps _ _) <- lift $ readTVarIO tw
-  return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
-
-
-unsafe_patch :: Double -> Double -> CIO [AgentRef]
-unsafe_patch x y = do
-  (_, tw,_, _, _) <- Reader.ask
-  (MkWorld ps _ _) <- lift $ readTVarIO tw
-  return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-           then [Nobody]
-           else
-               [PatchRef (x'', y'') (ps M.! (x'', y''))]
-         where
-           x' = round x
-           y' = round y
-           (x'',y'') = normalize x' y'
-           normalize :: Int -> Int -> (Int, Int)
-           normalize x y = (
-                            ((x + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
-                            ((y + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
-                           )
-
-unsafe_link :: Int -> Int -> CIO [AgentRef]
-unsafe_link x y = do
-  (_, tw,_, _, _) <- Reader.ask
-  (MkWorld _ _ ls) <- lift $ readTVarIO tw
-  return $ [LinkRef (x,y) (ls M.! (x,y))]
-
-
-
-unsafe_turtles :: CIO [AgentRef]
-unsafe_turtles = do
-  (_,tw,_, _, _) <- Reader.ask
-  (MkWorld _ ts _) <- lift $ readTVarIO tw
-  return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
-
-unsafe_links :: CIO [AgentRef]
-unsafe_links = do
-  (_,tw,_, _, _) <- Reader.ask
-  (MkWorld _ _ ls) <- lift $ readTVarIO tw
-  return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
-      where
-        checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
-        checkForUndirected _ _ = False
-
-unsafe_patch_here :: CIO [AgentRef]
-unsafe_patch_here = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
-                      x' <- lift $ readTVarIO x
-                      y' <- lift $ readTVarIO y
-                      unsafe_patch x' y'
-    _ -> throw $ ContextException "turtle" a
-
-unsafe_turtle :: Int -> CIO [AgentRef]
-unsafe_turtle n = do
-  (_, tw,_, _, _) <- Reader.ask
-  (MkWorld _ ts _) <- lift $ readTVarIO tw
-  return $ [TurtleRef n (ts IM.! n)]
-
-
-unsafe_can_movep :: Double -> CIO Bool
-unsafe_can_movep n = unsafe_patch_ahead n >>= \ p -> return (p /= [Nobody])
-
-unsafe_patch_ahead ::Double -> CIO [AgentRef]
-unsafe_patch_ahead n = do
-  x <- unsafe_xcor 
-  y <- unsafe_ycor
-  dx_ <- unsafe_dx
-  dy_ <- unsafe_dy
-  let mx = fromIntegral $ max_pxcor_ conf
-  let my = fromIntegral $ max_pycor_ conf
-  let px_new = fromIntegral (round x) + if horizontal_wrap_ conf
-                                        then (dx_*n + mx) `mod_` (truncate mx * 2 + 1) - mx
-                                        else dx_*n
-
-  let py_new = fromIntegral (round y) + if vertical_wrap_ conf
-                                        then (dy_*n + my) `mod_` (truncate my * 2 + 1) - my
-                                        else  dy_*n
-  unsafe_patch px_new py_new
-
-unsafe_dx :: CIO Double
-unsafe_dx = liftM sin_ unsafe_heading
-
-unsafe_dy :: CIO Double
-unsafe_dy = liftM cos_ unsafe_heading
-
-unsafe_heading :: CIO Double
-unsafe_heading = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVarIO h
-    _ -> throw (ContextException "turtle" a)
-
-unsafe_xcor :: CIO Double
-unsafe_xcor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVarIO x
-    _ -> throw $ ContextException "turtle" a
-
-unsafe_ycor :: CIO Double
-unsafe_ycor = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVarIO y
-    _ -> throw $ ContextException "turtle" a
-
-unsafe_color :: CIO Double
-unsafe_color = do
-  (_,_,a, _, _) <- Reader.ask
-  case a of
-    TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVarIO c
-    _ -> throw $ ContextException "turtle" a
-
-
 unsafe_random_xcor :: CIO Double
 unsafe_random_xcor = lift $ getStdRandom $ randomR ((fromIntegral $ min_pxcor_ conf),(fromIntegral $ max_pxcor_ conf))
 
@@ -2113,72 +1810,11 @@ unsafe_random_poisson m = undefined
 turtles_on :: [AgentRef] -> CIO [AgentRef]
 turtles_on [] = return []
 turtles_on ps@(PatchRef _ _ : _) = do
-  with (liftM (flip elem ps . head) unsafe_patch_here) =<< unsafe_turtles
+  with (liftM (flip elem ps . head) patch_here) =<< turtles
 turtles_on ts@(TurtleRef _ _ : _) = do
-  turtles_on =<< of_ (liftM head unsafe_patch_here) ts
+  turtles_on =<< of_ (liftM head patch_here) ts
 turtles_on (a:_) = throw $ ContextException "turtle or patch agentset" a
 
-
-unsafe_distance :: [AgentRef] -> CIO Double
-unsafe_distance [PatchRef (x,y) _] = do
-  unsafe_distancexy (fromIntegral x) (fromIntegral y)
-unsafe_distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
-  x <- lift $ readTVarIO tx
-  y <- lift $ readTVarIO ty
-  unsafe_distancexy x y
-unsafe_distance (a:_) = throw $ ContextException "single turtle or patch" a
-
-unsafe_distancexy :: Double -> Double -> CIO Double
-unsafe_distancexy x' y' = do
-  (_,_,a,_,_) <- Reader.ask
-  (x,y) <- case a of
-            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
-            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
-            _ -> throw $ ContextException "turtle or patch" a
-  return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
-      where
-        delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
-
--- | todo
-unsafe_downhill = undefined
-
--- | todo
-unsafe_downhill4 = undefined
-
-unsafe_towards :: [AgentRef] -> CIO Double
-unsafe_towards a = do
-  (_, _, s, _,  _) <- Reader.ask
-  (x1,y1) <- case s of
-            PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
-            TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
-                   x <- lift $ readTVarIO tx
-                   y <- lift $ readTVarIO ty
-                   return (x,y)
-            _ -> throw $ ContextException "turtle or patch" s
-  (x2,y2) <- case a of
-              [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
-              [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
-                   x <- lift $ readTVarIO tx
-                   y <- lift $ readTVarIO ty
-                   return (x,y)
-              _ -> throw $ ContextException "turtle or patch" (head a)
-  let dx = x2 - x1
-  let dy = y2 - y1
-  return $ if (dx == 0)
-            then
-                if dy > 0 
-                then 0 
-                else 180
-            else
-                if (dy == 0)
-                then if dx > 0 
-                     then 90 
-                     else 270
-                else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
-
-
--- | todo
-unsafe_towardsxy = undefined
 
 -- |  Reports a subset of the given agentset that includes only the agents on the patches the given distances away from this agent. The distances are specified as a list of two-item lists, where the two items are the x and y offsets.
 -- If the caller is the observer, then the points are measured relative to the origin, in other words, the points are taken as absolute patch coordinates.
@@ -2193,30 +1829,14 @@ at_points (a:as) ds = do
             TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> lift $ liftM2 (,) (readTVar tx) (readTVar ty)
   return []
 
-unsafe_in_radius :: [AgentRef] -> Double -> CIO [AgentRef]
-unsafe_in_radius as n = do
-  (_,_,a,_,_) <- Reader.ask
-  (x, y) <- case a of
-    PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
-    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
-    _ -> throw $ ContextException "turtle or patch" a
-  with (unsafe_distancexy x y >>= \ d -> return $ d <= n) as
-
-unsafe_in_cone = undefined
-
 -- | Runs the given commands only if it's been more than number seconds since the last time this agent ran them in this context. Otherwise, the commands are skipped. 
 -- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
-unsafe_every :: Double -> CIO a -> CIO ()
-unsafe_every n a = a >> unsafe_wait n
+every :: Double -> CIO a -> CIO ()
+every n a = a >> wait n
 
 -- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
 -- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
-unsafe_wait n = lift $ threadDelay (round $ n * 1000000)
-
-unsafe_ticks :: CIO Double
-unsafe_ticks = do
-  (gs, _, _, _, _) <- Reader.ask
-  lift $ readTVarIO (gs ! 1)
+wait n = lift $ threadDelay (round $ n * 1000000)
 
 unsafe_one_of :: [a] -> CIO [a]
 unsafe_one_of [] = error "empty list"
@@ -2245,6 +1865,7 @@ unsafe_shuffle l = shuffle' l (length l) where
       return $ x:xs
 
 
+-- Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_show :: Show a => a -> CIO ()
 unsafe_show a = do
   (_,_, r, _, _) <- Reader.ask
@@ -2254,7 +1875,7 @@ unsafe_show a = do
                            LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
                            TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): ")   ++ Prelude.show a
 
-
+-- Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_print :: Show a => a -> CIO ()
 unsafe_print a = do
   lift $ putStrLn $ Prelude.show a
@@ -2340,20 +1961,20 @@ snapshot = do
   (_, tw, s, _,  _) <- Reader.ask
   case s of
     ObserverRef _ -> do
-             t <- unsafe_ticks
+             t <- ticks
              w <- lift $ readTVarIO tw
              p <- patch_size
              max_x <- max_pxcor
              min_x <- min_pycor
              let sizeSpec = Diag.Width (fromIntegral (p * (max_x + abs min_x + 1)))
              let output = ("snapshot" ++ Prelude.show (round t) ++ ".eps")
-             prs <- unsafe_patches
+             prs <- patches
              diagPatches <- lift $ mapM (\ (PatchRef (px,py) p) -> do 
                                    c <- readTVarIO $ pcolor_ p
                                    let [r,g,b] = extract_rgb c
                                    return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript Diag.R2)
                                 ) prs
-             trs <- unsafe_turtles
+             trs <- turtles
              diagTurtles <- lift $ mapM (\ (TurtleRef _ t) -> do 
                                           x <- readTVarIO $ xcor_ t
                                           y <- readTVarIO $ ycor_ t
@@ -2400,4 +2021,501 @@ extract_rgb c | c == 0 = [0,0,0]
                               if step < 0
                               then [truncate(fromIntegral r * step) +r, truncate(fromIntegral g*step)+g, truncate(fromIntegral b*step)+b]
                               else [truncate((255 - fromIntegral r)*step)+r, truncate((255 - fromIntegral g)*step)+g, truncate((255 - fromIntegral b)*step)+b]
+
+
+class (Monad m) => STMorIO m where
+    -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
+    turtles_here :: C m [AgentRef]
+    -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
+    turtles_at :: Double -> Double -> C m [AgentRef] -- ^ dx -> dy -> CSTM (Set AgentRef)
+    -- | patch-here reports the patch under the turtle. 
+    patch_here :: C m [AgentRef]
+    -- | Reports the agentset consisting of all patches. 
+    patches :: C m [AgentRef]
+    -- | Given the x and y coordinates of a point, reports the patch containing that point. 
+    patch :: Double -> Double -> C m [AgentRef]
+    -- | Reports the agentset consisting of all turtles. 
+    turtles :: C m [AgentRef]
+    -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
+    turtle :: Int -> C m [AgentRef]
+    -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
+    heading :: C m Double
+    -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
+    xcor :: C m Double
+    pcolor :: C m Double
+    -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
+    ycor :: C m Double
+    -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
+    color :: C m Double
+    breed :: C m String
+    -- | Reports the distance from this agent to the given turtle or patch. 
+    distance :: [AgentRef] -> C m Double
+    -- | Reports the distance from this agent to the point (xcor, ycor). 
+    distancexy :: Double -> Double -> C m Double
+    -- | Reports the heading from this agent to the given agent. 
+    -- | todo: wrapping
+    towards :: [AgentRef] -> C m Double
+    -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
+    in_radius :: [AgentRef] -> Double -> C m [AgentRef]
+    -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
+    link :: Int -> Int -> C m [AgentRef]
+    -- | Reports the agentset consisting of all links. 
+    links :: C m [AgentRef]
+    readGlobal :: Int -> C m Double
+    readTurtle :: Int -> C m Double
+    readPatch :: Int -> C m Double
+    readLink :: Int -> C m Double
+
+instance STMorIO STM where
+  turtles_here = do
+    [s] <- self
+    [PatchRef (px,py) _] <- case s of
+                             TurtleRef _ _ -> patch_here
+                             patch -> return [patch]
+    ts <- turtles
+    filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
+               x' <- lift $ readTVar x
+               y' <- lift $ readTVar y
+               return $ round x' == px && round y' == py
+            ) ts
+  turtles_at x y = do
+    [PatchRef (px, py) _] <- patch_at x y
+    ts <- turtles
+    filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y})) -> do 
+               x' <- lift $ readTVar x
+               y' <- lift $ readTVar y
+               return $ round x' == px && round y' == py
+            ) ts
+  patch_here = do
+    (_,_, a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
+                 x' <- lift $ readTVar x
+                 y' <- lift $ readTVar y
+                 patch x' y'
+      _ -> throw $ ContextException "patch" a
+  patches = do
+    (_,tw,_, _, _) <- Reader.ask
+    (MkWorld ps _ _) <- lift $ readTVar tw
+    return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
+  patch x y = do
+    (_, tw,_, _, _) <- Reader.ask
+    (MkWorld ps _ _) <- lift $ readTVar tw
+    return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
+             then [Nobody]
+             else
+                 [PatchRef (x'', y'') (ps M.! (x'', y''))]
+           where
+             x' = round x
+             y' = round y
+             (x'',y'') = normalize x' y'
+             normalize :: Int -> Int -> (Int, Int)
+             normalize x y = (
+                              ((x + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
+                              ((y + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
+                             )
+
+  turtles = do
+    (_,tw,_, _, _) <- Reader.ask
+    MkWorld _ ts _ <- lift $ readTVar tw
+    return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
+
+  turtle n = do
+    (_, tw,_, _, _) <- Reader.ask
+    (MkWorld _ ts _) <- lift $ readTVar tw
+    return $ maybe [Nobody] (return . TurtleRef n) $ IM.lookup n ts
+
+  heading = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVar h
+      _ -> throw (ContextException "turtle" a)
+
+  xcor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVar x
+      _ -> throw $ ContextException "turtle" a
+
+  pcolor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVar tc
+      TurtleRef _ _ -> do
+             [PatchRef _ (MkPatch {pcolor_ = tc})] <- patch_here
+             lift $ readTVar tc
+      _ -> throw $ ContextException "turtle or patch" a
+  ycor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVar y
+      _ -> throw $ ContextException "turtle" a
+
+  color = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVar c
+      LinkRef _ (MkLink {lcolor_ = c}) -> lift $ readTVar c
+      _ -> throw $ ContextException "turtle or link" a
+
+  breed = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVar b
+      LinkRef _ (MkLink {lbreed_ = b}) -> return b
+      _ -> throw $ ContextException "turtle or link" a
+
+  distance [PatchRef (x,y) _] = do
+    distancexy (fromIntegral x) (fromIntegral y)
+  distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
+    x <- lift $ readTVar tx
+    y <- lift $ readTVar ty
+    distancexy x y
+  distance [a] = throw $ TypeException "turtle or patch" a
+
+  distancexy x' y' = do
+    (_,_,a,_,_) <- Reader.ask
+    (x,y) <- case a of
+              PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+              TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+              _ -> throw $ ContextException "turtle or patch" a
+    return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+
+  towards a = do
+    (_, _, s, _,  _) <- Reader.ask
+    (x1,y1) <- case s of
+              PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+              TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+                     x <- lift $ readTVar tx
+                     y <- lift $ readTVar ty
+                     return (x,y)
+              _ -> throw $ ContextException "turtle or patch" s
+    (x2,y2) <- case a of
+                [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
+                [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
+                     x <- lift $ readTVar tx
+                     y <- lift $ readTVar ty
+                     return (x,y)
+                _ -> throw $ ContextException "turtle or patch" (head a)
+    let dx = x2 - x1
+    let dy = y2 - y1
+    return $ if (dx == 0)
+              then
+                  if dy > 0 
+                  then 0 
+                  else 180
+              else
+                  if (dy == 0)
+                  then if dx > 0 
+                       then 90 
+                       else 270
+                  else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
+
+  in_radius as n = do
+    (_, _, a, _, _) <- Reader.ask
+    (x, y) <- case a of
+               PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
+               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+               _ -> throw $ ContextException "turtle or patch" a
+    filterM (\ (TurtleRef _ (MkTurtle {xcor_ = tx', ycor_ = ty'})) -> do 
+               x' <- lift $ readTVar tx'
+               y' <- lift $ readTVar ty'
+               return $ (sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))) <= n) as
+
+  link f t = do
+    (_, tw,_, _,_) <- Reader.ask
+    (MkWorld _ _ ls) <- lift $ readTVar tw
+    return $ [maybe Nobody (LinkRef (f,t)) $ M.lookup (f,t) ls]
+
+
+  links = do
+    (_,tw,_, _,_) <- Reader.ask
+    (MkWorld _ _ ls) <- lift $ readTVar tw
+    return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+        where
+          checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
+          checkForUndirected _ _ = False
+
+  readGlobal i = do
+    (gs, _, _, _, _) <- Reader.ask
+    lift $ readTVar (gs ! i)
+
+  readTurtle i = do
+    (_,_,a ,_,_) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVar (pv ! i)
+      _ -> throw $ ContextException "turtle" a
+
+  readPatch i = do 
+    (_,_,a,_,_) <- Reader.ask
+    case a of
+      PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVar $ pv ! i
+      TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVar $ pv !i
+      _ -> throw $ ContextException "turtle or patch" a
+
+  readLink i = do
+    (_,_,a ,_,_) <- Reader.ask
+    case a of
+      LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVar (pv ! i)
+      _ -> throw $ ContextException "link" a
+
+
+instance STMorIO IO where
+  turtles_here = do
+    (_,_,s,_,_) <- Reader.ask
+    h <- case s of
+          TurtleRef _ _ -> patch_here
+          PatchRef _ _ -> return [s]
+          _ -> throw $ ContextException "turtle or patch" s
+    ts <- turtles
+    with (return . (== h) =<< patch_here) ts
+  turtles_at x y = do
+    (_, _, a, _, _) <- Reader.ask
+    p <- patch_at x y
+    with (return . (== [a])  =<< patch_here) =<< turtles
+  patch_here = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
+                        x' <- lift $ readTVarIO x
+                        y' <- lift $ readTVarIO y
+                        patch x' y'
+      _ -> throw $ ContextException "turtle" a
+
+  patches = do
+    (_,tw,_, _, _) <- Reader.ask
+    (MkWorld ps _ _) <- lift $ readTVarIO tw
+    return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
+
+  patch x y = do
+    (_, tw,_, _, _) <- Reader.ask
+    (MkWorld ps _ _) <- lift $ readTVarIO tw
+    return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
+             then [Nobody]
+             else
+                 [PatchRef (x'', y'') (ps M.! (x'', y''))]
+           where
+             x' = round x
+             y' = round y
+             (x'',y'') = normalize x' y'
+             normalize :: Int -> Int -> (Int, Int)
+             normalize x y = (
+                              ((x + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
+                              ((y + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
+                             )
+
+  turtles = do
+    (_,tw,_, _, _) <- Reader.ask
+    (MkWorld _ ts _) <- lift $ readTVarIO tw
+    return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
+
+  turtle n = do
+    (_, tw,_, _, _) <- Reader.ask
+    (MkWorld _ ts _) <- lift $ readTVarIO tw
+    return $ [TurtleRef n (ts IM.! n)]
+
+  heading = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVarIO h
+      _ -> throw (ContextException "turtle" a)
+
+  xcor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVarIO x
+      _ -> throw $ ContextException "turtle" a
+
+  pcolor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVarIO tc
+      TurtleRef _ _ -> do
+             [PatchRef _ (MkPatch {pcolor_ = tc})] <- patch_here
+             lift $ readTVarIO tc
+      _ -> throw $ ContextException "patch" a
+
+  ycor = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVarIO y
+      _ -> throw $ ContextException "turtle" a
+
+  color = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVarIO c
+      _ -> throw $ ContextException "turtle" a
+
+  breed = do
+    (_,_,a, _, _) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVarIO b
+      LinkRef _ (MkLink {lbreed_ = b}) -> return b
+      _ -> throw $ ContextException "turtle or link" a
+
+  distance [PatchRef (x,y) _] = do
+    distancexy (fromIntegral x) (fromIntegral y)
+  distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
+    x <- lift $ readTVarIO tx
+    y <- lift $ readTVarIO ty
+    distancexy x y
+  distance (a:_) = throw $ ContextException "single turtle or patch" a
+
+  distancexy x' y' = do
+    (_,_,a,_,_) <- Reader.ask
+    (x,y) <- case a of
+              PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+              TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+              _ -> throw $ ContextException "turtle or patch" a
+    return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+        where
+          delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
+
+  towards a = do
+    (_, _, s, _,  _) <- Reader.ask
+    (x1,y1) <- case s of
+              PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
+              TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
+                     x <- lift $ readTVarIO tx
+                     y <- lift $ readTVarIO ty
+                     return (x,y)
+              _ -> throw $ ContextException "turtle or patch" s
+    (x2,y2) <- case a of
+                [PatchRef (x,y) _] -> return (fromIntegral x, fromIntegral y)
+                [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] -> do
+                     x <- lift $ readTVarIO tx
+                     y <- lift $ readTVarIO ty
+                     return (x,y)
+                _ -> throw $ ContextException "turtle or patch" (head a)
+    let dx = x2 - x1
+    let dy = y2 - y1
+    return $ if (dx == 0)
+              then
+                  if dy > 0 
+                  then 0 
+                  else 180
+              else
+                  if (dy == 0)
+                  then if dx > 0 
+                       then 90 
+                       else 270
+                  else (270 + toDegrees (pi + atan2 (-dy) dx)) `mod_` 360
+
+  in_radius as n = do
+    (_,_,a,_,_) <- Reader.ask
+    (x, y) <- case a of
+      PatchRef (x,y) _ -> return $ (fromIntegral x, fromIntegral y)
+      TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+      _ -> throw $ ContextException "turtle or patch" a
+    with (distancexy x y >>= \ d -> return $ d <= n) as
+
+  link x y = do
+    (_, tw,_, _, _) <- Reader.ask
+    (MkWorld _ _ ls) <- lift $ readTVarIO tw
+    return $ [LinkRef (x,y) (ls M.! (x,y))]
+
+  links = do
+    (_,tw,_, _, _) <- Reader.ask
+    (MkWorld _ _ ls) <- lift $ readTVarIO tw
+    return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+        where
+          checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
+          checkForUndirected _ _ = False
+
+  readGlobal i = do
+    (gs, _, _, _, _) <- Reader.ask
+    lift $ readTVarIO (gs ! i)
+
+  readTurtle i = do
+    (_,_,a ,_,_) <- Reader.ask
+    case a of
+      TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVarIO (pv ! i)
+      _ -> throw $ ContextException "turtle" a
+
+  readPatch i = do 
+    (_,_,a,_,_) <- Reader.ask
+    case a of
+      PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVarIO $ pv ! i
+      TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVarIO $ pv !i
+      _ -> throw $ ContextException "turtle or patch" a
+
+  readLink i = do
+    (_,_,a ,_,_) <- Reader.ask
+    case a of
+      LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVarIO (pv ! i)
+      _ -> throw $ ContextException "link" a
+
+
+-- Specialization trick to reduce the cost of using a class (STMorIO)
+-- The downside is executable with bigger code
+
+{-# SPECIALIZE turtles_here :: CSTM [AgentRef] #-}
+{-# SPECIALIZE turtles_here :: CIO [AgentRef] #-}
+{-# SPECIALIZE turtles_at :: Double -> Double -> CSTM [AgentRef] #-}
+{-# SPECIALIZE turtles_at :: Double -> Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE patch_here :: CSTM [AgentRef] #-}
+{-# SPECIALIZE patch_here :: CIO [AgentRef] #-}
+{-# SPECIALIZE patches :: CSTM [AgentRef] #-}
+{-# SPECIALIZE patches :: CIO [AgentRef] #-}
+{-# SPECIALIZE patch :: Double -> Double -> CSTM [AgentRef] #-}
+{-# SPECIALIZE patch :: Double -> Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE turtles :: CSTM [AgentRef] #-}
+{-# SPECIALIZE turtles :: CIO [AgentRef] #-}
+{-# SPECIALIZE turtle :: Int -> CSTM [AgentRef] #-}
+{-# SPECIALIZE turtle :: Int -> CIO [AgentRef] #-}
+{-# SPECIALIZE heading :: CSTM Double #-}
+{-# SPECIALIZE heading :: CIO Double #-}
+{-# SPECIALIZE xcor :: CSTM Double #-}
+{-# SPECIALIZE xcor :: CIO Double #-}
+{-# SPECIALIZE pcolor :: CSTM Double #-}
+{-# SPECIALIZE pcolor :: CIO Double #-}
+{-# SPECIALIZE ycor :: CSTM Double #-}
+{-# SPECIALIZE ycor :: CIO Double #-}
+{-# SPECIALIZE color :: CSTM Double #-}
+{-# SPECIALIZE color :: CIO Double #-}
+{-# SPECIALIZE breed :: CSTM String #-}
+{-# SPECIALIZE breed :: CIO String #-}
+{-# SPECIALIZE distance :: [AgentRef] -> CSTM Double #-}
+{-# SPECIALIZE distance :: [AgentRef] -> CIO Double #-}
+{-# SPECIALIZE distancexy :: Double -> Double -> CSTM Double #-}
+{-# SPECIALIZE distancexy :: Double -> Double -> CIO Double #-}
+{-# SPECIALIZE towards :: [AgentRef] -> CSTM Double #-}
+{-# SPECIALIZE towards :: [AgentRef] -> CIO Double #-}
+{-# SPECIALIZE in_radius :: [AgentRef] -> Double -> CSTM [AgentRef] #-}
+{-# SPECIALIZE in_radius :: [AgentRef] -> Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE  link :: Int -> Int -> CSTM [AgentRef] #-}
+{-# SPECIALIZE  link :: Int -> Int -> CIO [AgentRef] #-}
+{-# SPECIALIZE links :: CSTM [AgentRef] #-}
+{-# SPECIALIZE links :: CIO [AgentRef] #-}
+{-# SPECIALIZE readGlobal :: Int -> CSTM Double #-}
+{-# SPECIALIZE readGlobal :: Int -> CIO Double #-}
+{-# SPECIALIZE readTurtle :: Int -> CSTM Double #-}
+{-# SPECIALIZE readTurtle :: Int -> CIO Double #-}
+{-# SPECIALIZE readPatch :: Int -> CSTM Double #-}
+{-# SPECIALIZE readPatch :: Int -> CIO Double #-}
+{-# SPECIALIZE readLink :: Int -> CSTM Double #-}
+{-# SPECIALIZE readLink :: Int -> CIO Double #-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

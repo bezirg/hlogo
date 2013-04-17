@@ -27,44 +27,44 @@ breeds_own "mice" []
 
 anyallTestGroup = $(testGroupGenerator)
 case_All1 = runT $ do 
-  a1 <- allp (return True) =<< unsafe_patches
+  a1 <- allp (return True) =<< patches
   let e1 = True
   lift $ e1 @=? a1
 
-  a2 <- allp (return False) =<< unsafe_patches
+  a2 <- allp (return False) =<< patches
   let e2 = False
   lift $ e2 @=? a2
 
-  a3 <- allp (return True) =<< unsafe_turtles
+  a3 <- allp (return True) =<< turtles
   let e3 = True
   lift $ e3 @=? a3
 
-  a4 <- allp (return False) =<< unsafe_turtles
+  a4 <- allp (return False) =<< turtles
   let e4 = True
   lift $ e4 @=? a4
 
 case_All2 = runT $ do
   atomic $ crt 1
-  a1 <- allp (return False) =<< unsafe_turtles
+  a1 <- allp (return False) =<< turtles
   let e1 = False
   lift $ e1 @=? a1
 
 case_All3_2D = runT $ do
-  a1 <- allp (atomic $ liftM2 (==) (patch 0 0) self) =<< unsafe_patches
+  a1 <- allp (atomic $ liftM2 (==) (patch 0 0) self) =<< patches
   let e1 = False
   lift $ e1 @=? a1
 
-  a2 <- allp (atomic $ liftM2 (==) (patch_at 0 0) self) =<< unsafe_patches
+  a2 <- allp (atomic $ liftM2 (==) (patch_at 0 0) self) =<< patches
   let e2 = True
   lift $ e2 @=? a2
 
 case_All4 = runT $ do
-  ask (atomic $ sprout 1) =<< unsafe_patches
+  ask (atomic $ sprout 1) =<< patches
   a1 <- allp (do
               s <- self
               th <- atomic $ one_of =<< turtles_here
               s' <- of_ (atomic $ patch_here) th 
-              return $ s == concat s') =<< unsafe_patches
+              return $ s == concat s') =<< patches
   let e1 = True
   lift $ e1 @=? a1
 

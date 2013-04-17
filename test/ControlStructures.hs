@@ -28,27 +28,27 @@ breeds_own "mice" []
 controlstructuresTestGroup = $(testGroupGenerator)
 case_Loop1 = let
     foo = loop (do
-                 g <- unsafe_glob1
+                 g <- glob1
                  when (g == 10) stop
                  atomic $ set_glob1 (g + 1))
              in runT $ do
                   foo
-                  a1 <- unsafe_glob1
+                  a1 <- glob1
                   let e1 = 10
                   lift $ e1 @=? a1
 
 case_Foreach1 = runT $ do
   foreach [1,2,3] (\ x -> atomic $ crt x)
-  a1 <- count =<< unsafe_turtles
+  a1 <- count =<< turtles
   let e1 = 6
   lift $ e1 @=? a1
 
 case_While = runT $ do
   atomic $ random_seed 272
   atomic $ crt 10
-  while (anyp =<< unsafe_turtles) (ask (atomic $ die) =<< atomic (one_of =<< turtles))
+  while (anyp =<< turtles) (ask (atomic $ die) =<< atomic (one_of =<< turtles))
 
-  a1 <- anyp =<< unsafe_turtles
+  a1 <- anyp =<< turtles
   let e1 = False
   lift $ e1 @=? a1
   
@@ -56,7 +56,7 @@ caseIfElse = runT $ do
   if (2+2 == 4) then atomic $ crt 10 else atomic $ crt 20
   if (2+2 == 5) then atomic $ crt 3 else atomic $ crt 4
   
-  a1 <- count =<< unsafe_turtles
+  a1 <- count =<< turtles
   let e1 = 14
   lift $ e1 @=? a1
 

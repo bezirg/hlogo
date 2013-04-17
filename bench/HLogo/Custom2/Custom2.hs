@@ -9,7 +9,7 @@ setup = do
   atomic $ reset_ticks
 
 go = forever $ do
-  ask (behave >> behave >> behave >> behave >> behave >> behave >> behave >> behave) =<< unsafe_turtles
+  ask (behave >> behave >> behave >> behave >> behave >> behave >> behave >> behave) =<< turtles
   stop
 
 behave = do

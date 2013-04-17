@@ -7,18 +7,18 @@ turtles_own []
 setup = do
   ask (do
          [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
-         atomic $ set_pcolor c) =<< unsafe_patches
+         atomic $ set_pcolor c) =<< patches
   atomic $ create_turtles 30000
   atomic $ reset_ticks
 
 go = forever $ do
-  t <- unsafe_ticks
+  t <- ticks
   when (t==1000) $ stop
-  ask (behave) =<< unsafe_turtles
+  ask (behave) =<< turtles
   atomic $ tick
 
 behave = do
-  c <- unsafe_pcolor
+  c <- pcolor
   atomic $ fd 1 >> if c == red
                    then lt 30
                    else when (c == blue) (rt 30)

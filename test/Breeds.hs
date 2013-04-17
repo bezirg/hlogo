@@ -52,7 +52,7 @@ case_TestIsBreed = runT $ do
   let e5 = False
   lift $ e5 @=? a5
 
-  ask (atomic $ die) =<< unsafe_turtle 1
+  ask (atomic $ die) =<< turtle 1
   
   a6 <- atomic $ is_frogp =<< turtle 1
   let e6 = False
@@ -76,7 +76,7 @@ case_IsLinkBreed = runT $ do
   lift $ e2 @=? a2
 
   atomic $ crt 2
-  ask (atomic $ create_link_to =<< turtle 1) =<< unsafe_turtle 0
+  ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
 
   a3 <- atomic $ is_directed_linkp =<< link 0 1
   let e3 = True
@@ -85,16 +85,16 @@ case_IsLinkBreed = runT $ do
   
 case_SetBreedToNonBreed = runT $ do
   atomic $ crt 1
-  ask (atomic $ set_breed "turtles") =<< unsafe_turtle 0
+  ask (atomic $ set_breed "turtles") =<< turtle 0
 
   atomic $ crt 1
-  ask (atomic $ set_breed "frogs") =<< unsafe_turtle 1
+  ask (atomic $ set_breed "frogs") =<< turtle 1
 
   atomic $ crt 1
-  ask (atomic $ set_breed "patches") =<< unsafe_turtle 2
+  ask (atomic $ set_breed "patches") =<< turtle 2
 
   atomic $ crt 1
-  ask (atomic $ set_breed "links") =<< unsafe_turtle 3
+  ask (atomic $ set_breed "links") =<< turtle 3
 
 
   lift $ assertFailure "No run-time checking of the breed type and value on setting"

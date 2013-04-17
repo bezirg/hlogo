@@ -27,14 +27,14 @@ globals vs  = liftM2 (++)
               [d| globals_length = $(litE (integerL (genericLength vs))) |] 
               -- create 2 getters (1 prim and 1 unsafe) per global variable
               (liftM concat $ mapM (\ (v,i) -> do
-                      p <- valD (varP (mkName v)) (normalB [| do (gs,_,_,_,_) <- Reader.ask :: CSTM Context; lift $ readTVar (gs ! $(litE (integerL i))) |]) []
-                      u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do (gs,_,_,_,_) <- Reader.ask :: CIO Context; lift $ readTVarIO (gs ! $(litE (integerL i))) |]) []
+                      p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+                      p <- valD (varP (mkName v)) (normalB [| do (gs,_,_,_,_) <- Reader.ask; readGlobal $(litE (integerL i)) |]) []
                       y <- newName "y"
                       w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do (gs,_,_,_,_) <- Reader.ask :: CSTM Context; lift $ writeTVar (gs ! $(litE (integerL i))) $(varE y) |]) []]
                       x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do (gs,_,_,_,_) <- Reader.ask :: CSTM Context; lift $ modifyTVar' (gs ! $(litE (integerL i))) $(varE y) |]) []]
 
 
-                      return [p,u,w,x]
+                      return [p',p,w,x]
                     )  (zip vs [2..]))
 
 
@@ -103,18 +103,8 @@ turtles_own vs = do
   cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do 
-                                                 (_,_,a ,_,_) <- Reader.ask :: CSTM Context; 
-                                                 case a of
-                                                   TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVar (pv ! $(litE (integerL i)))
-                                                   _ -> throw $ ContextException "turtle" a
-                                               |]) []
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do
-                                                                (_,_,a ,_,_) <- Reader.ask :: CIO Context;
-                                                                case a of
-                                                                  TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVarIO (pv ! $(litE (integerL i)))
-                                                                  _ -> throw $ ContextException "turtle" a
-                                                              |]) []
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
                                                                        (_,_,a,_,_) <- Reader.ask :: CSTM Context; 
@@ -129,7 +119,7 @@ turtles_own vs = do
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
 
-          return [p,u,w,x]
+          return [p',p,w,x]
             ) (zip vs [0..])
   return $ sp : ct : co : crt : cro: concat pg
 
@@ -137,21 +127,8 @@ patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do 
-                                                 (_,_,a,_,_) <- Reader.ask :: CSTM Context
-                                                 case a of
-                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVar $ pv ! $(litE (integerL i))
-                                                   TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVar $ pv ! $(litE (integerL i)) 
-                                                   _ -> throw $ ContextException "turtle or patch" a
-                                               |]) []
-
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do
-                                                 (_,_,a,_,_) <- Reader.ask :: CIO Context
-                                                 case a of
-                                                   PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVarIO $ pv ! $(litE (integerL i))
-                                                   TurtleRef _ _ -> unsafe_patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVarIO $ pv ! $(litE (integerL i))
-                                                   _ -> throw $ ContextException "turtle or patch" a
-                                                              |]) []
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readPatch $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                  (_,_,a,_,_) <- Reader.ask :: CSTM Context
@@ -167,7 +144,7 @@ patches_own vs = do
                                                    TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
                                                    _ -> throw $ ContextException "turtle or patch" a
                                                                      |]) []]
-          return [p,u,w,x]
+          return [p',p,w,x]
             ) (zip vs [0..])
   return $ pl : concat pg
 
@@ -201,19 +178,8 @@ breeds_own p vs = do
 
 
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do 
-                                                 (_,_,a ,_,_) <- Reader.ask :: CSTM Context; 
-                                                 case a of
-                                                   TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVar (pv ! $(litE (integerL i)))
-                                                   _ -> throw $ ContextException "turtle" a
-                                               |]) []
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do 
-                                                                (_,_,a ,_,_) <- Reader.ask :: CIO Context; 
-                                                                case a of
-                                                                  TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVarIO (pv ! $(litE (integerL i)))
-                                                                  _ -> throw $ ContextException "turtle" a
-                                                              |]) []
-              
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (_,_,a,_,_) <- Reader.ask :: CSTM Context; 
@@ -228,7 +194,7 @@ breeds_own p vs = do
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
 
-          return [p,u,w,x]
+          return [p',p,w,x]
             ) (zip vs [0..])
   return $ cb : sp : cob : concat pg
 
@@ -239,7 +205,7 @@ breeds [p,s] = do
                                                      b <- lift $ readTVar tb
                                                      return $ b == $(litE (stringL p))) ts 
                                         |]) []
-  up <- valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (unsafe_breed >>= \ b -> return (b == $(litE (stringL p)))) =<< unsafe_turtles |]) []
+  up <- valD (varP (mkName ("unsafe_" ++ p))) (normalB [| with (breed >>= \ b -> return (b == $(litE (stringL p)))) =<< turtles |]) []
   x <- newName "x"
   y <- newName "y"
   us <- funD (mkName ("unsafe_" ++ s)) [clause [varP y] 
@@ -272,11 +238,11 @@ breeds [p,s] = do
   uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
                                                                      (_, _, a, _,  _) <- Reader.ask
                                                                      h <- case a of
-                                                                             TurtleRef _ _ -> unsafe_patch_here
+                                                                             TurtleRef _ _ -> patch_here
                                                                              PatchRef _ _ -> return [a]
                                                                              _ -> throw $ ContextException "turtle or patch" a
                                                                      ts <- $(varE (mkName ("unsafe_" ++ p)))
-                                                                     res <- with (return . ( == h) =<< unsafe_patch_here) ts
+                                                                     res <- with (return . ( == h) =<< patch_here) ts
                                                                      return res
                                                                    |]) []
 
@@ -299,7 +265,9 @@ breeds [p,s] = do
 
 
 directed_link_breed [p,s] = do
-  sp <- valD (varP (mkName p)) (normalB [| do ls <- links; filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+  sp <- valD (varP (mkName p)) (normalB [| do 
+                                          ls <- links :: CSTM [AgentRef]
+                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
@@ -307,7 +275,9 @@ directed_link_breed [p,s] = do
   return [sp, ss]
 
 undirected_link_breed [p,s] = do
-  sp <- valD (varP (mkName p)) (normalB [| do ls <- links; filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+  sp <- valD (varP (mkName p)) (normalB [| do 
+                                          ls <- links :: CSTM [AgentRef]
+                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
@@ -323,19 +293,8 @@ links_own vs = do
   ct <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   cf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do 
-                                                 (_,_,a ,_,_) <- Reader.ask :: CSTM Context; 
-                                                 case a of
-                                                   LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVar (pv ! $(litE (integerL i)))
-                                                   _ -> throw $ ContextException "link" a
-                                               |]) []
-                                                 
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do 
-                                                                (_,_,a ,_,_) <- Reader.ask :: CIO Context; 
-                                                                case a of
-                                                                  LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVarIO (pv ! $(litE (integerL i))) 
-                                                                  _ -> throw $ ContextException "link" a
-                                                              |]) []
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (_,_,a,_,_) <- Reader.ask :: CSTM Context; 
@@ -350,7 +309,7 @@ links_own vs = do
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
 
-          return [p,u,w,x]
+          return [p',p,w,x]
             ) (zip vs [0..])
   return $ cls : cts : cfs : cl : ct : cf : concat pg
 
@@ -360,18 +319,9 @@ link_breeds_own p vs = do
   cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   pg <- mapM (\ (v, i) -> do
-          p <- valD (varP (mkName v)) (normalB [| do 
-                                                 (_,_,a ,_,_) <- Reader.ask :: CSTM Context;
-                                                 case a of
-                                                   LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVar (pv ! $(litE (integerL i))) 
-                                                   _ -> throw $ ContextException "link" a
-                                               |]) []
-          u <- valD (varP (mkName ("unsafe_" ++ v))) (normalB [| do
-                                                                (_,_,a ,_,_) <- Reader.ask :: CIO Context; 
-                                                                case a of
-                                                                  LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVarIO (pv ! $(litE (integerL i))) 
-                                                                  _ -> throw $ ContextException "link" a
-                                                              |]) []
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i)) |]) []
+
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (_,_,a,_,_) <- Reader.ask :: CSTM Context; 
@@ -386,7 +336,7 @@ link_breeds_own p vs = do
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
 
-          return [p,u,w,x]
+          return [p',p,w,x]
             ) (zip vs [0..])
   return $ cls : cts : cfs : concat pg
 
@@ -411,7 +361,7 @@ random_primary_color = do
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
   s <- lift $ readTVar ts
-  let (v,s') = randomR (0,13) s
+  let (v,s') = randomR (0,13 :: Int) s
   lift $ writeTVar ts s'
   return (primary_colors !! v)
 
@@ -425,7 +375,7 @@ random_integer_heading = do
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
   s <- lift $ readTVar ts
-  let (v,s') = randomR (0,360) s
+  let (v,s') = randomR (0,360 :: Integer) s
   lift $ writeTVar ts s'
   return v
 

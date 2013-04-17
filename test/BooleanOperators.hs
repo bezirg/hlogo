@@ -28,7 +28,7 @@ breeds_own "mice" []
 booleanoperatorsTestGroup = $(testGroupGenerator)
 case_ShortCircuitAnd = runT $ do
   atomic $ set_glob1 0
-  g <- unsafe_glob1
+  g <- glob1
   let a1 = g == 3 && 1 / g == 0
   let e1 = False
   lift $ e1 @=? a1
@@ -38,7 +38,7 @@ case_ShortCircuitAnd = runT $ do
 
 case_ShortCircuitOr = runT $ do
   atomic $ set_glob1 0
-  g <- unsafe_glob1
+  g <- glob1
   let a1 = g == 0 || 1 / g == 0
   let e1 = True
   lift $ e1 @=? a1
