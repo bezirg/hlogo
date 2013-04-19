@@ -29,7 +29,7 @@ module Framework.Logo.Prim (
                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink,
 
                            -- * Input/Output
-                           Framework.Logo.Prim.show, unsafe_show, Framework.Logo.Prim.print, unsafe_print, read_from_string,
+                           show_, unsafe_show_, print_, unsafe_print_, read_from_string,
 
                            -- * IO Operations
                            atomic, ask, of_, with, snapshot
@@ -109,8 +109,8 @@ other as = do
 
 
 -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
-show :: Show a => a -> CSTM ()
-show a = do
+show_ :: Show a => a -> CSTM ()
+show_ a = do
   (_,_, r, p, _) <- Reader.ask
   lift $ writeTChan p $ (case r of
                            ObserverRef _ -> "observer: "
@@ -119,8 +119,8 @@ show a = do
                            TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): ")   ++ Prelude.show a
 
 -- | Prints value in the Command Center, followed by a carriage return. 
-print :: Show a => a -> CSTM ()
-print a = do
+print_ :: Show a => a -> CSTM ()
+print_ a = do
   (_,_, _, p, _) <- Reader.ask
   lift $ writeTChan p $ Prelude.show a
                            
@@ -1866,8 +1866,8 @@ unsafe_shuffle l = shuffle' l (length l) where
 
 
 -- Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_show :: Show a => a -> CIO ()
-unsafe_show a = do
+unsafe_show_ :: Show a => a -> CIO ()
+unsafe_show_ a = do
   (_,_, r, _, _) <- Reader.ask
   lift $ putStrLn $ (case r of
                            ObserverRef _ -> "observer: "
@@ -1876,8 +1876,8 @@ unsafe_show a = do
                            TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): ")   ++ Prelude.show a
 
 -- Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_print :: Show a => a -> CIO ()
-unsafe_print a = do
+unsafe_print_ :: Show a => a -> CIO ()
+unsafe_print_ a = do
   lift $ putStrLn $ Prelude.show a
 
 
@@ -2171,7 +2171,7 @@ instance STMorIO STM where
     x <- lift $ readTVar tx
     y <- lift $ readTVar ty
     distancexy x y
-  distance [a] = throw $ TypeException "turtle or patch" a
+  distance (a:_) = throw $ TypeException "single turtle or patch" a
 
   distancexy x' y' = do
     (_,_,a,_,_) <- Reader.ask
@@ -2179,7 +2179,18 @@ instance STMorIO STM where
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
               _ -> throw $ ContextException "turtle or patch" a
-    return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
+    return $ sqrt ((deltaX x x') ^ 2 + (deltaY y y' ^ 2))
+    where
+      deltaX a1 a2 = if horizontal_wrap_ conf
+                     then min 
+                              (abs (a2 - a1))
+                              (abs (a2 - (fromIntegral $ max_pxcor_ conf) - a1 + (fromIntegral $ min_pxcor_ conf) + 1))
+                     else abs (a2 -a1)
+      deltaY a1 a2 = if vertical_wrap_ conf
+                     then min 
+                              (abs (a2 - a1)) 
+                              (abs (a2 - (fromIntegral $ max_pycor_ conf) - a1 + (fromIntegral $ min_pycor_ conf) + 1))
+                     else abs (a2 -a1)
 
   towards a = do
     (_, _, s, _,  _) <- Reader.ask
@@ -2362,15 +2373,25 @@ instance STMorIO IO where
     distancexy x y
   distance (a:_) = throw $ ContextException "single turtle or patch" a
 
+
   distancexy x' y' = do
     (_,_,a,_,_) <- Reader.ask
     (x,y) <- case a of
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
               _ -> throw $ ContextException "turtle or patch" a
-    return $ sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))
-        where
-          delta a1 a2 aboundary = min (abs (a2 - a1)) (abs (a2 + a1) + 1)
+    return $ sqrt ((deltaX x x') ^ 2 + (deltaY y y' ^ 2))
+    where
+      deltaX a1 a2 = if horizontal_wrap_ conf
+                     then min 
+                              (abs (a2 - a1))
+                              (abs (a2 - (fromIntegral $ max_pxcor_ conf) - a1 + (fromIntegral $ min_pxcor_ conf) + 1))
+                     else abs (a2 -a1)
+      deltaY a1 a2 = if vertical_wrap_ conf
+                     then min 
+                              (abs (a2 - a1)) 
+                              (abs (a2 - (fromIntegral $ max_pycor_ conf) - a1 + (fromIntegral $ min_pycor_ conf) + 1))
+                     else abs (a2 -a1)
 
   towards a = do
     (_, _, s, _,  _) <- Reader.ask
