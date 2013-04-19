@@ -25,8 +25,8 @@ setup = do
 go = forever $ do
   t <- ticks
   when (t > 100) (do
-                    unsafe_show t
-                    unsafe_show =<< count =<< turtles
+                    unsafe_show_ t
+                    unsafe_show_ =<< count =<< turtles
                     stop
                   )
   ask (do 

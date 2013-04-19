@@ -426,45 +426,6 @@ pycor = do
     PatchRef _ (MkPatch {pycor_ = y}) -> return y
     _ -> throw $ ContextException "patch" a
 
-
--- | Reports an agentset containing the 8 surrounding patches
-neighbors :: CSTM [AgentRef]
-neighbors = do
-  (_, _, a, _,  _) <- Reader.ask
-  (x,y) <- case a of
-    PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
-    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
-    _ -> throw $ ContextException "turtle or patch" a
-  patch_set [p (x-1) (y-1),
-             p (x-1) y,
-             p (x-1) (y+1),
-             p x (y-1),
-             p x (y+1),
-             p (x+1) (y-1),
-             p (x+1) y,
-             p (x+1) (y+1)
-            ]
-  where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
-                then return []
-                else patch x y
-
--- | Reports an agentset containing the 4 surrounding patches
-neighbors4 :: CSTM [AgentRef]
-neighbors4 = do
-  (_, _, a, _,  _) <- Reader.ask
-  (x,y) <- case a of
-    PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
-    TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
-    _ -> throw $ ContextException "turtle or patch" a
-  patch_set [p (x-1) y,
-             p (x+1) y,
-             p x (y-1),
-             p x (y+1)
-            ]
-  where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
-                then return []
-                else patch x y
-
 set_plabel :: String -> CSTM ()
 set_plabel s = do
   (_,_,a,_,_) <- Reader.ask
@@ -1039,7 +1000,7 @@ report = return
 
 {-# INLINE item #-}
 -- | On lists, reports the value of the item in the given list with the given index. 
-item i l = l !! (i-1)
+item i l = l !! i
 
 {-# INLINE last_ #-}
 -- | On a list, reports the last item in the list. 
@@ -1971,8 +1932,9 @@ snapshot = do
              prs <- patches
              diagPatches <- lift $ mapM (\ (PatchRef (px,py) p) -> do 
                                    c <- readTVarIO $ pcolor_ p
+                                   t <- readTVarIO $ plabel_ p
                                    let [r,g,b] = extract_rgb c
-                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript Diag.R2)
+                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.text t Diag.# Diag.fc (sRGB24 255 255 255) Diag.<> Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript Diag.R2)
                                 ) prs
              trs <- turtles
              diagTurtles <- lift $ mapM (\ (TurtleRef _ t) -> do 
@@ -2058,6 +2020,10 @@ class (Monad m) => STMorIO m where
     -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
     in_radius :: [AgentRef] -> Double -> C m [AgentRef]
     -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
+    -- | Reports an agentset containing the 8 surrounding patches
+    neighbors :: C m [AgentRef]
+    -- | Reports an agentset containing the 4 surrounding patches
+    neighbors4 :: C m [AgentRef]
     link :: Int -> Int -> C m [AgentRef]
     -- | Reports the agentset consisting of all links. 
     links :: C m [AgentRef]
@@ -2232,6 +2198,40 @@ instance STMorIO STM where
                x' <- lift $ readTVar tx'
                y' <- lift $ readTVar ty'
                return $ (sqrt ((delta x x' (fromIntegral $ max_pxcor_ conf)) ^ 2 + (delta y y' (fromIntegral $ max_pycor_ conf) ^ 2))) <= n) as
+
+  neighbors = do
+    (_, _, a, _,  _) <- Reader.ask
+    (x,y) <- case a of
+      PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+      TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+      _ -> throw $ ContextException "turtle or patch" a
+    patch_set [p (x-1) (y-1),
+               p (x-1) y,
+               p (x-1) (y+1),
+               p x (y-1),
+               p x (y+1),
+               p (x+1) (y-1),
+               p (x+1) y,
+               p (x+1) (y+1)
+              ]
+    where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
+                  then return []
+                  else patch x y
+
+  neighbors4 = do
+    (_, _, a, _,  _) <- Reader.ask
+    (x,y) <- case a of
+      PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+      TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
+      _ -> throw $ ContextException "turtle or patch" a
+    patch_set [p (x-1) y,
+               p (x+1) y,
+               p x (y-1),
+               p x (y+1)
+              ]
+    where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
+                  then return []
+                  else patch x y
 
   link f t = do
     (_, tw,_, _,_) <- Reader.ask
@@ -2430,6 +2430,40 @@ instance STMorIO IO where
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
       _ -> throw $ ContextException "turtle or patch" a
     with (distancexy x y >>= \ d -> return $ d <= n) as
+
+  neighbors = do
+    (_, _, a, _,  _) <- Reader.ask
+    (x,y) <- case a of
+      PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+      TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+      _ -> throw $ ContextException "turtle or patch" a
+    patch_set [p (x-1) (y-1),
+               p (x-1) y,
+               p (x-1) (y+1),
+               p x (y-1),
+               p x (y+1),
+               p (x+1) (y-1),
+               p (x+1) y,
+               p (x+1) (y+1)
+              ]
+    where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
+                  then return []
+                  else patch x y
+
+  neighbors4 = do
+    (_, _, a, _,  _) <- Reader.ask
+    (x,y) <- case a of
+      PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
+      TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
+      _ -> throw $ ContextException "turtle or patch" a
+    patch_set [p (x-1) y,
+               p (x+1) y,
+               p x (y-1),
+               p x (y+1)
+              ]
+    where p x y = if (not (horizontal_wrap_ conf) && (x > fromIntegral (max_pxcor_ conf) || x < fromIntegral (min_pxcor_ conf))) || (not (vertical_wrap_ conf) && (y > fromIntegral (max_pycor_ conf) || y < fromIntegral (min_pycor_ conf)))
+                  then return []
+                  else patch x y
 
   link x y = do
     (_, tw,_, _, _) <- Reader.ask

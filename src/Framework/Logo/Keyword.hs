@@ -255,13 +255,23 @@ breeds [p,s] = do
                                                                                   y' <- lift $ readTVar y
                                                                                   b <- lift $ readTVar tb
                                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []]
+  to <- funD (mkName (p ++ "_on")) [clause [varP y] (normalB [|
+                                                              case $(varE y) of
+                                                                [] -> return []
+                                                                ps@(PatchRef _ _ : _) -> do
+                                                                               with (liftM (flip elem ps . head) patch_here) =<< $(varE (mkName ("unsafe_" ++ p)))
+                                                                ts@(TurtleRef _ _ : _) -> do
+                                                                               $(varE (mkName (p ++ "_on"))) =<< of_ (liftM head patch_here) ts
+                                                                (a:_) -> throw $ ContextException (s ++ "or patch agentset") a
+                                                            |]) []]
+
   ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
                                           (normalB [| maybe (return False) (\ t -> case t of 
                                                                                     [TurtleRef _ (MkTurtle {breed_ = tb})] -> do
                                                                                       b <- lift $ readTVar tb
                                                                                       return $ b == $(litE (stringL p))
                                                                                     _ -> return False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
-  return [sp,up,us,ss,th,uth,ta, ib]
+  return [sp,up,us,ss,th,uth,ta, to, ib]
 
 
 directed_link_breed [p,s] = do
