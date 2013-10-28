@@ -1,3 +1,4 @@
+-- | Main wrapper module; the only module that should be imported by the model
 module Framework.Logo
     (
      module Framework.Logo.Keyword,

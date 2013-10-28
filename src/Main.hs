@@ -12,10 +12,11 @@ link_breeds_own "arcs" ["a1", "a2"] -- a1, unsafe_a1, set_a1, etc..
 link_breeds_own "edges" ["e1", "e2"] -- a1, unsafe_a1, set_a1, etc..
 
 setup = do
-  ask (do
-         [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
-         atomic $ set_pcolor c) =<< patches
-  atomic $ create_turtles 10000
+  t1 <- atomic $ crt 1
+  ask (atomic $ setxy 16 (-14)) t1
+  t2 <- atomic $ crt 1
+  ask (atomic $ setxy 16 14) t2
+  ask (atomic $ show_ =<< distance t2) t1
   atomic $ reset_ticks
   -- snapshot -- Uncomment this line to draw a snapshot at tick=0.eps
 
@@ -33,4 +34,4 @@ behave = do
                    then lt 30
                    else when (c == blue) (rt 30)
 
-run ['setup, 'go]               -- this is a wrapper to tell which functions to call and in which order
+run ['setup]               -- this is a wrapper to tell which functions to call and in which order

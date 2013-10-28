@@ -1,5 +1,5 @@
 default:
-	cabal configure
+	cabal configure --enable-tests
 	cabal build
 
 clean:
