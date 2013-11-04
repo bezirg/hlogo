@@ -20,6 +20,7 @@ data Conf = Conf {
     , horizontal_wrap_ :: Bool
     , vertical_wrap_ :: Bool
     , split_ :: String
+    , stats_stm_ :: Bool
   } deriving (Show, Eq, Data, Typeable)
 
 confOpt = Conf {
@@ -32,6 +33,7 @@ confOpt = Conf {
           , horizontal_wrap_ = def &= explicit &= name "h" &= name "horizontal-wrap" &= help "When set, enables horizontal wrapping"
           , vertical_wrap_ = def &= explicit &= name "v" &= name "vertical-wrap" &= help "When set, enables vertical wrapping"
           , split_ = "none" &= explicit &= name "split" &= help "Set the spatial clustering of agents to threads. Options: none, horizontal, vertical, both"
+          , stats_stm_ = False &= name "stats-stm" &= help "When set, counts the total and succesful stm rollbacks"
           } &= program "hlogo" &= help "HLogo framework" &= summary "HLogo v0.0.1, (C) Nikolaos Bezirgiannis, Ilias Sakellariou"
 
 

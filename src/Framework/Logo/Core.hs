@@ -15,6 +15,8 @@ import qualified  Data.IntMap as IM (empty)
 import Data.Array (listArray)
 import Control.Monad
 import System.Random (mkStdGen)
+import System.IO.Unsafe (unsafePerformIO)
+import Data.IORef (newIORef)
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the global from TemplateHaskell (trick) to determine the size of the globals array
@@ -60,4 +62,6 @@ newPatch x y po = MkPatch <$>
                   newTVarIO 9.9 <*>
                   -- init the patches-own variables to 0
                   (return . listArray (0, fromIntegral po -1) =<< replicateM (fromIntegral po) (newTVarIO 0)) <*>
-                  newTVarIO (mkStdGen (x + y * 1000))
+                  newTVarIO (mkStdGen (x + y * 1000)) <*>
+                  pure (unsafePerformIO (newIORef 0)) <*>
+                  pure (unsafePerformIO (newIORef 0))

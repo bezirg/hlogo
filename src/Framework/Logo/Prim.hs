@@ -26,7 +26,7 @@ module Framework.Logo.Prim (
                            xor, e, exp_, pi_, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor_, ceiling_, remainder, round_, sqrt_,  is_numberp,
 
                            -- * Misc
-                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink,
+                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
 
                            -- * Input/Output
                            show_, unsafe_show_, print_, unsafe_print_, read_from_string,
@@ -53,7 +53,7 @@ import qualified Data.Map as M
 import Data.Array
 import Control.Applicative
 import System.Random hiding (random, split)
-import Control.Monad (forM_)
+import Control.Monad (forM_, foldM)
 import Data.Function
 import Data.Maybe (maybe, fromJust)
 import Data.Typeable
@@ -65,6 +65,12 @@ import GHC.Conc (numCapabilities)
 import qualified Diagrams.Prelude as Diag
 import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
+
+import Data.IORef
+import System.IO.Unsafe (unsafePerformIO)
+import qualified Data.Foldable as F (foldlM)
+
+import GHC.Conc.Sync (unsafeIOToSTM)
 
 {-# SPECIALIZE self :: CSTM [AgentRef] #-}
 {-# SPECIALIZE self :: CIO [AgentRef] #-}
@@ -906,7 +912,7 @@ clear_patches = do
   case a of
     ObserverRef _ -> do
                   (MkWorld ps ts _) <- lift $ readTVar tw
-                  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc to tg)  -> do
+                  lift $ M.traverseWithKey (\ (x,y) (MkPatch tx ty tc tl tlc to tg pt ps)  -> do
                               writeTVar tc 0
                               writeTVar tl ""
                               writeTVar tlc 9.9
@@ -1507,7 +1513,28 @@ end2 = do
 
 -- | lifting STM to IO, a wrapper to atomically
 atomic :: CSTM a -> CIO a
-atomic = Reader.mapReaderT atomically
+atomic comms = do
+  (_, _, a, _, _) <- Reader.ask 
+  if stats_stm_ conf
+   then do
+     lift $ increaseSuccessfulSTM a
+     Reader.mapReaderT atomically (lift (unsafeIOToSTM (increaseTotalSTM a)) >> comms)
+   else
+     Reader.mapReaderT atomically comms
+    where
+        increaseSuccessfulSTM a = case a of
+                                     TurtleRef _ t -> atomicModifyIORef'  (tsuccstm t) (\ x -> (x+1, ()))
+                                     PatchRef _ p -> atomicModifyIORef'  (psuccstm p) (\ x -> (x+1, ()))
+                                     LinkRef _ l -> atomicModifyIORef'  (lsuccstm l) (\ x -> (x+1, ()))
+                                     ObserverRef _ -> return ()
+{-# NOINLINE increaseTotalSTM #-}
+-- | Internal
+increaseTotalSTM a = case a of
+                       TurtleRef _ t -> atomicModifyIORef'  (ttotalstm t) (\ x -> (x+1, ()))
+                       PatchRef _ p -> atomicModifyIORef'  (ptotalstm p) (\ x -> (x+1, ()))
+                       LinkRef _ l -> atomicModifyIORef'  (ltotalstm l) (\ x -> (x+1, ()))
+                       ObserverRef _ -> return ()
+
 
 -- | The specified agent or agentset runs the given commands. 
 ask :: CIO a -> [AgentRef] -> CIO ()
@@ -1517,7 +1544,23 @@ ask f as = do
    Nobody -> throw $ ContextException "agent" Nobody
    _ -> return ()
  if as == [Nobody] then throw $ TypeException "agentset" Nobody else return ()
- ws <- lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])) (split numCapabilities as)
+ ws <- case split_ conf of
+        "none" -> lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])) (split numCapabilities as)
+        "horizontal" -> lift $ mapM (\ (processor_i, asi) -> 
+                                   liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
+                                               then Thread.forkIO (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])
+                                               else if null asi
+                                                    then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
+                                                    else Thread.forkOn processor_i (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])) (hsplit numCapabilities as)
+        "vertical" -> lift $ mapM (\ (processor_i, asi) -> 
+                                   liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
+                                               then Thread.forkIO (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])
+                                               else if null asi
+                                                    then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
+                                                    else Thread.forkOn processor_i (sequence_ [Reader.runReaderT f (gs, tw, a, p, s) | a <- asi])) (vsplit numCapabilities as)
+        "both" -> error "the both splitting is not ready yet. TODO"
+        _ -> error "not valid splitting option"
+                      
  lift $ sequence_ ws 
 
 -- | Internal
@@ -1529,6 +1572,27 @@ split n l = let (d,m) = length l `divMod` n
                 split' x m l = let (t, r) = splitAt (d+1) l
                                in t : split' (x-1) (m-1) r
             in split' n m l
+
+vsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
+vsplit n as = IM.toList $ foldl (\ im a -> case a of
+                                            PatchRef (x1, _) _ -> IM.insertWith (++) ((x1 + max_x) `div` sector) [a] im
+                                            TurtleRef _ (MkTurtle {init_xcor_ = ix}) -> IM.insertWith (++) ((ix + max_x) `div` sector) [a] im
+                                            _ -> IM.insertWith (++) n [a] im -- it is not a patch or a turtle, so it is a link, it should be scheduled by GHC and not by us, put it at the extra n
+                                ) IM.empty as
+              where max_x = max_pxcor_ conf
+                    min_x = min_pxcor_ conf
+                    sector = (max_x - min_x) `div` n
+
+hsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
+hsplit n as = IM.toList $ foldl (\ im a -> case a of
+                                            PatchRef (_, y1) _ -> IM.insertWith (++) ((y1 + max_y) `div` sector) [a] im
+                                            TurtleRef _ (MkTurtle {init_ycor_ = iy}) -> IM.insertWith (++) ((iy + max_y) `div` sector) [a] im
+                                            _ -> IM.insertWith (++) n [a] im -- it is not a patch, so it should be scheduled by GHC and not by us, put it at the extra n
+                                ) IM.empty as
+              where max_y = max_pycor_ conf
+                    min_y = min_pycor_ conf
+                    sector = (max_y - min_y) `div` n
+
 
 -- | For an agent, reports the value of the reporter for that agent (turtle or patch). 
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
@@ -1666,7 +1730,7 @@ hatch :: Int -> CSTM [AgentRef]
 hatch n = do
   (gs, tw, a, _, _) <- Reader.ask
   case a of
-    TurtleRef _ (MkTurtle w bd c h x y s l lc hp sz ps pm t _) -> do
+    TurtleRef _ (MkTurtle w bd c h x y s l lc hp sz ps pm t _ tt ts ix iy) -> do
             let who = gs ! 0
             let b = bounds t
             let newArray = return . listArray b =<< sequence [(newTVar =<< readTVar (t ! i)) | i <- [fst b.. snd b]]
@@ -1686,7 +1750,11 @@ hatch n = do
                                                                             (newTVar =<< readTVar ps) <*>
                                                                             (newTVar =<< readTVar pm) <*>
                                                                             newArray <*>
-                                                                            (newTVar $ mkStdGen i)
+                                                                            (newTVar $ mkStdGen i) 
+                                                                            <*> pure (unsafePerformIO (newIORef 0))
+                                                                            <*> pure (unsafePerformIO (newIORef 0))
+                                                                            <*> liftA round (readTVar x)
+                                                                            <*> liftA round (readTVar y)
                                                                         return (i, t) | i <- [w..w+n-1]]
             let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
             oldWho <- lift $ liftM round $ readTVar who
@@ -1840,6 +1908,29 @@ unsafe_show_ a = do
 unsafe_print_ :: Show a => a -> CIO ()
 unsafe_print_ a = do
   lift $ putStrLn $ Prelude.show a
+
+stats_stm :: CIO Double
+stats_stm = 
+  if stats_stm_ conf
+  then do
+    (_, tw, _, _, _) <- Reader.ask
+    MkWorld wps wts wls <- lift $ readTVarIO tw
+    (tt, ts) <- lift $ F.foldlM (\ (acct, accs) (MkTurtle {ttotalstm=tt, tsuccstm=ts}) -> do
+                                  rtt <- readIORef tt
+                                  rts <- readIORef ts
+                                  return (acct+rtt, accs+rts)) (0,0) wts
+    (pt, ps) <- lift $ F.foldlM (\ (acct, accs) (MkPatch {ptotalstm=pt, psuccstm=ps}) -> do
+                                  rpt <- readIORef pt
+                                  rps <- readIORef ps
+                                  return (acct+rpt, accs+rps)) (0,0) wps
+    (lt, ls) <- lift $ F.foldlM (\ (acct, accs) (MkLink {ltotalstm=pt, lsuccstm=ps}) -> do
+                                  rlt <- readIORef pt
+                                  rls <- readIORef ps
+                                  return (acct+rlt, accs+rls)) (0,0) wls
+    let total = fromInteger $ tt+pt+lt
+    let succ = fromInteger $ ts+ps+ls
+    return $ (total - succ) / total
+  else error "--stats-stm flag not enabled"
 
 
 

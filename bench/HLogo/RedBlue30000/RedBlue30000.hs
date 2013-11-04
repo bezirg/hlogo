@@ -13,7 +13,7 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t==1000) $ stop
+  when (t==1000) $ stats_stm >>= unsafe_print_ >> stop
   ask (behave) =<< turtles
   atomic $ tick
 

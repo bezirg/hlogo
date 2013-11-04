@@ -73,12 +73,12 @@ test-suite test
 --   hs-source-dirs:      src, bench/HLogo/RedBlue20000
 
 
--- executable redblue30000
---   main-is:             RedBlue30000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue30000
+executable redblue30000
+  main-is:             RedBlue30000.hs
+  build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
+  extensions:          TemplateHaskell                                                
+  ghc-options:         -rtsopts -threaded
+  hs-source-dirs:      src, bench/HLogo/RedBlue30000
 
 
 -- executable simple1

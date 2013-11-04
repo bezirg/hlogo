@@ -9,6 +9,7 @@ import qualified Data.Map as M
 import Data.Array
 import Data.Typeable
 import System.Random (StdGen)
+import Data.IORef
 
 -- | Following the NetLogo convention, PenMode is an Algebraic Data Type (ADT)
 data PenMode = Down | Up | Erase
@@ -31,7 +32,11 @@ data Turtle = MkTurtle {
       pen_size_ :: TVar Double,
       pen_mode_ :: TVar PenMode,
       tvars_ :: Array Int (TVar Double),
-      tgen :: TVar StdGen
+      tgen :: TVar StdGen,
+      ttotalstm :: IORef Integer,
+      tsuccstm :: IORef Integer,
+      init_xcor_ :: Int,
+      init_ycor_ :: Int
     }
               deriving (Eq)
 
@@ -45,7 +50,9 @@ data Patch = MkPatch {
       plabel_ :: TVar String,
       plabel_color_ :: TVar Double,
       pvars_ :: Array Int (TVar Double),
-      pgen :: TVar StdGen
+      pgen :: TVar StdGen,
+      ptotalstm :: IORef Integer,
+      psuccstm :: IORef Integer
       }
            deriving (Eq)
 
@@ -62,7 +69,9 @@ data Link = MkLink {
       lshape_ :: TVar String,
       tie_mode :: TVar TieMode,
       lvars_ :: Array Int (TVar Double),
-      lgen :: TVar StdGen
+      lgen :: TVar StdGen,
+      ltotalstm :: IORef Integer,
+      lsuccstm :: IORef Integer
     }
           deriving (Eq)
 

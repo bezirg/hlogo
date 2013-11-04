@@ -21,6 +21,9 @@ import Data.Maybe (maybe)
 import Data.Typeable (cast)
 import Control.Monad (liftM2, filterM, replicateM)
 import System.Random (mkStdGen)
+import System.IO.Unsafe (unsafePerformIO)
+import Data.IORef (newIORef)
+
 
 globals vs  = liftM2 (++) 
               -- trick to store the length of globals
@@ -409,7 +412,12 @@ newBreed b x to = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x)
+       newTVar (mkStdGen x) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure 0 <*>
+       pure 0
+
 
 -- | Internal
 newOrderedBreed :: Int -> Int -> String -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> CSTM Turtle
@@ -431,7 +439,12 @@ newOrderedBreed i o b x to = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x)
+       newTVar (mkStdGen x) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure 0 <*>
+       pure 0
+
 
 -- | Internal
 newTurtle x to = do
@@ -452,7 +465,11 @@ newTurtle x to = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x)
+       newTVar (mkStdGen x) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure 0 <*>
+       pure 0
 
 -- | Internal
 newSprout w to x y = do
@@ -473,7 +490,11 @@ newSprout w to x y = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen w)
+       newTVar (mkStdGen w) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (round x) <*>
+       pure (round y)
 
 -- | Internal
 newBSprout w to x y b = do
@@ -494,7 +515,11 @@ newBSprout w to x y b = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen w)
+       newTVar (mkStdGen w) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0)) <*>
+       pure (round x) <*>
+       pure (round y)
 
 
 -- | Internal
@@ -517,7 +542,12 @@ newOrderedTurtle i o x to = do
              newTVar 1 <*>
              newTVar Up <*>
              (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-             newTVar (mkStdGen x)
+             newTVar (mkStdGen x) <*>
+             pure (unsafePerformIO (newIORef 0)) <*>
+             pure (unsafePerformIO (newIORef 0)) <*>
+             pure 0 <*>
+             pure 0
+
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
@@ -586,7 +616,10 @@ newLink f t ls = lift $ MkLink <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0))  <*>
-                  newTVar (mkStdGen (f+t*1000))
+                  newTVar (mkStdGen (f+t*1000)) <*>
+                  pure (unsafePerformIO (newIORef 0)) <*>
+                  pure (unsafePerformIO (newIORef 0))
+
 
 -- | Internal
 newLBreed :: Int -> Int -> Bool -> String -> Int -> CSTM Link -- ^ FromIndex -> ToIndex -> Directed-> Breed -> VarLength -> CSTM Link
@@ -603,7 +636,10 @@ newLBreed f t d b ls = lift $ MkLink <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0)) <*>
-                  newTVar (mkStdGen (f+t*1000))
+                  newTVar (mkStdGen (f+t*1000)) <*>
+                  pure (unsafePerformIO (newIORef 0)) <*>
+                  pure (unsafePerformIO (newIORef 0))
+
 
 
 -- |  Used for creating breeded and unbreeded links between turtles.
