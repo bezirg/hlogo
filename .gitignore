@@ -1,5 +1,5 @@
 dist/
+.cabal-sandbox/
 doc/*.pdf
-*_flymake.hs
 *.hi
 *.o

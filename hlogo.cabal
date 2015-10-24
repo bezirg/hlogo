@@ -1,178 +1,228 @@
-name:                  hlogo
-version:               0.0.1
-synopsis:              HLogo, a simulation framework in Haskell
-description:           Input programs are written in a dialect of Logo. Then on, they are source-to-source compiled down to Haskell,
-                       and are executed on the Haskell modelling framework.
-author:                Nikolaos Bezirgiannis, Ilias Sakellariou
-maintainer:            NikolaosBezirgiannis <n.bezirgiannis@students.uu.nl>, Ilias Sakellariou <iliass@uom.gr>
-stability:             provisional
-build-type:            Simple
-cabal-version:         >= 1.4
+name:                 hlogo
+version:              0.0.2
+synopsis:             HLogo, a simulation framework in Haskell
+description:          Input programs are written in a dialect of Logo. Then on, they are source-to-source compiled down to Haskell,
+                      and are executed on the Haskell modelling framework.
+author:               Nikolaos Bezirgiannis <bezirgia@cwi.nl>, Wishnu Prasetya <s.w.b.prasetya@uu.nl>, Ilias Sakellariou <iliass@uom.gr>
+maintainer:           Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+stability:            provisional
+build-type:           Simple
+license:	          BSD3
+license-file:	      LICENSE
+cabal-version:        >= 1.8
+category:             Language, Concurrency
                       
+source-repository head
+  type:     git
+  location: git@bitbucket.org:bezirg/hlogo.git
+
 library
-  build-depends:      base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  exposed-modules:    Framework.Logo, Framework.Logo.Base, Framework.Logo.Core, 
-                      Framework.Logo.Keyword, Framework.Logo.Prim, 
-                      Framework.Logo.Exception,
-                      Language.Logo.Syntax, Language.Logo.Parser, Language.Logo.Pretty
-  other-modules:      Framework.Logo.Conf
-  ghc-options:        -rtsopts -threaded -fwarn-unused-imports
+  build-depends:      
+                      -- supporting GHC>=7.6
+                      base>=4.6.0.0 && <5, 
+                      -- for command-line setting the World 2d-space options (max-pxcor, world wrapping)
+                      cmdargs,
+                      -- for now: world-patch-set&link-set are a Map (Int,Int), world-turtle-set are IntMap                             
+                      containers>=0.5.0.0, 
+                      -- for now: turtles-own, patches-own,links-own stored in a static (=fixed at compile-time) array
+                      array, 
+                      -- for adding a context reader ontop of stm
+                      transformers>=0.4, 
+                      -- for random-related functions in stdlib
+                      random, 
+                      -- for top-level macros (globals,patches-own,breed definition,etc)
+                      template-haskell,
+                      -- For concurrency (non-deterministic)
+                      stm, 
+                      -- For concurrent threads management
+                      threads, 
+                      -- For visualization
+                      diagrams-lib>=1.3, 
+                      diagrams-postscript, 
+                      colour
+  exposed-modules:    Language.Logo, 
+                      Language.Logo.Base, 
+                      Language.Logo.Core, 
+                      Language.Logo.Keyword, 
+                      Language.Logo.Prim, 
+                      Language.Logo.Exception
+  other-modules:      Language.Logo.Conf
+  extensions:         DeriveDataTypeable, TemplateHaskell, CPP
+  ghc-options:        -Wall
   hs-source-dirs:     src
 
 test-suite test
-  type:                exitcode-stdio-1.0
-  main-is:             Test.hs
-  build-depends:       base, test-framework, test-framework-hunit, test-framework-th, HUnit
-  ghc-options:
-  hs-source-dirs:      src, test                        
-
--- executable hlogo
---   main-is:             Main.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src
-
--- executable redblue1000
---   main-is:             RedBlue1000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue1000
+  type:               exitcode-stdio-1.0
+  main-is:            Test.hs
+  build-depends:      base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour, test-framework, test-framework-hunit, test-framework-th, HUnit
+  extensions:         DeriveDataTypeable, TemplateHaskell, CPP
+  hs-source-dirs:     src, test                        
 
 
--- executable redblue2500
---   main-is:             RedBlue2500.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue2500
+benchmark simple1
+  type:           exitcode-stdio-1.0
+  main-is:        Simple1.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable"
+  hs-source-dirs: src, bench/src/hlogo
 
+benchmark simple2
+  type:           exitcode-stdio-1.0
+  main-is:        Simple2.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
--- executable redblue5000
---   main-is:             RedBlue5000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue5000
+benchmark sheep1
+  type:           exitcode-stdio-1.0
+  main-is:        Sheep1.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
+benchmark sheep2
+  type:           exitcode-stdio-1.0
+  main-is:        Sheep2.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
--- executable redblue10000
---   main-is:             RedBlue10000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue10000
+benchmark termites
+  type:           exitcode-stdio-1.0
+  main-is:        Termites.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
+benchmark safetermites
+  type:           exitcode-stdio-1.0
+  main-is:        SafeTermites.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
--- executable redblue20000
---   main-is:             RedBlue20000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/RedBlue20000
+benchmark fire
+  type:           exitcode-stdio-1.0
+  main-is:        Fire.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
+benchmark heatbugs
+  type:           exitcode-stdio-1.0
+  main-is:        Heatbugs.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: src, bench/src/hlogo
 
-executable redblue30000
-  main-is:             RedBlue30000.hs
-  build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  extensions:          TemplateHaskell                                                
-  ghc-options:         -rtsopts -threaded
-  hs-source-dirs:      src, bench/HLogo/RedBlue30000
+-- SHEEP BENCHMARK
+-------------------
 
+benchmark safesheep100
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=100
+  hs-source-dirs: src, bench/src/hlogo
+benchmark safesheep250
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=250
+  hs-source-dirs: src, bench/src/hlogo
+benchmark safesheep500
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=500
+  hs-source-dirs: src, bench/src/hlogo
+benchmark safesheep1000
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=1000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark safesheep2000
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=2000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark safesheep3000
+  type:           exitcode-stdio-1.0
+  main-is:        SafeSheep.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_SHEEP=3000
+  hs-source-dirs: src, bench/src/hlogo
 
--- executable simple1
---   main-is:             Simple1.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/Simple1
+-- REDBLUE BENCHMARK
+--------------------
 
--- executable simple2
---   main-is:             Simple2.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/Simple2
-
--- executable sheep1
---   main-is:             Sheep1.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/Sheep1
-
--- executable sheep2
---   main-is:             Sheep2.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/Sheep2
-
-
-
--- executable termites
---   main-is:             Termites.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/Termites
-
-
--- executable safetermites
---   main-is:             SafeTermites.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeTermites
-
-
-executable fire
-  main-is:             Fire.hs
-  build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
-  extensions:          TemplateHaskell                                                
-  ghc-options:         -rtsopts -threaded
-  hs-source-dirs:      src, bench/HLogo/Fire
-
-
--- executable safesheep100
---   main-is:             SafeSheep100.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep100
-
--- executable safesheep250
---   main-is:             SafeSheep250.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep250
-
--- executable safesheep500
---   main-is:             SafeSheep500.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep500
-
--- executable safesheep1000
---   main-is:             SafeSheep1000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep1000
-
--- executable safesheep2000
---   main-is:            SafeSheep2000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep2000
-
--- executable safesheep3000
---   main-is:             SafeSheep3000.hs
---   build-depends:       base, containers>=0.5.0.0, cmdargs, transformers, array, random, stm, threads, template-haskell,   diagrams-core, diagrams-lib, diagrams-postscript, colour
---   extensions:          TemplateHaskell                                                
---   ghc-options:         -rtsopts -threaded
---   hs-source-dirs:      src, bench/HLogo/SafeSheep3000
+benchmark redblue1000
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=1000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark redblue2500
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=2500
+  hs-source-dirs: src, bench/src/hlogo
+benchmark redblue5000
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=5000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark redblue10000
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=10000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark redblue20000
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=20000
+  hs-source-dirs: src, bench/src/hlogo
+benchmark redblue30000
+  type:           exitcode-stdio-1.0
+  main-is:        RedBlue.hs
+  build-depends:  base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+  cpp-options:    -DNR_TURTLES=30000
+  hs-source-dirs: src, bench/src/hlogo

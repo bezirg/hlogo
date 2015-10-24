@@ -2,10 +2,10 @@
 
 module ComparingAgents where
 
-import Framework.Logo.Keyword
-import Framework.Logo.Prim
-import Framework.Logo.Base
-import Framework.Logo.Exception
+import Language.Logo.Keyword
+import Language.Logo.Prim
+import Language.Logo.Base
+import Language.Logo.Exception
 import Control.Monad.Trans.Class
 import Test.Framework
 import Test.Framework.TH
