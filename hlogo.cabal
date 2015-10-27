@@ -48,7 +48,7 @@ library
                       Language.Logo.Exception
   other-modules:      Language.Logo.Conf
   extensions:         DeriveDataTypeable, TemplateHaskell, CPP
-  ghc-options:        -Wall
+  ghc-options:        -Wall -fno-warn-unused-do-bind
   hs-source-dirs:     src
 
 test-suite test

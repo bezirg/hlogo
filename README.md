@@ -31,7 +31,7 @@ There are many HLogo examples under `bench/src/hlogo/` directory.
 To compile an example, open a bash shell and run:
 
 ```bash
-cabal exec ghc -- --make -O -fth -threaded bench/src/hlogo/Simple1.hs
+cabal exec ghc -- --make -O -fth -cpp -threaded bench/src/hlogo/Simple1.hs
 ```
 
 To run the generated code:

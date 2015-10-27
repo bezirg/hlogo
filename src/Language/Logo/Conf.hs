@@ -3,9 +3,11 @@ module Language.Logo.Conf where
 import System.IO.Unsafe
 import System.Console.CmdArgs
 
--- easier to have a top-level state for the conf
+{-# NOINLINE conf #-}
+conf :: Conf
 conf = unsafePerformIO getConf
 
+getConf :: IO Conf
 getConf = cmdArgs confOpt
 
 data Conf = Conf {

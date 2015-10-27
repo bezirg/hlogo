@@ -32,8 +32,8 @@ data Turtle = MkTurtle {
       pen_mode_ :: TVar PenMode,
       tvars_ :: Array Int (TVar Double),
       tgen :: TVar StdGen,
-      ttotalstm :: IORef Integer,
-      tsuccstm :: IORef Integer,
+      ttotalstm :: IORef Int,
+      tsuccstm :: IORef Int,
       init_xcor_ :: Int,
       init_ycor_ :: Int
     } deriving (Eq)
@@ -49,8 +49,8 @@ data Patch = MkPatch {
       plabel_color_ :: TVar Double,
       pvars_ :: Array Int (TVar Double),
       pgen :: TVar StdGen,
-      ptotalstm :: IORef Integer,
-      psuccstm :: IORef Integer
+      ptotalstm :: IORef Int,
+      psuccstm :: IORef Int
       } deriving (Eq)
 
 data Link = MkLink {
@@ -67,8 +67,8 @@ data Link = MkLink {
       tie_mode :: TVar TieMode,
       lvars_ :: Array Int (TVar Double),
       lgen :: TVar StdGen,
-      ltotalstm :: IORef Integer,
-      lsuccstm :: IORef Integer
+      ltotalstm :: IORef Int,
+      lsuccstm :: IORef Int
     } deriving (Eq)
 
 data TieMode = None | Fixed
@@ -96,14 +96,16 @@ data World = MkWorld Patches Turtles Links
 data AgentRef = PatchRef (Int,Int) Patch
               | TurtleRef Int Turtle
               | LinkRef (Int,Int) Link
-              | ObserverRef (TVar StdGen)     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions.  It carries its random generator.
+              | ObserverRef (TVar StdGen)     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions.  It carries its random generator. It should not be a first-class citizen (returned as an AgentRef)
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq, Typeable)
 
 -- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
-type Context = (Globals, TVar World, AgentRef, TChan String, AgentRef)
-
-type Set a = ([a], Int)
+type Context = (Globals
+               , TVar World
+               , AgentRef       -- self
+               , TChan String
+               , AgentRef)      -- myself (the caller only through ask/of-like, i.e. not all callers should be returned)
 
 type C m a = ReaderT Context m a
 

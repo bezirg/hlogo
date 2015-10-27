@@ -149,3 +149,16 @@ case_AskAllPatches = runT $ do
   -- assertContextException (lift . evaluate =<< a2)
 
   lift $ assertFailure "HLogo does not have the ask limitation (Only the observer can ASK the set of all turtles or patches)"
+
+
+case_AskNobody = runT $ do
+   atomic $ crt 2
+   assertTypeException $ ask (do
+                               ask (atomic die) =<< turtle 1
+                               ask (unsafe_show_ =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
+                             ) =<< turtle 0                 
+   
+case_OfDie = runT $ do
+  atomic $ crt 2
+  assertSomeException $ of_ (error "mplo" >> atomic die) =<< turtles
+  

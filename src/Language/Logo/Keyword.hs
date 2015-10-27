@@ -9,22 +9,21 @@ import Language.Logo.Prim
 import Language.Logo.Exception
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
-import Control.Monad (liftM)
 import Control.Concurrent.STM
-import System.Random (randomR)
 import Data.Array
 import Data.List (genericLength)
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
 import Data.Typeable (cast)
-import Control.Monad (liftM2, filterM, replicateM)
-import System.Random (mkStdGen)
+import Control.Monad (liftM, liftM2, filterM, replicateM)
+import System.Random (randomR, mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef (newIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
 
+globals :: [String] -> Q [Dec]
 globals vs  = liftM2 (++) 
               -- trick to store the length of globals
               [d| globals_length = $(litE (integerL (genericLength vs))) |] 
@@ -42,6 +41,7 @@ globals vs  = liftM2 (++)
 
 
 
+turtles_own :: [String] -> Q [Dec]
 turtles_own vs = do
   y <- newName "y"
   ct <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
@@ -126,6 +126,7 @@ turtles_own vs = do
             ) (zip vs [0..])
   return $ sp : ct : co : crt : cro: concat pg
 
+patches_own :: [String] -> Q [Dec]
 patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
   -- Variables setters/getters
@@ -152,6 +153,7 @@ patches_own vs = do
   return $ pl : concat pg
 
 
+breeds_own :: String -> [String] -> Q [Dec]
 breeds_own p vs = do
   y <- newName "y"
   cb <- funD (mkName ("create_" ++ p)) [clause [varP y]
@@ -201,6 +203,7 @@ breeds_own p vs = do
             ) (zip vs [0..])
   return $ cb : sp : cob : concat pg
 
+breeds :: [String] -> Q [Dec]
 breeds [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
                                           ts <- turtles; 
@@ -245,8 +248,7 @@ breeds [p,s] = do
                                                                              PatchRef _ _ -> return [a]
                                                                              _ -> throw $ ContextException "turtle or patch" a
                                                                      ts <- $(varE (mkName ("unsafe_" ++ p)))
-                                                                     res <- with (return . ( == h) =<< patch_here) ts
-                                                                     return res
+                                                                     with (return . ( == h) =<< patch_here) ts
                                                                    |]) []
 
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] (normalB [| do 
@@ -261,10 +263,8 @@ breeds [p,s] = do
   to <- funD (mkName (p ++ "_on")) [clause [varP y] (normalB [|
                                                               case $(varE y) of
                                                                 [] -> return []
-                                                                ps@(PatchRef _ _ : _) -> do
-                                                                               with (liftM (flip elem ps . head) patch_here) =<< $(varE (mkName ("unsafe_" ++ p)))
-                                                                ts@(TurtleRef _ _ : _) -> do
-                                                                               $(varE (mkName (p ++ "_on"))) =<< of_ (liftM head patch_here) ts
+                                                                ps@(PatchRef _ _ : _) -> with (liftM (flip elem ps . head) patch_here) =<< $(varE (mkName ("unsafe_" ++ p)))
+                                                                ts@(TurtleRef _ _ : _) -> $(varE (mkName (p ++ "_on"))) =<< of_ (liftM head patch_here) ts
                                                                 (a:_) -> throw $ ContextException (s ++ "or patch agentset") a
                                                             |]) []]
 
@@ -275,28 +275,34 @@ breeds [p,s] = do
                                                                                       return $ b == $(litE (stringL p))
                                                                                     _ -> return False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
   return [sp,up,us,ss,th,uth,ta, to, ib]
+breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wolves\", \"wolf\"]"
 
 
+directed_link_breed :: [String] -> Q [Dec]
 directed_link_breed [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
                                           ls <- links :: CSTM [AgentRef]
-                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> return $ b == $(litE (stringL p))) ls |]) []
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (_, tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do (_, tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
+directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
+undirected_link_breed :: [String] -> Q [Dec]
 undirected_link_breed [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
                                           ls <- links :: CSTM [AgentRef]
-                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> do return $ b == $(litE (stringL p))) ls |]) []
+                                          filterM (\ (LinkRef _ (MkLink {lbreed_ = b})) -> return $ b == $(litE (stringL p))) ls |]) []
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (_, tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return $ [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do (_, tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
+undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
+links_own :: [String] -> Q [Dec]
 links_own vs = do
   y <- newName "y"
   cls <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
@@ -326,6 +332,7 @@ links_own vs = do
             ) (zip vs [0..])
   return $ cls : cts : cfs : cl : ct : cf : concat pg
 
+link_breeds_own :: String -> [String] -> Q [Dec]
 link_breeds_own p vs = do
   y <- newName "y"
   cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
@@ -354,42 +361,46 @@ link_breeds_own p vs = do
   return $ cls : cts : cfs : concat pg
 
 
-run as = do 
-  [d| main = do c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length")); Reader.runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c |]
+run :: [Name] -> DecsQ
+run as = [d| main = do 
+                    c <- cInit $(varE (mkName "globals_length")) $(varE (mkName "patches_length"))
+                    Reader.runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
+                                                                 (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
+         |]
 
-
+runT :: CIO b -> IO b
 runT as = do c <- cInit 1 0
              Reader.runReaderT as c
              
 
-
-
 -- | Internal
 random_primary_color :: CSTM Double
 random_primary_color = do
-  (_,_,a,_,_) <- Reader.ask
-  let ts = case a of
+  (_,_,s,_,_) <- Reader.ask
+  let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
-  s <- lift $ readTVar ts
-  let (v,s') = randomR (0,13 :: Int) s
-  lift $ writeTVar ts s'
+            Nobody -> throw DevException
+  gen <- lift $ readTVar ts
+  let (v,gen') = randomR (0,13 :: Int) gen
+  lift $ writeTVar ts gen'
   return (primary_colors !! v)
 
 -- | Internal
 random_integer_heading :: CSTM Integer
 random_integer_heading = do
-  (_,_,a,_,_) <- Reader.ask
-  let ts = case a of
+  (_,_,s,_,_) <- Reader.ask
+  let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
             PatchRef _ p -> pgen p
             LinkRef _ l -> lgen l
-  s <- lift $ readTVar ts
-  let (v,s') = randomR (0,360 :: Integer) s
-  lift $ writeTVar ts s'
+            Nobody -> throw DevException
+  gen <- lift $ readTVar ts
+  let (v,gen') = randomR (0,360 :: Integer) gen
+  lift $ writeTVar ts gen'
   return v
 
 -- | Internal
@@ -447,6 +458,7 @@ newOrderedBreed i o b x to = do
 
 
 -- | Internal
+newTurtle :: Integral a => Int -> a -> CSTM Turtle
 newTurtle x to = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -472,6 +484,7 @@ newTurtle x to = do
        pure 0
 
 -- | Internal
+newSprout :: Integral a => Int -> a -> Double -> Double -> CSTM Turtle
 newSprout w to x y = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -497,6 +510,7 @@ newSprout w to x y = do
        pure (round y)
 
 -- | Internal
+newBSprout :: Integral a => Int -> a -> Double -> Double -> String -> CSTM Turtle
 newBSprout w to x y b = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -558,9 +572,9 @@ create_breeds b n to = do
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  let who = gs ! 0
-  oldWho <- lift $ liftM round $ readTVar who
-  lift $ modifyTVar' who (\ ow -> fromIntegral n + ow)
+  let whoCounter = gs ! 0
+  oldWho <- lift $ liftM round $ readTVar whoCounter
+  lift $ modifyTVar' whoCounter (fromIntegral n +)
   ns <- newBreeds oldWho n
   lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -579,10 +593,10 @@ create_ordered_breeds b n to = do
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  let who = gs ! 0
+  let whoCounter = gs ! 0
   lift $ do
-    oldWho <- liftM round $ readTVar who
-    modifyTVar' who (\ ow -> fromIntegral n + ow)
+    oldWho <- liftM round $ readTVar whoCounter
+    modifyTVar' whoCounter (fromIntegral n +)
     ns <- newTurtles oldWho n
     modifyTVar' tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized

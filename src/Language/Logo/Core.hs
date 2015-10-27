@@ -43,9 +43,9 @@ cInit gl po = do
   let ls = M.empty
   tw <- newTVarIO (MkWorld (M.fromAscList ps) ts ls)
   tp <- newTChanIO
-  ts <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
+  g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
-  return (gs, tw, ObserverRef ts, tp, Nobody)
+  return (gs, tw, ObserverRef g, tp, Nobody)
 
 -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
 printer:: TChan String -> IO ()
