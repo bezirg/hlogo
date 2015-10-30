@@ -47,6 +47,7 @@ module Language.Logo.Prim (
 ) where
 
 import Language.Logo.Base
+import Language.Logo.Core
 import Language.Logo.Conf
 import Language.Logo.Exception
 import Control.Concurrent.STM
@@ -963,17 +964,17 @@ cp = clear_patches
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: CSTM ()
 clear_ticks = do
-    (gs, _, a, _, _) <- Reader.ask
+    (_, _, a, _, _) <- Reader.ask
     case a of
-      ObserverRef _ -> lift $ writeTVar (gs ! 1) undefined
+      ObserverRef _ -> lift $ writeTVar __tick undefined
       _ -> throw $ ContextException "observer" a
 
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: CSTM ()
 reset_ticks = do
-    (gs, _, a, _, _) <- Reader.ask
+    (_, _, a, _, _) <- Reader.ask
     case a of
-      ObserverRef _ -> lift $ writeTVar (gs ! 1) 0
+      ObserverRef _ -> lift $ writeTVar __tick 0
       _ -> throw $ ContextException "observer" a
 
 -- | Advances the tick counter by one and updates all plots. 
@@ -984,9 +985,9 @@ tick = tick_advance 1
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 tick_advance :: Double -> CSTM ()
 tick_advance n = do
-  (gs, _, a, _, _) <- Reader.ask
+  (_, _, a, _, _) <- Reader.ask
   case a of
-    ObserverRef _ -> lift $ modifyTVar' (gs ! 1) (+n)
+    ObserverRef _ -> lift $ modifyTVar' __tick (+n)
     _ -> throw $ ContextException "observer" a
 
 {-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
@@ -1757,10 +1758,9 @@ is_link_setp _ = throw DevException
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> CSTM [AgentRef]
 hatch n = do
-  (gs, tw, a, _, _) <- Reader.ask
+  (_, tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _tt _ts _ix _iy) -> do
-            let whoCounter = gs ! 0
             let b = bounds tarr
             -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
             let newArray = return . listArray b =<< sequence [newTVar =<< readTVar (tarr ! i) | i <- [fst b.. snd b]]
@@ -1786,8 +1786,8 @@ hatch n = do
                                                                             liftA round (readTVar x) <*> 
                                                                             liftA round (readTVar y)
                                                                         return (i, t) | i <- [w..w+n-1]]
-            oldWho <- lift $ liftM round $ readTVar whoCounter
-            lift $ modifyTVar' whoCounter (fromIntegral n +)
+            oldWho <- lift $ readTVar __who
+            lift $ modifyTVar' __who (n +)
             ns <- lift $ newTurtles oldWho
             let addTurtles ts' (MkWorld ps_ ts_ ls_)  = MkWorld ps_ (ts_ `IM.union` ts') ls_
             lift $ modifyTVar' tw (addTurtles ns) 

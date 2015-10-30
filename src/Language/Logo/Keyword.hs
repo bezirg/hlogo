@@ -57,14 +57,13 @@ turtles_own vs = do
                                                                    case a of
                                                                      ObserverRef _ -> return ()
                                                                      _ -> throw $ ContextException "observer" a
-                                                                   let who = gs ! 0
                                                                    let  newTurtles w n = return . IM.fromAscList =<< sequence [do
                                                                                                                                  t <- newTurtle i $(litE (integerL (genericLength vs)))
                                                                                                                                  return (i, t)
                                                                                                                                 | i <- [w..w+n-1]]
                                                                    let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                   oldWho <- lift $ liftM round $ readTVar who
-                                                                   lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                   oldWho <- lift $ readTVar __who
+                                                                   lift $ modifyTVar' __who ($(varE y) +)
                                                                    ns <- newTurtles oldWho $(varE y)
                                                                    lift $ modifyTVar' tw (addTurtles ns) 
                                                                    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -73,14 +72,13 @@ turtles_own vs = do
                                                            (gs, tw, a, _, _) <- Reader.ask
                                                            case a of
                                                              PatchRef (px,py) _ -> do
-                                                                 let who = gs ! 0
                                                                  let  newTurtles w n = return . IM.fromAscList =<< sequence [do
                                                                                                                               t <- newSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py)
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
                                                                  let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                 oldWho <- lift $ liftM round $ readTVar who
-                                                                 lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                 oldWho <- lift $ readTVar __who
+                                                                 lift $ modifyTVar' __who ($(varE y) +)
                                                                  ns <- newTurtles oldWho $(varE y)
                                                                  lift $ modifyTVar' tw (addTurtles ns) 
                                                                  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -94,15 +92,14 @@ turtles_own vs = do
                                                                            case a of
                                                                                ObserverRef _ -> return ()
                                                                                _ -> throw $ ContextException "observer" a
-                                                                           let who = gs ! 0
                                                                            let newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
                                                                                                                                         t <- newOrderedTurtle i n j $(litE (integerL (genericLength vs)))
                                                                                                                                         return (j, t))
                                                                                                                                       (zip [1..n]  [w..w+n-1])
                                                                            let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
                                                                            lift $ do
-                                                                             oldWho <- liftM round $ readTVar who
-                                                                             modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                             oldWho <- readTVar __who
+                                                                             modifyTVar' __who ($(varE y) +)
                                                                              ns <- newTurtles oldWho $(varE y)
                                                                              modifyTVar' tw (addTurtles ns) 
                                                                              return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -172,14 +169,13 @@ breeds_own p vs = do
                                                            (gs, tw, a, _, _) <- Reader.ask
                                                            case a of
                                                              PatchRef (px,py) _ -> do
-                                                                 let who = gs ! 0
                                                                  let  newTurtles w n = return . IM.fromAscList =<< sequence [do
                                                                                                                               t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
                                                                  let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                 oldWho <- lift $ liftM round $ readTVar who
-                                                                 lift $ modifyTVar' who (\ ow -> fromIntegral $(varE y) + ow)
+                                                                 oldWho <- lift $ readTVar __who
+                                                                 lift $ modifyTVar' __who ($(varE y) +)
                                                                  ns <- newTurtles oldWho $(varE y)
                                                                  lift $ modifyTVar' tw (addTurtles ns) 
                                                                  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -580,9 +576,8 @@ create_breeds b n to = do
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  let whoCounter = gs ! 0
-  oldWho <- lift $ liftM round $ readTVar whoCounter
-  lift $ modifyTVar' whoCounter (fromIntegral n +)
+  oldWho <- lift $ readTVar __who
+  lift $ modifyTVar' __who (n +)
   ns <- newBreeds oldWho n
   lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
@@ -601,10 +596,9 @@ create_ordered_breeds b n to = do
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  let whoCounter = gs ! 0
   lift $ do
-    oldWho <- liftM round $ readTVar whoCounter
-    modifyTVar' whoCounter (fromIntegral n +)
+    oldWho <- readTVar __who
+    modifyTVar' __who (n +)
     ns <- newTurtles oldWho n
     modifyTVar' tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized

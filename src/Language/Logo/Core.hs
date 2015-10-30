@@ -9,7 +9,9 @@
 --
 -- The core long-lived components of the simulation engine
 module Language.Logo.Core (
-                            cInit
+                            cInit,
+                            __tick,
+                            __who
 ) where
 
 import Control.Concurrent (forkIO)
@@ -27,6 +29,16 @@ import Data.IORef (newIORef)
 import Control.Applicative
 #endif
 
+-- | The global (atomically-modifiable) tick variable
+--
+-- Double because NetLogo also allows different that 1-tick increments
+__tick :: TVar Double
+__tick = unsafePerformIO $ newTVarIO undefined
+
+-- | The global (atomically-modifiable) who-counter variable
+__who :: TVar Int
+__who = unsafePerformIO $ newTVarIO undefined
+
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the global from TemplateHaskell (trick) to determine the size of the globals array
@@ -40,10 +52,13 @@ cInit gl po = do
   let min_x = min_pxcor_ conf
   let min_y = min_pycor_ conf
   -- initialize globals
-  gs <- return . listArray (0, fromIntegral gl+1) =<< replicateM (fromIntegral gl + 2) (newTVarIO 0)
+  atomically $ do
+                writeTVar __tick 0
+                writeTVar __who 0
+  gs <- return . listArray (0, fromIntegral gl+1) =<< replicateM (fromIntegral gl + 2) (newTVarIO 0) -- TODO: remove, not needed
   -- spawn patches
   ps <- sequence [do
-                   p <- newPatch x y po
+                   p <- newPatch x y
                    return ((x, y), p)
                  | x <- [min_x..max_x], y <- [min_y..max_y]]
   -- initialize
@@ -54,17 +69,10 @@ cInit gl po = do
   g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
   return (gs, tw, ObserverRef g, tp, Nobody)
-
--- | The printer just reads an IO chan for incoming text and outputs it to standard output.
-printer:: TChan String -> IO ()
-printer tp = forever $ do
-  v <- atomically $ readTChan tp
-  putStrLn v
-
-
--- | Returns a 'Patch' structure with default arguments (based on NetLogo)
-newPatch :: Int -> Int -> Int -> IO Patch
-newPatch x y po = MkPatch <$>
+  where
+    -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
+    newPatch :: Int -> Int -> IO Patch
+    newPatch x y = MkPatch <$>
                   return x <*>
                   return y <*>
                   newTVarIO 0 <*>
@@ -75,3 +83,12 @@ newPatch x y po = MkPatch <$>
                   newTVarIO (mkStdGen (x + y * 1000)) <*>
                   pure (unsafePerformIO (newIORef 0)) <*>
                   pure (unsafePerformIO (newIORef 0))
+
+
+-- | The printer just reads an IO chan for incoming text and outputs it to standard output.
+printer:: TChan String -> IO ()
+printer tp = forever $ do
+  v <- atomically $ readTChan tp
+  putStrLn v
+
+
