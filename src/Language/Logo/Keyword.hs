@@ -1,5 +1,13 @@
 {-# LANGUAGE TemplateHaskell, CPP #-}
--- | The module defines the macros of the HLogo language using TemplateHaskell (lisp-like macros).
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Keyword
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- The module defines the macros of the HLogo language using TemplateHaskell (lisp-like macros).
 module Language.Logo.Keyword where
 
 import Language.Haskell.TH
@@ -613,9 +621,9 @@ create_ordered_breeds b n to = do
 -------
 
 
+{-# WARNING newLink "TODO: determine at run-time the direction of links" #-}
 -- | Internal
--- | internal links directed by default, that makes create-link(s)-with faulty
--- | todo determine at run-time the direction of links
+-- links directed by default, that makes create-link(s)-with faulty
 newLink :: Int -> Int -> Int -> CSTM Link -- ^ FromIndex -> ToIndex -> VarLength -> CSTM Link
 newLink f t ls = lift $ MkLink <$>
                   return f <*>

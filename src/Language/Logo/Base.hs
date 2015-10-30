@@ -1,4 +1,12 @@
--- | The module contains the Base datatypes of the Language.
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Base
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- The module contains the Base datatypes of the Language.
 module Language.Logo.Base where
 
 import Control.Concurrent.STM

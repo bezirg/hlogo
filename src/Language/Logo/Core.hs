@@ -1,5 +1,13 @@
 {-# LANGUAGE CPP #-}
-
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Core
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- The core long-lived components of the simulation engine
 module Language.Logo.Core (
                             cInit
 ) where

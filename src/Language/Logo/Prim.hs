@@ -1,5 +1,13 @@
-{-# LANGUAGE LambdaCase #-}
--- | This module tries to provide an API to the standard library of NetLogo:
+{-# LANGUAGE LambdaCase, CPP #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Prim
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- This module tries to provide an API to the standard library of NetLogo:
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Language.Logo.Prim (
                            -- * Agent related
@@ -21,7 +29,7 @@ module Language.Logo.Prim (
                            primary_colors, extract_rgb, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color,
 
                            -- * List related
-                           sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp,
+                           sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
 
                            -- * Math
                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
@@ -72,6 +80,8 @@ import qualified Data.Foldable as F (foldlM)
 import GHC.Conc.Sync (unsafeIOToSTM)
 
 import Data.Functor.Identity (runIdentity)
+
+#define todo assert False undefined
 
 {-# SPECIALIZE self :: CSTM [AgentRef] #-}
 {-# SPECIALIZE self :: CIO [AgentRef] #-}
@@ -134,8 +144,8 @@ print_ a = do
   lift $ writeTChan p $ show a
                            
 
+{-# WARNING carefully "TODO" #-}
 -- | Runs commands1. If a runtime error occurs inside commands1, NetLogo won't stop and alert the user that an error occurred. It will suppress the error and run commands2 instead. 
--- | todo
 carefully :: CSTM a -> CSTM a -> CSTM a
 carefully c c' = catch c (\ ex -> let _ = (ex :: SomeException) in c')
 
@@ -337,15 +347,6 @@ back n = forward (-n)
 -- | alias for 'back'
 bk :: Double -> CSTM ()
 bk = back
-
--- {-# INLINE crt #-}
--- -- | alias for 'create_turtles'
--- crt = create_turtles
-
-
--- {-# INLINE cro #-}
--- -- | alias for 'create_ordered_turtles'
--- cro = create_ordered_turtles
 
 die :: CSTM ()
 die = do
@@ -681,9 +682,8 @@ left n = right (-n)
 lt :: Double -> CSTM ()
 lt = left
 
--- | TODO: there is some problem here, an argument is ignored
--- 
--- Internal
+{-# WARNING delta "TODO: there is some problem here, an argument is ignored" #-}
+-- | Internal
 delta :: (Num a, Ord a) => a -> a -> t -> a
 delta a1 a2 aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
@@ -697,36 +697,33 @@ delta a1 a2 aboundary =
 nobody :: Monad m => m [AgentRef]
 nobody = return [Nobody]
 
+{-# WARNING downhill "TODO" #-}
 -- | Moves the turtle to the neighboring patch with the lowest value for patch-variable. 
 -- If no neighboring patch has a smaller value than the current patch, the turtle stays put. 
 -- If there are multiple patches with the same lowest value, the turtle picks one randomly. 
 -- Non-numeric values are ignored.
 -- downhill considers the eight neighboring patches
--- | todo
 downhill :: t
-downhill = undefined
+downhill = todo
 
+{-# WARNING downhill4 "TODO" #-}
 -- | Moves the turtle to the neighboring patch with the lowest value for patch-variable. 
 -- If no neighboring patch has a smaller value than the current patch, the turtle stays put. 
 -- If there are multiple patches with the same lowest value, the turtle picks one randomly. 
 -- Non-numeric values are ignored.
 -- downhill4 only considers the four neighbors. 
--- | todo
 downhill4 :: t
-downhill4 = undefined
+downhill4 = todo
 
 -- | Set the caller's heading towards agent. 
 face :: [AgentRef] -> CSTM ()
 face a = set_heading =<< towards a
 
 
-
-
-
+{-# WARNING towardsxy "TODO" #-}
 -- | Reports the heading from the turtle or patch towards the point (x,y). 
--- | todo
 towardsxy :: t
-towardsxy = undefined
+towardsxy = todo
 
 
 -- | The turtle makes itself invisible. 
@@ -802,7 +799,7 @@ pe = pen_erase
 
 -- | This reporter lets you give a turtle a "cone of vision" in front of itself. 
 in_cone :: t
-in_cone = undefined
+in_cone = todo
 
 
 
@@ -881,8 +878,8 @@ clear_all = do
 ca :: CSTM ()
 ca = clear_all
 
+{-# WARNING clear_all_plots "TODO" #-}
 -- | Clears every plot in the model.
--- | todo
 clear_all_plots :: CSTM ()
 clear_all_plots = do
     (_, _, a, _, _) <- Reader.ask
@@ -890,8 +887,8 @@ clear_all_plots = do
       ObserverRef _ -> return ()
       _ -> throw $ ContextException "observer" a
 
+{-# WARNING clear_drawing "TODO" #-}
 -- | Clears all lines and stamps drawn by turtles. 
--- | todo
 clear_drawing :: CSTM ()
 clear_drawing = do
     (_, _, a, _, _) <- Reader.ask
@@ -904,8 +901,8 @@ clear_drawing = do
 cd :: CSTM ()
 cd = clear_drawing
 
+{-# WARNING clear_output "TODO" #-}
 -- | Clears all text from the model's output area, if it has one. Otherwise does nothing. 
--- | todo
 clear_output :: CSTM ()
 clear_output = do
     (_, _, a, _, _) <- Reader.ask
@@ -983,8 +980,8 @@ reset_ticks = do
 tick :: CSTM ()
 tick = tick_advance 1
 
+{-# WARNING tick_advance "TODO: dynamic typing, float" #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
--- todo: dynamic typing, float
 tick_advance :: Double -> CSTM ()
 tick_advance n = do
   (gs, _, a, _, _) <- Reader.ask
@@ -992,8 +989,8 @@ tick_advance n = do
     ObserverRef _ -> lift $ modifyTVar' (gs ! 1) (+n)
     _ -> throw $ ContextException "observer" a
 
+{-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
 -- | Reports the current value of the tick counter. The result is always a number and never negative. 
--- todo: dynamic typing, integer or float
 ticks :: STMorIO m => C m Double
 ticks = readGlobal 1
 
@@ -1028,11 +1025,11 @@ foreach = forM_
 fput :: a -> [a] -> [a]
 fput = (:)
 
+{-# WARNING histogram "TODO" #-}
 -- | Histograms the values in the given list
 -- Draws a histogram showing the frequency distribution of the values in the list. The heights of the bars in the histogram represent the numbers of values in each subrange. 
--- | todo
 histogram :: t
-histogram = undefined
+histogram = todo
 
 -- | Runs commands number times. 
 repeat_ :: (Monad m) => Int -> m a -> m ()
@@ -1051,15 +1048,6 @@ report = return
 item :: Int -> [a] -> a
 item i l = l !! i
 
--- {-# INLINE last #-}
--- -- | On a list, reports the last item in the list. 
--- last = List.last
-
--- {-# INLINE length #-}
--- -- | Reports the number of items in the given list, or the number of characters in the given string. 
--- length :: Foldable t => t a -> Int
--- length = List.length
-
 {-# INLINE list #-}
 -- | Reports a list containing the given items.
 list :: t -> t -> [t]
@@ -1069,10 +1057,6 @@ list x y = [x,y]
 -- | Adds value to the end of a list and reports the new list. 
 lput :: a -> [a] -> [a]
 lput x l = l ++ [x]
-
--- {-# INLINE map #-}
--- -- | With a single list, the given task is run for each item in the list, and a list of the results is collected and reported. 
--- map = List.map
 
 {-# INLINE memberp #-}
 -- | For a list, reports true if the given value appears in the given list, otherwise reports false. 
@@ -1088,15 +1072,7 @@ n_values s f = do
     t <- n_values (s-1) f
     return (h:t)
 
--- @doc requires distinction between list and string dt, because it behaves differently
--- list: returns the index of the 1st occurence or false otherwise
--- string: returns the index of the 1st substring that matches the string or false otherwise
--- here it is implemented only with the list behaviour
--- @todo string behaviour
--- 0-indexed
--- no dynamic typing, so can't return false
-
--- | todo: requires dynamic typing
+{-# WARNING position "TODO: requires dynamic typing" #-}
 {-# INLINE position #-}
 -- | On a list, reports the first position of item in list, or false if it does not appear. 
 position :: (a -> Bool) -> [a] -> Maybe a
@@ -1169,15 +1145,15 @@ agent_n_of n ls | n == 0     = return []
   return (o:ns)
 
 
+{-# WARNING min_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
 -- | Reports a random agent in the agentset that reports the lowest value for the given reporter. If there is a tie, this command reports one random agent that meets the condition.
--- | todo: currently deterministic and no randomness on tie breaking
 min_one_of :: Ord a => [AgentRef] -> CIO a -> CIO [AgentRef]
 min_one_of as r = do
   rs <- of_ r as
   return [snd $ minimum $ zip rs as]
 
+{-# WARNING max_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
 -- | Reports the agent in the agentset that has the highest value for the given reporter. If there is a tie this command reports one random agent with the highest value. If you want all such agents, use with-max instead. 
--- | todo: currently deterministic and no randomness on tie breaking
 max_one_of :: Ord a => [AgentRef] -> CIO a -> CIO [AgentRef]
 max_one_of as r = do
   rs <- of_ r as
@@ -1190,40 +1166,34 @@ max_one_of as r = do
 reduce :: (b -> a -> b) -> b -> [a] -> b
 reduce = foldl
 
+{-# WARNING remove "TODO" #-}
 -- | For a list, reports a copy of list with all instances of item removed. 
--- | todo
 remove :: t
-remove = undefined
+remove = todo
 
 {-# INLINE remove_duplicates #-}
 -- | Reports a copy of list with all duplicate items removed. The first of each item remains in place. 
 remove_duplicates :: (Eq a, Monad m) => [a] -> C m [a]
 remove_duplicates = return . nub
 
+{-# WARNING remove_item "TODO" #-}
 -- | For a list, reports a copy of list with the item at the given index removed. 
--- | todo
 remove_item :: t
-remove_item = undefined
+remove_item = todo
 
+{-# WARNING replace_item "TODO" #-}
 -- | On a list, replaces an item in that list. index is the index of the item to be replaced, starting with 0. 
--- | todo
 replace_item :: t
-replace_item = undefined
+replace_item = todo
 
--- {-# INLINE reverse #-}
--- -- | Reports a reversed copy of the given list or string. 
--- reverse = reverse
-
+{-# WARNING sentence "TODO: requires dynamic_typing" #-}
 {-# INLINE sentence #-}
 -- | Makes a list out of the values. 
--- | todo: requires dynamic_typing
 sentence :: [a] -> [a] -> [a]
 sentence = (++)
 
+{-# WARNING shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
 -- | Reports a new list containing the same items as the input list, but in randomized order. 
--- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
---
--- TODO: make it tail-recursive
 shuffle :: Eq a => [a] -> CSTM [a]
 shuffle [] = return []
 shuffle [x] = return [x]
@@ -1237,9 +1207,9 @@ shuffle l = do
 sort_ :: (Monad m, Ord a) => [a] -> m [a]
 sort_ = return . sort
 
+{-# WARNING sort_by "TODO: requires dynamic_typing" #-}
 {-# INLINE sort_by #-}
 -- | If the input is a list, reports a new list containing the same items as the input list, in a sorted order defined by the boolean reporter task. 
--- | todo: requires dynamic typing
 sort_by :: Monad m => (a -> a -> Ordering) -> [a] -> m [a]
 sort_by c l = return $ sortBy c l
 
@@ -1261,29 +1231,15 @@ sublist l x y = take (y-x) . drop x $ l
 substring :: [a] -> Int -> Int -> [a]
 substring = sublist
 
--- stringp
--- no dynamic typing
-
 {-# INLINE read_from_string #-}
 -- | Interprets the given string as if it had been typed in the Command Center, and reports the resulting value.
 read_from_string :: Read a => String -> a
 read_from_string = read
 
--- word
--- no dynamic typing
-
--- Mathematics Operators
-------------
--- plus
--- minus
--- div_
--- pow
--- lt
--- gt
--- equalp = ==
--- notequalp = /=
--- le
--- ge
+{-# INLINE word #-}
+-- | Concatenates the inputs together and reports the result as a string.
+word :: Show a => [a] -> String
+word = concatMap show
 
 {-# INLINE abs_ #-}
 -- | Reports the absolute value of number. 
@@ -1294,14 +1250,6 @@ abs_ = return . abs
 -- | Mathematical Constant
 e :: Double
 e = exp 1
-
--- {-# INLINE exp #-}
--- -- | Reports the value of e raised to the number power. 
--- exp = Prelude.exp
-
--- {-# INLINE pi #-}
--- -- | Mathematical Constant
--- pi = Prelude.pi
 
 -- | Reports the cosine of the given angle. Assumes the angle is given in degrees. 
 cos_ :: Double -> Double
@@ -1341,20 +1289,10 @@ asin_ = toDegrees . asin
 atan_ :: RealFloat r => r -> r -> r
 atan_ x y = toDegrees $ atan2 (toRadians x) (toRadians y)
 
--- {-# INLINE floor #-}
--- -- | Reports the largest integer less than or equal to number. 
--- floor = Prelude.floor
--- {-# INLINE ceiling #-}
--- -- | Reports the smallest integer greater than or equal to number. 
--- ceiling = Prelude.ceiling
-
 {-# INLINE int #-}
 -- | Reports the integer part of number -- any fractional part is discarded. 
 int :: (Integral b, RealFrac a) => a -> b
 int = truncate
-
--- numberp 
--- no dynamic typing
 
 {-# INLINE ln #-}
 -- | Reports the natural logarithm of number, that is, the logarithm to the base e (2.71828...). 
@@ -1390,36 +1328,29 @@ median l = let (d, m) = length l `divMod` 2
                 0 -> (l !! d + l !! (d-1)) / 2
                 _ -> throw DevException
 
+{-# WARNING modes "TODO" #-}
 -- | Reports a list of the most common item or items in list. 
--- | todo
 modes :: t
-modes = undefined
+modes = todo
 
 {-# INLINE remainder #-}
 -- | Reports the remainder when number1 is divided by number2. 
 remainder :: Integer -> Integer -> Integer
 remainder = rem
 
--- {-# INLINE round #-}
--- -- | Reports the integer nearest to number. 
--- round = Prelude.round
-
--- {-# INLINE sqrt #-}
--- -- | Reports the square root of number. 
--- sqrt = Prelude.sqrt
-
+{-# WARNING variance "TODO" #-}
 -- | Reports the sample variance of a list of numbers. Ignores other types of items. 
--- | todo
 variance :: t
-variance = undefined
+variance = todo
 
+
+{-# WARNING standard_deviation "TODO" #-}
 -- | Reports the sample standard deviation of a list of numbers. Ignores other types of items. 
--- | todo
 standard_deviation :: t -> t1
-standard_deviation _l = undefined
+standard_deviation _l = todo
 
+{-# WARNING subtract_headings "TODO? maybe it is finished" #-}
 -- | Computes the difference between the given headings, that is, the number of degrees in the smallest angle by which heading2 could be rotated to produce heading1. 
--- | todo 
 subtract_headings :: (Monad m) => Double -> Double -> C m Double
 subtract_headings h1 h2 = let 
     h1' = if h1 < 0 || h1 >= 360
@@ -1442,12 +1373,6 @@ subtract_headings h1 h2 = let
                           --   if abs r1 < abs r2
                           --   then if h2 > 180 then -r1 else r1
                           --   else if h2 > 180 then -r2 else r2
-
-
--- {-# INLINE sum #-}
--- -- | Reports the sum of the items in the list. 
--- sum :: (Num a, Foldable t) => t a -> a
--- sum = List.sum
 
 -- | The link makes itself invisible. 
 hide_link :: CSTM ()
@@ -1641,6 +1566,7 @@ increaseTotalSTM s = case s of
                        ObserverRef _ -> return ()
                        Nobody -> throw DevException
 
+{-# WARNING ask "TODO: both splitting" #-}
 -- | The specified agent or agentset runs the given commands. 
 ask :: CIO a -> [AgentRef] -> CIO ()
 ask f as = do
@@ -1721,9 +1647,9 @@ with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then a:l else l) [] (zip as res)
 
+{-# WARNING loop  "TODO: use MaybeT or ErrorT" #-}
 -- |  Runs the list of commands forever, or until the current procedure exits through use of the stop command or the report command. 
 -- NB: Report command will not stop it in HLogo, only the stop primitive. 
--- | todo: use MaybeT or ErrorT
 -- This command is only run in IO, bcs the command has been implemented
 -- using exceptions and exceptions don't work the same in STM. Also
 -- it avoids common over-logging that can happen in STM.
@@ -1734,8 +1660,8 @@ loop c = forever c `catchIO` \ StopException -> return ()
 stop :: STMorIO m => C m ()
 stop = throw StopException
 
+{-# WARNING while  "TODO: use MaybeT or ErrorT" #-}
 -- | If reporter reports false, exit the loop. Otherwise run commands and repeat. 
--- | todo: use MaybeT or ErrorT
 -- This command is only run in IO, bcs the command has been implemented
 -- using exceptions and exceptions don't work the same in STM. Also
 -- it avoids common over-logging that can happen in STM.
@@ -1791,12 +1717,12 @@ is_agentsetp ps = do
 -- is_command_taskp
 -- is_reporter_taskp
 
+{-# WARNING is_listp "TODO" #-}
 --is_listp :: (Monad m, Typeable a) => a -> C m Bool
 --is_listp :: (Typeable a, Typeable t) => t -> [a]
 --is_listp l =  (cast l :: Typeable a => Maybe [a])
--- | todo: not currently implemented
 is_listp :: t
-is_listp = undefined
+is_listp = todo
 
 is_stringp :: (Monad m, Typeable a) => a -> C m Bool
 is_stringp s = return $ isJust (cast s :: Maybe String)
@@ -1822,8 +1748,8 @@ is_undirected_linkp = liftM not . is_directed_linkp
 
 
 
+{-# WARNING is_link_setp "TODO: would require a datatype distinction between agentrefs" #-}
 -- | Checks only the 1st element
---  todo: would require a datatype distinction between agentrefs
 is_link_setp :: (Monad m, Typeable a) => [a] -> C m Bool
 is_link_setp (l:_) = is_linkp l
 is_link_setp _ = throw DevException
@@ -1911,34 +1837,35 @@ unsafe_random_float x | x == 0 = return 0
                       | otherwise = throw DevException
 
 
+{-# WARNING unsafe_new_seed "TODO" #-}
 -- | Reports a number suitable for seeding the random number generator. 
--- | todo
 unsafe_new_seed :: t
-unsafe_new_seed = undefined
+unsafe_new_seed = todo
 
 -- | Sets the seed of the pseudo-random number generator to the integer part of number.
 unsafe_random_seed :: Int -> IO ()
 unsafe_random_seed n = setStdGen $ mkStdGen n
 
+
+{-# WARNING unsafe_random_exponential "TODO" #-}
 -- | random-exponential reports an exponentially distributed random floating point number. 
--- | todo
 unsafe_random_exponential :: t -> t1
-unsafe_random_exponential _m = undefined
+unsafe_random_exponential _m = todo
 
+{-# WARNING unsafe_random_gamma "TODO" #-}
 -- | random-gamma reports a gamma-distributed random floating point number as controlled by the floating point alpha and lambda parameters. 
--- | todo
 unsafe_random_gamma :: t -> t1 -> t2
-unsafe_random_gamma _a _l = undefined
+unsafe_random_gamma _a _l = todo
 
+{-# WARNING unsafe_random_normal "TODO" #-}
 -- | random-normal reports a normally distributed random floating point number. 
--- | todo
 unsafe_random_normal :: t -> t1 -> t2
-unsafe_random_normal _m _s = undefined
+unsafe_random_normal _m _s = todo
 
+{-# WARNING unsafe_random_poisson "TODO" #-}
 -- | random-poisson reports a Poisson-distributed random integer. 
--- | todo
 unsafe_random_poisson :: t -> t1
-unsafe_random_poisson _m = undefined
+unsafe_random_poisson _m = todo
 
 
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
@@ -1949,13 +1876,13 @@ turtles_on ts@(TurtleRef _ _ : _) = turtles_on =<< of_ (liftM head patch_here) t
 turtles_on (a:_) = throw $ ContextException "turtle or patch agentset" a
 
 
+{-# WARNING at_points "TODO" #-}
 -- |  Reports a subset of the given agentset that includes only the agents on the patches the given distances away from this agent. The distances are specified as a list of two-item lists, where the two items are the x and y offsets.
 -- If the caller is the observer, then the points are measured relative to the origin, in other words, the points are taken as absolute patch coordinates.
 -- If the caller is a turtle, the points are measured relative to the turtle's exact location, and not from the center of the patch under the turtle. 
--- | todo
 at_points :: [AgentRef] -> [(Double, Double)] -> CSTM [AgentRef]
 at_points [] _ = return []
-at_points (_a:_as) _ds = undefined
+at_points (_a:_as) _ds = todo
   -- do
   -- (_,_,s,_,_) <- Reader.ask
   -- (x,y) <- case s of
@@ -1991,8 +1918,8 @@ agent_unsafe_one_of l = do
   return [l !! v]
 
 
--- | todo optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>
--- TODO: make it tail-recursive
+{-# WARNING unsafe_shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
+-- | Reports a new list containing the same items as the input list, but in randomized order. 
 unsafe_shuffle :: Eq a => [a] -> CIO [a]
 unsafe_shuffle [] = return []
 unsafe_shuffle [x] = return [x]
@@ -2001,7 +1928,7 @@ unsafe_shuffle l = do
   xs <- unsafe_shuffle (delete x l)
   return $ x:xs
 
--- Considered unsafe; the output may be mangled, because of many threads writing to the same output
+-- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_show_ :: Show a => a -> CIO ()
 unsafe_show_ a = do
   (_,_, r, _, _) <- Reader.ask
@@ -2013,7 +1940,7 @@ unsafe_show_ a = do
                            Nobody -> throw DevException
                     )   ++ show a
 
--- Considered unsafe; the output may be mangled, because of many threads writing to the same output
+-- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_print_ :: Show a => a -> CIO ()
 unsafe_print_ a = lift $ print a
 
@@ -2213,7 +2140,6 @@ class (Monad m) => STMorIO m where
     -- | Reports the distance from this agent to the point (xcor, ycor). 
     distancexy :: Double -> Double -> C m Double
     -- | Reports the heading from this agent to the given agent. 
-    -- | todo: wrapping
     towards :: [AgentRef] -> C m Double
     -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
     in_radius :: [AgentRef] -> Double -> C m [AgentRef]
@@ -2229,6 +2155,8 @@ class (Monad m) => STMorIO m where
     readTurtle :: Int -> C m Double
     readPatch :: Int -> C m Double
     readLink :: Int -> C m Double
+
+{-# WARNING towards "TODO: wrapping" #-}
 
 instance STMorIO STM where
   turtles_here = do

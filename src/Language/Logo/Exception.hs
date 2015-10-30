@@ -1,12 +1,20 @@
--- | The exception handling of the framework. Uses the built-in exception mechanism of Haskell, so the EDSL is defined as a very shallow embedding. Alternative way with
--- deeper embedding is to use the ErrorT transformer.
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Exception
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- The exception handling of the framework. Uses the built-in exception mechanism of Haskell, 
+-- so the EDSL is defined as a very shallow embedding. Alternative way with deeper embedding is to use the ErrorT transformer.
 module Language.Logo.Exception
     (throw,                     
      catch,
      catchIO,
      evaluate,
      -- * The type class
-     Exception,
+     Exception, assert,
      -- * Built-in exceptions imported from Haskell base
      SomeException, IOException , ArithException (..) , AssertionFailed (..), AsyncException (..), NestedAtomically (..) , BlockedIndefinitelyOnSTM (..) , Deadlock (..), ErrorCall (..),
     -- * Exceptions specific to HLogo

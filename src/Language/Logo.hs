@@ -1,4 +1,11 @@
--- | Main wrapper module; the only module that should be imported by the model
+-- | 
+-- Module      :  Language.Logo
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- Main wrapper module; the only module that should be imported by the model
 module Language.Logo
     (
      module Language.Logo.Keyword,

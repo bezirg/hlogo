@@ -1,8 +1,7 @@
 name:                 hlogo
 version:              0.0.2
 synopsis:             HLogo, a simulation framework in Haskell
-description:          Input programs are written in a dialect of Logo. Then on, they are source-to-source compiled down to Haskell,
-                      and are executed on the Haskell modelling framework.
+description:          Input programs are written in a dialect of Logo, as an embedded DSL of Haskell.
 author:               Nikolaos Bezirgiannis <bezirgia@cwi.nl>, Wishnu Prasetya <s.w.b.prasetya@uu.nl>, Ilias Sakellariou <iliass@uom.gr>
 maintainer:           Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 stability:            provisional
@@ -56,6 +55,7 @@ test-suite test
   main-is:            Test.hs
   build-depends:      base>=4.6.0.0,cmdargs,containers>=0.5.0.0,array,transformers>=0.4,random,template-haskell,stm,threads,diagrams-lib>=1.3,diagrams-postscript,colour, test-framework, test-framework-hunit, test-framework-th, HUnit
   extensions:         DeriveDataTypeable, TemplateHaskell, CPP
+  ghc-options:        -fno-ignore-asserts
   hs-source-dirs:     src, test                        
 
 

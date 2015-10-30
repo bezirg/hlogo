@@ -1,3 +1,12 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+-- | 
+-- Module      :  Language.Logo.Conf
+-- Copyright   :  (c) 2013-2015, the HLogo team
+-- License     :  BSD3
+-- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
+-- Stability   :  experimental
+--
+-- The getopt-like command-line args passed to every HLogo program
 module Language.Logo.Conf where
 
 import System.IO.Unsafe
@@ -23,6 +32,7 @@ data Conf = Conf {
     , stats_stm_ :: Bool
   } deriving (Show, Eq, Data, Typeable)
 
+confOpt :: Conf
 confOpt = Conf {
             max_pxcor_ = 16 &= name "max-pxcor"  &= typ "NUM" &= help "Setting the max_pxcor"
           , max_pycor_ = 16 &= name "max-pycor"  &= typ "NUM" &= help "Setting the max_pycor"
