@@ -90,13 +90,6 @@ type Turtles = IM.IntMap Turtle
 -- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
 type Links = M.Map (Int, Int) Link
 
--- | The 'Globals' structure is an array of Int-indices pointing to Double (for now) variables.
--- Index 0 is reserved for holding the global who variable.
--- Index 1 is reserved for holding the global ticks variable.
--- The globals variables start indexing from index 2.
--- In the future it must be polymorphic on the container type.
-type Globals = Array Int (TVar Double)
-
 -- | The 'World' is the union of 'Patches' and 'Turtles'
 data World = MkWorld Patches Turtles Links
 
@@ -108,9 +101,8 @@ data AgentRef = PatchRef (Int,Int) Patch
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq, Typeable)
 
--- | The 'Context' datatype is a tuple of the global variables, the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
-type Context = (Globals
-               , TVar World
+-- | The 'Context' datatype is a tuple the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
+type Context = (TVar World
                , AgentRef       -- self
                , TChan String
                , AgentRef)      -- myself (the caller only through ask/of-like, i.e. not all callers should be returned)

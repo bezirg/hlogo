@@ -29,23 +29,24 @@ import Data.IORef (newIORef)
 import Control.Applicative
 #endif
 
+{-# NOINLINE __tick #-}
 -- | The global (atomically-modifiable) tick variable
 --
--- Double because NetLogo also allows different that 1-tick increments
+-- Double because NetLogo also allows different than 1-tick increments
 __tick :: TVar Double
 __tick = unsafePerformIO $ newTVarIO undefined
 
+{-# NOINLINE __who #-}
 -- | The global (atomically-modifiable) who-counter variable
 __who :: TVar Int
 __who = unsafePerformIO $ newTVarIO undefined
 
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
--- Takes the length of the global from TemplateHaskell (trick) to determine the size of the globals array
--- the length of the patch var from TH (trick) for the patches own array.
+-- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> Int -> IO Context
-cInit gl po = do
+cInit :: Int -> IO Context
+cInit po = do
   -- read dimensions from conf
   let max_x = max_pxcor_ conf
   let max_y = max_pycor_ conf
@@ -55,7 +56,6 @@ cInit gl po = do
   atomically $ do
                 writeTVar __tick 0
                 writeTVar __who 0
-  gs <- return . listArray (0, fromIntegral gl+1) =<< replicateM (fromIntegral gl + 2) (newTVarIO 0) -- TODO: remove, not needed
   -- spawn patches
   ps <- sequence [do
                    p <- newPatch x y
@@ -68,7 +68,7 @@ cInit gl po = do
   tp <- newTChanIO
   g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
-  return (gs, tw, ObserverRef g, tp, Nobody)
+  return (tw, ObserverRef g, tp, Nobody)
   where
     -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
     newPatch :: Int -> Int -> IO Patch
