@@ -24,7 +24,9 @@ import Data.Array (listArray)
 import Control.Monad
 import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
+#ifdef STATS_STM
 import Data.IORef (newIORef)
+#endif
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
@@ -80,10 +82,10 @@ cInit po = do
                   newTVarIO 9.9 <*>
                   -- init the patches-own variables to 0
                   (return . listArray (0, fromIntegral po -1) =<< replicateM (fromIntegral po) (newTVarIO 0)) <*>
-                  newTVarIO (mkStdGen (x + y * 1000)) <*>
-                  pure (unsafePerformIO (newIORef 0)) <*>
-                  pure (unsafePerformIO (newIORef 0))
-
+                  newTVarIO (mkStdGen (x + y * 1000))
+#ifdef STATS_STM
+                  <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
+#endif
 
 -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
 printer:: TChan String -> IO ()

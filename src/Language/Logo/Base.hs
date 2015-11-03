@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Base
@@ -16,7 +17,9 @@ import qualified Data.Map as M
 import Data.Array
 import Data.Typeable
 import System.Random (StdGen)
+#ifdef STATS_STM
 import Data.IORef
+#endif
 
 -- | Following the NetLogo convention, PenMode is an Algebraic Data Type (ADT)
 data PenMode = Down | Up | Erase
@@ -25,58 +28,64 @@ data PenMode = Down | Up | Erase
 -- an attribute value of 'Turtle'.
 -- For now only the default turtle attributes are supported.
 data Turtle = MkTurtle {
-      who_ :: Int,               -- on creation
-      breed_ :: TVar String,          -- on creation
-      color_ :: TVar Double,
-      heading_ :: TVar Double,
-      xcor_ :: TVar Double,
-      ycor_ :: TVar Double,
-      shape_ :: TVar String,
-      label_ :: TVar String,
-      label_color_ :: TVar Double,
-      hiddenp_ :: TVar Bool,
-      size_ :: TVar Double,
-      pen_size_ :: TVar Double,
-      pen_mode_ :: TVar PenMode,
-      tvars_ :: Array Int (TVar Double),
-      tgen :: TVar StdGen,
-      ttotalstm :: IORef Int,
-      tsuccstm :: IORef Int,
-      init_xcor_ :: Int,
-      init_ycor_ :: Int
+      who_ :: Int               -- on creation
+    , breed_ :: TVar String          -- on creation
+    , color_ :: TVar Double
+    , heading_ :: TVar Double
+    , xcor_ :: TVar Double
+    , ycor_ :: TVar Double
+    , shape_ :: TVar String
+    , label_ :: TVar String
+    , label_color_ :: TVar Double
+    , hiddenp_ :: TVar Bool
+    , size_ :: TVar Double
+    , pen_size_ :: TVar Double
+    , pen_mode_ :: TVar PenMode
+    , tvars_ :: Array Int (TVar Double)
+    , tgen :: TVar StdGen
+    , init_xcor_ :: Int
+    , init_ycor_ :: Int
+#ifdef STATS_STM
+    , ttotalstm :: IORef Int
+    , tsuccstm :: IORef Int
+#endif
     } deriving (Eq)
 
 -- | The 'Patch' datatype follows a similar philosophy with the 'Turtle' (ADT).
 -- Each field is a transactional variable (TVar) storing an attribute value of 'Patch'
 -- For now only the default patch attributes are supported.
 data Patch = MkPatch {
-      pxcor_ :: Int,             -- on creation
-      pycor_ :: Int,             -- on creation
-      pcolor_ :: TVar Double,
-      plabel_ :: TVar String,
-      plabel_color_ :: TVar Double,
-      pvars_ :: Array Int (TVar Double),
-      pgen :: TVar StdGen,
-      ptotalstm :: IORef Int,
-      psuccstm :: IORef Int
+      pxcor_ :: Int             -- on creation
+    , pycor_ :: Int             -- on creation
+    , pcolor_ :: TVar Double
+    , plabel_ :: TVar String
+    , plabel_color_ :: TVar Double
+    , pvars_ :: Array Int (TVar Double)
+    , pgen :: TVar StdGen
+#ifdef STATS_STM
+    , ptotalstm :: IORef Int
+    , psuccstm :: IORef Int
+#endif
       } deriving (Eq)
 
 data Link = MkLink {
-      end1_ :: Int,              -- on creation
-      end2_ :: Int,              -- on creation
-      directed_ :: Bool,          -- on creation
-      lcolor_ :: TVar Double,
-      llabel_ :: TVar String,
-      llabel_color_ :: TVar Double,
-      lhiddenp_ :: TVar Bool,
-      lbreed_ :: String,
-      thickness_ :: TVar Double,
-      lshape_ :: TVar String,
-      tie_mode :: TVar TieMode,
-      lvars_ :: Array Int (TVar Double),
-      lgen :: TVar StdGen,
-      ltotalstm :: IORef Int,
-      lsuccstm :: IORef Int
+      end1_ :: Int              -- on creation
+    , end2_ :: Int              -- on creation
+    , directed_ :: Bool          -- on creation
+    , lcolor_ :: TVar Double
+    , llabel_ :: TVar String
+    , llabel_color_ :: TVar Double
+    , lhiddenp_ :: TVar Bool
+    , lbreed_ :: String
+    , thickness_ :: TVar Double
+    , lshape_ :: TVar String
+    , tie_mode :: TVar TieMode
+    , lvars_ :: Array Int (TVar Double)
+    , lgen :: TVar StdGen
+#ifdef STATS_STM
+    , ltotalstm :: IORef Int
+    , lsuccstm :: IORef Int
+#endif
     } deriving (Eq)
 
 data TieMode = None | Fixed

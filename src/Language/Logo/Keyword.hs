@@ -432,11 +432,12 @@ newBreed b x to = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
        newTVar (mkStdGen x) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
        pure 0 <*>
        pure 0
-
+#ifdef STATS_STM
+       <*> pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0))
+#endif
 
 -- | Internal
 newOrderedBreed :: Int -> Int -> String -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> CSTM Turtle
@@ -459,10 +460,12 @@ newOrderedBreed i o b x to = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
        newTVar (mkStdGen x) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
        pure 0 <*>
        pure 0
+#ifdef STATS_STM
+       <*> pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0))
+#endif
 
 
 -- | Internal
@@ -486,10 +489,12 @@ newTurtle x to = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
        newTVar (mkStdGen x) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
        pure 0 <*>
        pure 0
+#ifdef STATS_STM
+       <*> pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0))
+#endif
 
 -- | Internal
 newSprout :: Integral a => Int -> a -> Double -> Double -> CSTM Turtle
@@ -512,10 +517,12 @@ newSprout w to x y = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
        newTVar (mkStdGen w) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
        pure (round x) <*>
        pure (round y)
+#ifdef STATS_STM
+       <*> pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0))
+#endif
 
 -- | Internal
 newBSprout :: Integral a => Int -> a -> Double -> Double -> String -> CSTM Turtle
@@ -538,10 +545,13 @@ newBSprout w to x y b = do
        newTVar Up <*>
        (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
        newTVar (mkStdGen w) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0)) <*>
        pure (round x) <*>
        pure (round y)
+#ifdef STATS_STM
+       <*> pure (unsafePerformIO (newIORef 0)) <*>
+       pure (unsafePerformIO (newIORef 0))
+#endif
+
 
 
 -- | Internal
@@ -565,11 +575,12 @@ newOrderedTurtle i o x to = do
              newTVar Up <*>
              (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
              newTVar (mkStdGen x) <*>
-             pure (unsafePerformIO (newIORef 0)) <*>
-             pure (unsafePerformIO (newIORef 0)) <*>
              pure 0 <*>
              pure 0
-
+#ifdef STATS_STM
+             <*> pure (unsafePerformIO (newIORef 0)) <*>
+             pure (unsafePerformIO (newIORef 0))
+#endif
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
@@ -636,9 +647,11 @@ newLink f t ls = lift $ MkLink <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0))  <*>
-                  newTVar (mkStdGen (f+t*1000)) <*>
-                  pure (unsafePerformIO (newIORef 0)) <*>
+                  newTVar (mkStdGen (f+t*1000))
+#ifdef STATS_STM
+                  <*> pure (unsafePerformIO (newIORef 0)) <*>
                   pure (unsafePerformIO (newIORef 0))
+#endif
 
 
 -- | Internal
@@ -656,9 +669,11 @@ newLBreed f t d b ls = lift $ MkLink <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0)) <*>
-                  newTVar (mkStdGen (f+t*1000)) <*>
-                  pure (unsafePerformIO (newIORef 0)) <*>
+                  newTVar (mkStdGen (f+t*1000))
+#ifdef STATS_STM
+                  <*> pure (unsafePerformIO (newIORef 0)) <*>
                   pure (unsafePerformIO (newIORef 0))
+#endif
 
 
 

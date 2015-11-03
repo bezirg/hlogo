@@ -363,9 +363,6 @@ die = do
    TurtleRef t _ -> do
           (MkWorld ps ts ls) <- lift $ readTVar tw
           lift $ writeTVar tw $ MkWorld ps (IM.delete t ts) ls
-   PatchRef p _ -> do
-          (MkWorld ps ts ls) <- lift $ readTVar tw
-          lift $ writeTVar tw $ MkWorld (M.delete p ps) ts ls
    LinkRef (e1,e2) (MkLink {directed_ = d}) -> do
           (MkWorld ps ts ls) <- lift $ readTVar tw
           lift $ writeTVar tw $ MkWorld ps ts (M.delete (e1,e2) 
@@ -969,7 +966,7 @@ clear_patches = do
   case s of
     ObserverRef _ -> do
                   (MkWorld ps _ _) <- lift $ readTVar tw
-                  lift $ T.mapM (\ (MkPatch _tx _ty tc tl tlc to _tg _pt _ps)  -> do
+                  lift $ T.mapM (\ (MkPatch {pcolor_=tc, plabel_=tl, plabel_color_=tlc, pvars_=to})  -> do
                               writeTVar tc 0
                               writeTVar tl ""
                               writeTVar tlc 9.9
@@ -1566,13 +1563,14 @@ end2 = do
 
 -- | lifting STM to IO, a wrapper to atomically
 atomic :: CSTM a -> CIO a
-atomic comms = if stats_stm_ conf
-               then do
-                 (_, s, _, _) <- Reader.ask 
-                 lift $ increaseSuccessfulSTM s
-                 Reader.mapReaderT atomically (lift (unsafeIOToSTM $ increaseTotalSTM s) >> comms)
-               else
-                   Reader.mapReaderT atomically comms
+atomic comms = 
+#ifndef STATS_STM
+       Reader.mapReaderT atomically comms
+#else
+       do
+         (_, s, _, _) <- Reader.ask 
+         lift $ increaseSuccessfulSTM s
+         Reader.mapReaderT atomically (lift (unsafeIOToSTM $ increaseTotalSTM s) >> comms)
     where
         increaseSuccessfulSTM s = case s of
                                      TurtleRef _ t -> atomicModifyIORef'  (tsuccstm t) (\ x -> (x+1, ()))
@@ -1590,6 +1588,8 @@ increaseTotalSTM s = case s of
                        LinkRef _ l -> atomicModifyIORef'  (ltotalstm l) (\ x -> (x+1, ()))
                        ObserverRef _ -> return ()
                        Nobody -> throw DevException
+
+#endif
 
 {-# WARNING ask "TODO: both splitting" #-}
 -- | The specified agent or agentset runs the given commands. 
@@ -1784,7 +1784,11 @@ hatch :: Int -> CSTM [AgentRef]
 hatch n = do
   (tw, a, _, _) <- Reader.ask
   case a of
-    TurtleRef _ (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _tt _ts _ix _iy) -> do
+#ifdef STATS_STM
+    TurtleRef _ (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _ix _iy _tt _ts) -> do
+#else
+    TurtleRef _ (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _ix _iy) -> do
+#endif
             let b = bounds tarr
             -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
             let newArray = return . listArray b =<< sequence [newTVar =<< readTVar (tarr ! i) | i <- [fst b.. snd b]]
@@ -1805,10 +1809,12 @@ hatch n = do
                                                                             (newTVar =<< readTVar pm) <*>
                                                                             newArray <*>
                                                                             newTVar (mkStdGen i) <*> 
-                                                                            pure (unsafePerformIO (newIORef 0)) <*> 
-                                                                            pure (unsafePerformIO (newIORef 0)) <*> 
                                                                             liftA round (readTVar x) <*> 
                                                                             liftA round (readTVar y)
+#ifdef STATS_STM                                                                            
+                                                                            <*> pure (unsafePerformIO (newIORef 0)) <*> 
+                                                                            pure (unsafePerformIO (newIORef 0))
+#endif
                                                                         return (i, t) | i <- [w..w+n-1]]
             oldWho <- lift $ readTVar __who
             lift $ modifyTVar' __who (n +)
@@ -1962,8 +1968,10 @@ unsafe_print_ a = lift $ print a
 
 stats_stm :: CIO Double
 stats_stm = 
-  if stats_stm_ conf
-  then do
+#ifndef STATS_STM 
+   error "library not compiled with stats-stm flag enabled"
+#else
+   do
     (tw, _, _, _) <- Reader.ask
     MkWorld wps wts wls <- lift $ readTVarIO tw
     (vtt, vts) <- lift $ F.foldlM (\ (acct, accs) (MkTurtle {ttotalstm=tt, tsuccstm=ts}) -> do
@@ -1981,8 +1989,7 @@ stats_stm =
     let total = fromIntegral $ vtt+vpt+vlt
     let suc = fromIntegral $ vts+vps+vls
     return $ (total - suc) / total
-  else error "--stats-stm flag not enabled"
-
+#endif
 
 
 with_breed :: (String -> String) -> CSTM ()
