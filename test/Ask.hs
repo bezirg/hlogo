@@ -27,31 +27,44 @@ breeds_own "mice" []
 
 askTestGroup = $(testGroupGenerator)
 case_AskRNG_2D = runT $ do 
-  atomic $ random_seed 0
+  atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
   wait 0.1  
-  -- ask_ (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches)
-  --  cannot use this because is non deterministic, ask STM
-  -- instead
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
 
   a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
-  let e1 = [(0,-5,65,309)]
+  let e1 = [(14,13,95,224)]
   lift $ e1 @=? a1
-
   a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
-  let e2 = [(-3,-2,85,204)]
+  let e2 = [(11,16,115,144)]
   lift $ e2 @=? a2
-
-
   a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
-  let e3 = [(-6,-10,45,148)]
+  let e3 = [(8,8,75,62)]
   lift $ e3 @=? a3
-
   a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
-  let e4 = [(12,14,35,52)]
+  let e4 = [(-6,-1,5,58)]
+  lift $ e4 @=? a4
+
+
+case_AskRNG_2D_Nof = runT $ do 
+  atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
+  wait 0.1  
+  -- this is not the same as 4 times one_of! (above), because we delete successive draws from the agentset (so as not to return duplicates)
+  ask (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches) 
+
+  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
+  let e1 = [(14,13,95,224)]
+  lift $ e1 @=? a1
+  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
+  let e2 = [(-12,9,75,287)]
+  lift $ e2 @=? a2
+  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
+  let e3 = [(-16,-4,5,275)]
+  lift $ e3 @=? a3
+  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
+  let e4 = [(9,13,135,150)]
   lift $ e4 @=? a4
 
 
@@ -88,10 +101,11 @@ case_RecursiveCallInsideAsk2 = let
                  g <- glob1
                  atomic $ set_glob1 (g + 1)
                  r <- atomic $ random (10 :: Int)
-                 when (r > 0) go2) =<< turtle 0
+                 when (r > 0) go2) -- recurses until it reaches random=0
+               =<< turtle 0
                                 in runT $ do
-                                  atomic $ set_glob1 0
-                                  atomic $ random_seed 0
+                                  atomic $ set_glob1 0 -- not needed, because untyped (double) globals are initialized anyway to 0 
+                                  atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
                                   go1
                                           
                                   a1 <- count =<< turtles
@@ -99,7 +113,7 @@ case_RecursiveCallInsideAsk2 = let
                                   lift $ e1 @=? a1
 
                                   a2 <- glob1
-                                  let e2 = 1
+                                  let e2 = 10
                                   lift $ e2 @=? a2
           
 case_RecursionOverAsk = let

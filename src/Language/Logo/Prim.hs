@@ -23,7 +23,7 @@ module Language.Logo.Prim (
                            hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
 
                            -- * Random related
-                           random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, unsafe_new_seed, random_seed, unsafe_random_seed, unsafe_random_exponential, unsafe_random_gamma, unsafe_random_normal, unsafe_random_poisson,
+                           random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, new_seed, random_seed, unsafe_random_seed, random_exponential, random_gamma, random_normal, random_poisson,
 
                            -- * Color
                            primary_colors, extract_rgb, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color,
@@ -68,6 +68,11 @@ import Data.Word (Word8)
 import GHC.Conc (numCapabilities)
 import qualified Data.Traversable as T (mapM)
 import Data.Maybe (isJust)
+-- for rng
+import System.CPUTime
+import Data.Time ( getCurrentTime, UTCTime(..) )
+import Data.Ratio       ( numerator, denominator )
+
 
 -- For diagrams
 import qualified Diagrams.Prelude as Diag
@@ -83,6 +88,8 @@ import GHC.Conc.Sync (unsafeIOToSTM)
 import Data.Functor.Identity (runIdentity)
 
 #define todo assert False undefined
+
+{-# DEPRECATED unsafe_random_xcor, unsafe_random_ycor, unsafe_random_pxcor, unsafe_random_pycor, unsafe_random, unsafe_random_float, unsafe_random_seed, unsafe_one_of, unsafe_n_of, unsafe_shuffle "Uses slower (but safe) global random generator" #-}
 
 {-# SPECIALIZE self :: CSTM [AgentRef] #-}
 {-# SPECIALIZE self :: CIO [AgentRef] #-}
@@ -550,6 +557,23 @@ dx = liftM sin_ heading
 -- | Reports the y-increment (the amount by which the turtle's ycor would change) if the turtle were to take one step forward in its current heading. 
 dy :: STMorIO m => C m Double
 dy = liftM cos_ heading
+
+-- | Reports a number suitable for seeding the random number generator.
+-- The numbers reported by new-seed are based on the current date and time in milliseconds. 
+-- Unlike NetLogo's new-seed, HLogo may report the same number twice in succession.
+--
+-- NB: taken from Haskell's random library
+new_seed :: CSTM Int
+new_seed = do
+    ct          <- lift $ unsafeIOToSTM getCPUTime
+    (sec, psec) <- lift $ unsafeIOToSTM getTime
+    return $ fromIntegral (sec * 12345 + psec + ct)
+        where
+          getTime :: IO (Integer, Integer)
+          getTime = do
+             utc <- getCurrentTime
+             let daytime = toRational $ utctDayTime utc
+             return $ quotRem (numerator daytime) (denominator daytime)
 
 random_seed :: Int -> CSTM ()
 random_seed i = do
@@ -1837,36 +1861,30 @@ unsafe_random_float x | x == 0 = return 0
                       | otherwise = throw DevException
 
 
-{-# WARNING unsafe_new_seed "TODO" #-}
--- | Reports a number suitable for seeding the random number generator. 
-unsafe_new_seed :: t
-unsafe_new_seed = todo
-
 -- | Sets the seed of the pseudo-random number generator to the integer part of number.
 unsafe_random_seed :: Int -> IO ()
 unsafe_random_seed n = setStdGen $ mkStdGen n
 
 
-{-# WARNING unsafe_random_exponential "TODO" #-}
+{-# WARNING random_exponential "TODO" #-}
 -- | random-exponential reports an exponentially distributed random floating point number. 
-unsafe_random_exponential :: t -> t1
-unsafe_random_exponential _m = todo
+random_exponential :: t -> t1
+random_exponential _m = todo
 
-{-# WARNING unsafe_random_gamma "TODO" #-}
+{-# WARNING random_gamma "TODO" #-}
 -- | random-gamma reports a gamma-distributed random floating point number as controlled by the floating point alpha and lambda parameters. 
-unsafe_random_gamma :: t -> t1 -> t2
-unsafe_random_gamma _a _l = todo
+random_gamma :: t -> t1 -> t2
+random_gamma _a _l = todo
 
-{-# WARNING unsafe_random_normal "TODO" #-}
+{-# WARNING random_normal "TODO" #-}
 -- | random-normal reports a normally distributed random floating point number. 
-unsafe_random_normal :: t -> t1 -> t2
-unsafe_random_normal _m _s = todo
+random_normal :: t -> t1 -> t2
+random_normal _m _s = todo
 
-{-# WARNING unsafe_random_poisson "TODO" #-}
+{-# WARNING random_poisson "TODO" #-}
 -- | random-poisson reports a Poisson-distributed random integer. 
-unsafe_random_poisson :: t -> t1
-unsafe_random_poisson _m = todo
-
+random_poisson :: t -> t1
+random_poisson _m = todo
 
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
 turtles_on :: [AgentRef] -> CIO [AgentRef]
@@ -1917,8 +1935,6 @@ agent_unsafe_one_of l = do
   v <- lift $ randomRIO (0, length l -1)
   return [l !! v]
 
-
-{-# WARNING unsafe_shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
 -- | Reports a new list containing the same items as the input list, but in randomized order. 
 unsafe_shuffle :: Eq a => [a] -> CIO [a]
 unsafe_shuffle [] = return []

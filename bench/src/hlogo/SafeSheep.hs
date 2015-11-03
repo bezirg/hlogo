@@ -14,11 +14,8 @@ breeds_own "sheep" ["senergy"]
 grassp = True
 grass_regrowth_time = 30
 initial_number_sheep = NR_SHEEP
-initial_number_wolves = 0
 sheep_gain_from_food = 4
-wolf_gain_from_food = 20
 sheep_reproduce = 4
-wolf_reproduce = 5
 
 setup = do
   ask (atomic $ set_pcolor green) =<< patches
