@@ -27,17 +27,17 @@ This will automatically fetch&update any needed dependencies and update the HLog
 
 # Example: Running an HLogo program
 
-There are many HLogo examples under `bench/src/hlogo/` directory.
+There are many HLogo examples under `bench/hlogo/` directory.
 To compile an example, open a bash shell and run:
 
 ```bash
-cabal exec ghc -- --make -O -fth -cpp -threaded bench/src/hlogo/Simple1.hs
+cabal exec ghc -- --make -O -XTemplateHaskell -XNoImplicitPrelude -cpp -threaded bench/hlogo/Termites.hs
 ```
 
 To run the generated code:
 
 ```bash
-./bench/src/hlogo/Simple1 --max-pxcor=10 --min-pxcor=-10 --max-pycor=10 --min-pycor=-10 +RTS -N2 # e.g. -N2 is for running on 2 cores
+./bench/hlogo/Termites --max-pxcor=10 --min-pxcor=-10 --max-pycor=10 --min-pycor=-10 +RTS -N2 # e.g. -N2 is for running on 2 cores
 ```
 
 # Optional: Running tests
@@ -57,6 +57,6 @@ cabal bench
 Assuming that the netlogo executables are in your `$PATH`, open a shell and run:
 
 ```bash
-time netlogo-headless.sh --experiment experiment1 --model /PATH/TO/hlogo/bench/src/netlogo/Simple1.nlogo 
+time netlogo-headless.sh --experiment experiment1 --model /PATH/TO/hlogo/bench/nlogo/Termites.nlogo 
 ```
 

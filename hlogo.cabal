@@ -75,15 +75,15 @@ benchmark fwdback
   type:           exitcode-stdio-1.0
   main-is:        FwdBack.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable"
   hs-source-dirs: bench/hlogo
 
-benchmark safetermites
+benchmark termites
   type:           exitcode-stdio-1.0
-  main-is:        SafeTermites.hs
+  main-is:        Termites.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   hs-source-dirs: bench/hlogo
 
@@ -91,7 +91,7 @@ benchmark fire
   type:           exitcode-stdio-1.0
   main-is:        Fire.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   hs-source-dirs: bench/hlogo
 
@@ -99,58 +99,58 @@ benchmark heatbugs
   type:           exitcode-stdio-1.0
   main-is:        Heatbugs.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   hs-source-dirs: bench/hlogo
 
 -- SHEEP BENCHMARK
 -------------------
 
-benchmark safesheep100
+benchmark sheep100
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=100
   hs-source-dirs: bench/hlogo
-benchmark safesheep250
+benchmark sheep250
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=250
   hs-source-dirs: bench/hlogo
-benchmark safesheep500
+benchmark sheep500
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=500
   hs-source-dirs: bench/hlogo
-benchmark safesheep1000
+benchmark sheep1000
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=1000
   hs-source-dirs: bench/hlogo
-benchmark safesheep2000
+benchmark sheep2000
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=2000
   hs-source-dirs: bench/hlogo
-benchmark safesheep3000
+benchmark sheep3000
   type:           exitcode-stdio-1.0
-  main-is:        SafeSheep.hs
+  main-is:        Sheep.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_SHEEP=3000
   hs-source-dirs: bench/hlogo
@@ -162,7 +162,7 @@ benchmark redblue1000
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=1000
   hs-source-dirs: bench/hlogo
@@ -170,7 +170,7 @@ benchmark redblue2500
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=2500
   hs-source-dirs: bench/hlogo
@@ -178,7 +178,7 @@ benchmark redblue5000
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=5000
   hs-source-dirs: bench/hlogo
@@ -186,7 +186,7 @@ benchmark redblue10000
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=10000
   hs-source-dirs: bench/hlogo
@@ -194,7 +194,7 @@ benchmark redblue20000
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=20000
   hs-source-dirs: bench/hlogo
@@ -202,7 +202,7 @@ benchmark redblue30000
   type:           exitcode-stdio-1.0
   main-is:        RedBlue.hs
   build-depends:  hlogo, base
-  extensions:     DeriveDataTypeable, TemplateHaskell, CPP                                                
+  extensions:     DeriveDataTypeable, TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=30000
   hs-source-dirs: bench/hlogo

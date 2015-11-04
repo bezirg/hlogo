@@ -26,7 +26,7 @@ module Language.Logo.Prim (
                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, new_seed, random_seed, unsafe_random_seed, random_exponential, random_gamma, random_normal, random_poisson,
 
                            -- * Color
-                           primary_colors, extract_rgb, black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color,
+                           black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color, extract_rgb, approximate_rgb,
 
                            -- * List related
                            sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
@@ -38,7 +38,7 @@ module Language.Logo.Prim (
                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
 
                            -- * Input/Output
-                           show_, unsafe_show_, print_, unsafe_print_, read_from_string,
+                           show, unsafe_show, print, unsafe_print, read_from_string,
 
                            -- * IO Operations
                            atomic, ask, of_, with, snapshot
@@ -46,6 +46,8 @@ module Language.Logo.Prim (
 
 ) where
 
+import Prelude hiding (show,print)
+import qualified Prelude (show, print)
 import Language.Logo.Base
 import Language.Logo.Core
 import Language.Logo.Conf
@@ -79,13 +81,15 @@ import qualified Diagrams.Prelude as Diag
 import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
+import GHC.Conc.Sync (unsafeIOToSTM)
+import Data.Functor.Identity (runIdentity)
+
+#ifdef STATS_STM
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Foldable as F (foldlM)
+#endif
 
-import GHC.Conc.Sync (unsafeIOToSTM)
-
-import Data.Functor.Identity (runIdentity)
 
 #define todo assert False undefined
 
@@ -134,22 +138,22 @@ other as = do
 
 
 -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
-show_ :: Show a => a -> CSTM ()
-show_ a = do
+show :: Show a => a -> CSTM ()
+show a = do
   (_, r, p, _) <- Reader.ask
   lift $ writeTChan p $ (case r of
                            ObserverRef _ -> "observer: "
-                           PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
-                           LinkRef (x,y) _ -> "(link " ++ show x ++ " " ++ show y ++ "): "
-                           TurtleRef i _ -> "(turtle " ++ show i ++ "): "
+                           PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                           LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                           TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
                            Nobody -> throw DevException
-                        )   ++ show a
+                        )   ++ Prelude.show a
 
 -- | Prints value in the Command Center, followed by a carriage return. 
-print_ :: Show a => a -> CSTM ()
-print_ a = do
+print :: Show a => a -> CSTM ()
+print a = do
   (_, _, p, _) <- Reader.ask
-  lift $ writeTChan p $ show a
+  lift $ writeTChan p $ Prelude.show a
                            
 
 {-# WARNING carefully "TODO" #-}
@@ -192,60 +196,54 @@ patch_ahead n = do
                                                          else  dy_*n
   patch px_new py_new
 
--- | NetLogo Constant
+{-# INLINE black #-}
 black :: Double
 black = 0
--- | NetLogo Constant
+{-# INLINE white #-}
 white :: Double
 white = 9.9
--- | NetLogo Constant
+{-# INLINE gray #-}
 gray :: Double
 gray = 5
--- | NetLogo Constant
+{-# INLINE red #-}
 red :: Double
 red = 15
--- | NetLogo Constant
+{-# INLINE orange #-}
 orange :: Double
 orange = 25
--- | NetLogo Constant
+{-# INLINE brown #-}
 brown :: Double
-brown = 35 
--- | NetLogo Constant
+brown = 35
+{-# INLINE yellow #-}
 yellow :: Double
 yellow = 45
--- | NetLogo Constant
+{-# INLINE green #-}
 green :: Double
 green = 55
--- | NetLogo Constant
+{-# INLINE lime #-}
 lime :: Double
 lime = 65
--- | NetLogo Constant
+{-# INLINE turquoise #-}
 turquoise :: Double
 turquoise = 75
--- | NetLogo Constant
+{-# INLINE cyan #-}
 cyan :: Double
 cyan = 85
--- | NetLogo Constant
+{-# INLINE sky #-}
 sky :: Double
 sky = 95
--- | NetLogo Constant
+{-# INLINE blue #-}
 blue :: Double
 blue = 105
--- | NetLogo Constant
+{-# INLINE violet #-}
 violet :: Double
 violet = 115
--- | NetLogo Constant
+{-# INLINE magenta #-}
 magenta :: Double
 magenta = 125
--- | NetLogo Constant
+{-# INLINE pink #-}
 pink :: Double
 pink = 135
-
--- approximate-rgb
-
--- | Internal
-primary_colors :: [Double]
-primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
 
 {-# SPECIALIZE count :: [AgentRef] -> CSTM Int #-}
 {-# SPECIALIZE count :: [AgentRef] -> CIO Int #-}
@@ -562,9 +560,9 @@ dy = liftM cos_ heading
 -- NB: taken from Haskell's random library
 new_seed :: CSTM Int
 new_seed = do
-    ct          <- lift $ unsafeIOToSTM getCPUTime
+    cpt          <- lift $ unsafeIOToSTM getCPUTime
     (sec, psec) <- lift $ unsafeIOToSTM getTime
-    return $ fromIntegral (sec * 12345 + psec + ct)
+    return $ fromIntegral (sec * 12345 + psec + cpt)
         where
           getTime :: IO (Integer, Integer)
           getTime = do
@@ -1261,7 +1259,7 @@ read_from_string = read
 {-# INLINE word #-}
 -- | Concatenates the inputs together and reports the result as a string.
 word :: Show a => [a] -> String
-word = concatMap show
+word = concatMap Prelude.show
 
 {-# INLINE abs_ #-}
 -- | Reports the absolute value of number. 
@@ -1951,20 +1949,20 @@ unsafe_shuffle l = do
   return $ x:xs
 
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_show_ :: Show a => a -> CIO ()
-unsafe_show_ a = do
+unsafe_show :: Show a => a -> CIO ()
+unsafe_show a = do
   (_, r, _, _) <- Reader.ask
   lift $ putStrLn $ (case r of
                            ObserverRef _ -> "observer: "
-                           PatchRef (x,y) _ -> "(patch " ++ show x ++ " " ++ show y ++ "): "
-                           LinkRef (x,y) _ -> "(link " ++ show x ++ " " ++ show y ++ "): "
-                           TurtleRef i _ -> "(turtle " ++ show i ++ "): "
+                           PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                           LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                           TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
                            Nobody -> throw DevException
-                    )   ++ show a
+                    )   ++ Prelude.show a
 
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_print_ :: Show a => a -> CIO ()
-unsafe_print_ a = lift $ print a
+unsafe_print :: Show a => a -> CIO ()
+unsafe_print a = lift $ Prelude.print a
 
 stats_stm :: CIO Double
 stats_stm = 
@@ -2076,7 +2074,7 @@ snapshot = do
              max_x <- max_pxcor
              min_x <- min_pycor
              let sizeSpec = Diag.mkWidth (fromIntegral (ps * (max_x + abs min_x + 1)))
-             let output = "snapshot" ++ show (round ticksNow :: Int) ++ ".eps"
+             let output = "snapshot" ++ Prelude.show (round ticksNow :: Int) ++ ".eps"
              prs <- patches
              diagPatches <- lift $ mapM (\ (PatchRef (px,py) p) -> do 
                                    c <- readTVarIO $ pcolor_ p
@@ -2132,7 +2130,11 @@ extract_rgb c | c == 0 = [0,0,0]
                               then [truncate(fromIntegral r * step) +r, truncate(fromIntegral g*step)+g, truncate(fromIntegral b*step)+b]
                               else [truncate((255 - fromIntegral r)*step)+r, truncate((255 - fromIntegral g)*step)+g, truncate((255 - fromIntegral b)*step)+b]
 
+{-# WARNING approximate_rgb "TODO" #-}
+approximate_rgb = todo
 
+-- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects or only depend on 'readTVar', 
+-- belong here. The correct lifting (STM or IO) is left to type inference.
 class (Monad m) => STMorIO m where
     -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
     turtles_here :: C m [AgentRef]

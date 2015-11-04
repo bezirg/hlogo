@@ -72,6 +72,12 @@ cInit po = do
   forkIO $ printer tp
   return (tw, ObserverRef g, tp, Nobody)
   where
+    -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
+    printer:: TChan String -> IO ()
+    printer tp = forever $ do
+                   v <- atomically $ readTChan tp
+                   putStrLn v
+
     -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
     newPatch :: Int -> Int -> IO Patch
     newPatch x y = MkPatch <$>
@@ -87,10 +93,5 @@ cInit po = do
                   <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
 #endif
 
--- | The printer just reads an IO chan for incoming text and outputs it to standard output.
-printer:: TChan String -> IO ()
-printer tp = forever $ do
-  v <- atomically $ readTChan tp
-  putStrLn v
 
 

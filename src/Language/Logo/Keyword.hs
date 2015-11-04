@@ -8,7 +8,14 @@
 -- Stability   :  experimental
 --
 -- The module defines the macros of the HLogo language using TemplateHaskell (lisp-like macros).
-module Language.Logo.Keyword where
+module Language.Logo.Keyword (
+                              -- * Running an HLogo program
+                              run, runT,
+                              -- * Declaring new breeds
+                              breeds,directed_link_breed,undirected_link_breed,
+                              -- * User-provided variables
+                              globals, patches_own, turtles_own, links_own, breeds_own, link_breeds_own
+                             ) where
 
 import Language.Haskell.TH
 import Language.Logo.Core
@@ -23,14 +30,18 @@ import Data.List (genericLength)
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
 import Data.Typeable (cast)
-import Control.Monad (liftM, liftM2, filterM, replicateM)
+import Control.Monad (liftM, filterM, replicateM)
 import System.Random (randomR, mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
-import Data.IORef (newIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
+#ifdef STATS_STM
+import Data.IORef (newIORef)
+#endif
 
+-- | globals macro takes a list of variable names (as strings) and creates top-level global variables.
+-- Global variables have type 'Double' and are initialized to 0.
 globals :: [String] -> Q [Dec]
 globals vs  = 
               -- create 2 getters (1 prim and 1 unsafe) per global variable
@@ -53,10 +64,14 @@ globals vs  =
 
 
 
+-- | turtles_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __turtle agent__.
+-- This user-declared turtle-field variables have type 'Double' and are initialized to 0.
+--
+-- NB: turtle fields are inherited to all __turtle-like__ agents, i.e. both the turtle agents as well as all any-breed agents.
 turtles_own :: [String] -> Q [Dec]
 turtles_own vs = do
   y <- newName "y"
-  ct <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
+  cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
                                                                    (tw, a, _, _) <- Reader.ask
                                                                    case a of
                                                                      ObserverRef _ -> return ()
@@ -133,8 +148,11 @@ turtles_own vs = do
 
           return [p',p,w,x]
             ) (zip vs [0..])
-  return $ sp : ct : co : crt : cro: concat pg
+  return $ sp : cts : co : crt : cro: concat pg
 
+
+-- | patches_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __patch agent__.
+-- This user-declared patch-field variables have type 'Double' and are initialized to 0.
 patches_own :: [String] -> Q [Dec]
 patches_own vs = do
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
@@ -162,6 +180,47 @@ patches_own vs = do
   return $ pl : concat pg
 
 
+-- | links_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __link agent__.
+-- This user-declared link-field variables have type 'Double' and are initialized to 0.
+--
+-- NB: link fields are inherited to all __link-like__ agents, i.e. both the link agents as well as all any-linkbreed agents.
+links_own :: [String] -> Q [Dec]
+links_own vs = do
+  y <- newName "y"
+  cls <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cts <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cfs <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cl <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cto <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cfr <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  pg <- mapM (\ (v, i) -> do
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) 
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y) 
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+
+          return [p',p,w,x]
+            ) (zip vs [0..])
+  return $ cls : cts : cfs : cl : cto : cfr : concat pg
+
+
+-- | breeds_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __breed-exact agent__.
+-- A specific breed must be declared with 'breeds'.
+-- This user-declared breed-field variables have type 'Double' and are initialized to 0.
+-- 
+-- NOTE TO SELF: also applies for linkbreeds_own: this cannot become "wolves_own", etc. because of the _GHC stage restriction_. This means
+-- that the keywords 'breeds' and 'breeds_own' have to be defined in separate Haskell modules.
 breeds_own :: String -> [String] -> Q [Dec]
 breeds_own p vs = do
   y <- newName "y"
@@ -211,6 +270,39 @@ breeds_own p vs = do
             ) (zip vs [0..])
   return $ cb : sp : cob : concat pg
 
+-- | Like 'breeds_own' but for __linkbreeds__, which are declared with 'directed_link_breed' or 'undirected_link_breed'.
+link_breeds_own :: String -> [String] -> Q [Dec]
+link_breeds_own p vs = do
+  y <- newName "y"
+  cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  pg <- mapM (\ (v, i) -> do
+          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
+          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i)) |]) []
+
+          y <- newName "y"
+          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
+                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       case a of
+                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                         _ -> throw $ ContextException "link" a
+                                                                     |]) []]
+
+          return [p',p,w,x]
+            ) (zip vs [0..])
+  return $ cls : cts : cfs : concat pg
+
+
+-- | Takes a 2-length list, with 1st element the plural name of the breeds (e.g. "wolves") and as 2nd element the singlular form (e.g. "wolf").
+--
+-- NB: breed agents share the same who counter (same namespace). The agentset 'turtles' returns all turtle-like agents (both turtles and any-breeds).
 breeds :: [String] -> Q [Dec]
 breeds [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
@@ -286,6 +378,7 @@ breeds [p,s] = do
 breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wolves\", \"wolf\"]"
 
 
+-- | Creates a directed-linkbreed. The arguments behave the same as 'breeds'. 
 directed_link_breed :: [String] -> Q [Dec]
 directed_link_breed [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
@@ -298,6 +391,7 @@ directed_link_breed [p,s] = do
   return [sp, ss]
 directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
+-- | Creates an undirected-linkbreed. The arguments behave the same as 'breeds'. 
 undirected_link_breed :: [String] -> Q [Dec]
 undirected_link_breed [p,s] = do
   sp <- valD (varP (mkName p)) (normalB [| do 
@@ -310,72 +404,20 @@ undirected_link_breed [p,s] = do
   return [sp, ss]
 undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
-links_own :: [String] -> Q [Dec]
-links_own vs = do
-  y <- newName "y"
-  cls <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cts <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cfs <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cl <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  ct <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  pg <- mapM (\ (v, i) -> do
-          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
-          y <- newName "y"
-          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
-                                                                       case a of
-                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) 
-                                                                         _ -> throw $ ContextException "link" a
-                                                                     |]) []]
-          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
-                                                                       case a of
-                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y) 
-                                                                         _ -> throw $ ContextException "link" a
-                                                                     |]) []]
 
-          return [p',p,w,x]
-            ) (zip vs [0..])
-  return $ cls : cts : cfs : cl : ct : cf : concat pg
-
-link_breeds_own :: String -> [String] -> Q [Dec]
-link_breeds_own p vs = do
-  y <- newName "y"
-  cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  pg <- mapM (\ (v, i) -> do
-          p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i)) |]) []
-
-          y <- newName "y"
-          w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
-                                                                       case a of
-                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
-                                                                         _ -> throw $ ContextException "link" a
-                                                                     |]) []]
-          x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (_,a,_,_) <- Reader.ask :: CSTM Context; 
-                                                                       case a of
-                                                                         LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
-                                                                         _ -> throw $ ContextException "link" a
-                                                                     |]) []]
-
-          return [p',p,w,x]
-            ) (zip vs [0..])
-  return $ cls : cts : cfs : concat pg
-
-
+-- | The entrypoint of a non-interactive HLogo. Takes as input a list of HLogo procedure names (as strings) to run in sequence.
+-- The program exits either when the last procedure stops, or when a program exception occurs.
+--
+-- NOTE TO SELF: cannot have 'run' take procedures as values of 'CIO ()', possibly for the same reason as 'breeds_own', i.e. _GHC stage restriction_. 
+-- It has to take either a list of strings or a list of symbol names (this was chosen). 
 run :: [Name] -> DecsQ
 run as = [d| main = do 
                     c <- cInit $(varE (mkName "patches_length"))
-                    Reader.runReaderT (foldl1 (>>) $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
+                    Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
          |]
 
+-- | Internal, used only in Test code.
 runT :: CIO b -> IO b
 runT as = do c <- cInit 0
              Reader.runReaderT as c
@@ -593,11 +635,11 @@ create_breeds b n to = do
     _ -> throw $ ContextException "observer" a
   oldWho <- lift $ readTVar __who
   lift $ modifyTVar' __who (n +)
-  ns <- newBreeds oldWho n
+  ns <- newBreeds oldWho
   lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
-                      newBreeds w n = return . IM.fromAscList =<< sequence [do
+                      newBreeds w = return . IM.fromAscList =<< sequence [do
                                                                               t <- newBreed b i to
                                                                               return (i, t)
                                                                              | i <- [w..w+n-1]]
@@ -614,11 +656,11 @@ create_ordered_breeds b n to = do
   lift $ do
     oldWho <- readTVar __who
     modifyTVar' __who (n +)
-    ns <- newTurtles oldWho n
+    ns <- newTurtles oldWho
     modifyTVar' tw (addTurtles ns) 
     return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
-                      newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
+                      newTurtles w = return . IM.fromAscList =<< mapM (\ (i,j) -> do
                                                                               t <- newOrderedBreed i n b j to
                                                                               return (j, t))
                                                                              (zip [1..n] [w..w+n-1])
@@ -688,7 +730,7 @@ create_link_from_ f ls = case f of
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_from_ :: [AgentRef] -> Int -> CSTM ()
-create_links_from_ as ls = do
+create_links_from_ as nls = do
   (tw, a, _,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
@@ -697,7 +739,7 @@ create_links_from_ as ls = do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink f x s =  do
-                       n <- newLink f x ls
+                       n <- newLink f x nls
                        return $ M.insertWith (flip const) (f,x) n s
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
@@ -711,7 +753,7 @@ create_link_to_ t ls = case t of
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_to_ :: [AgentRef] -> Int -> CSTM ()
-create_links_to_ as ls = do
+create_links_to_ as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
@@ -720,7 +762,7 @@ create_links_to_ as ls = do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
-                       n <- newLink x t ls
+                       n <- newLink x t nls
                        return $ M.insertWith (flip const) (x,t) n s
                                    
 
@@ -736,7 +778,7 @@ create_link_with_ w ls = case w of
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_with_ :: [AgentRef] -> Int -> CSTM ()
-create_links_with_ as ls =  do
+create_links_with_ as nls =  do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
@@ -745,12 +787,12 @@ create_links_with_ as ls =  do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
-                       n <- newLBreed x t False "links" ls
+                       n <- newLBreed x t False "links" nls
                        return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_to :: String -> [AgentRef] -> Int -> CSTM ()
-create_breeded_links_to b as ls = do
+create_breeded_links_to b as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _  -> do
@@ -759,13 +801,13 @@ create_breeded_links_to b as ls = do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
-                       n <- newLBreed x t True b ls
+                       n <- newLBreed x t True b nls
                        return $ M.insertWith (flip const) (x,t) n s
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_from :: String -> [AgentRef] -> Int -> CSTM ()
-create_breeded_links_from b as ls = do
+create_breeded_links_from b as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
@@ -774,12 +816,12 @@ create_breeded_links_from b as ls = do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink f x s =  do
-                       n <- newLBreed f x True b ls
+                       n <- newLBreed f x True b nls
                        return $ M.insertWith (flip const) (f,x) n s
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_with :: String -> [AgentRef] -> Int -> CSTM ()
-create_breeded_links_with b as ls =  do
+create_breeded_links_with b as nls =  do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
@@ -788,6 +830,11 @@ create_breeded_links_with b as ls =  do
            lift $ writeTVar tw (MkWorld ps ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
-                       n <- newLBreed x t False b ls
+                       n <- newLBreed x t False b nls
                        return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
+
+-- | Internal
+{-# INLINE primary_colors #-}
+primary_colors :: [Double]
+primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
 

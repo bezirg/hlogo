@@ -1,14 +1,14 @@
 to setup
   clear-all
   reset-timer
-  
+
   ask patches [set pcolor one-of [black black black black black black black black red blue]]
-  
-  create-turtles 1000
+
+  create-turtles NR_TURTLES
   ask turtles [setxy random-xcor random-ycor]
   reset-ticks
 end
-  
+
 to go
   if (ticks = 1000) [print timer stop]
   ask turtles [behave]
@@ -83,6 +83,21 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+127
+57
+299
+90
+NR_TURTLES
+NR_TURTLES
+0
+100
+1000
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -427,23 +442,61 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.2.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="1000" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="1000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="2500" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="2500"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="5000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="5000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="10000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="10000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="20000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="20000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="30000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="30000"/>
+    </enumeratedValueSet>
   </experiment>
 </experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0

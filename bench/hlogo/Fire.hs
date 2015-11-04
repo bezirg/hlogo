@@ -18,7 +18,7 @@ setup = do
 
 go = forever $ do
   ts <- ticks
-  when (ts > 500) (stats_stm >>= unsafe_print_ >> stop)
+  when (ts > 500) (stats_stm >>= unsafe_print >> stop)
   ask (do
          ask ignite =<< (with (liftM (== green) pcolor) =<< atomic neighbors4)
          atomic $ set_breed "embers"

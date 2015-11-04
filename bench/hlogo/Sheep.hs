@@ -15,7 +15,6 @@ grassp = True
 grass_regrowth_time = 30
 initial_number_sheep = NR_SHEEP
 sheep_gain_from_food = 4
-sheep_reproduce = 4
 
 setup = do
   ask (atomic $ set_pcolor green) =<< patches
@@ -42,7 +41,7 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t > 1000) (unsafe_sheep >>= count >>= unsafe_print_ >> stop)
+  when (t > 1000) (unsafe_sheep >>= count >>= unsafe_print >> stop)
   ask (do
          move
          e <- senergy

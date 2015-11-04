@@ -12,6 +12,7 @@ module Language.Logo
      module Language.Logo.Prim,
      module Language.Logo.Exception,
      module Language.Logo.Base,
+     module Prelude,
      forever, when, liftM, liftM2
      )
 
@@ -19,7 +20,7 @@ where
 
 
 
-
+import Prelude hiding (show, print)
 import Language.Logo.Keyword
 import Language.Logo.Prim
 import Language.Logo.Exception

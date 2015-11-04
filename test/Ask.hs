@@ -169,7 +169,7 @@ case_AskNobody = runT $ do
    atomic $ crt 2
    assertTypeException $ ask (do
                                ask (atomic die) =<< turtle 1
-                               ask (unsafe_show_ =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
+                               ask (unsafe_show =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
                              ) =<< turtle 0                 
    
 case_OfDie = runT $ do

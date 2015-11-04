@@ -16,7 +16,7 @@ to setup
       set pcolor one-of [green brown]
     ]
   ]
-  create-sheep initial-number-sheep  ;; create the sheep, then initialize their variables
+  create-sheep NR_SHEEP  ;; create the sheep, then initialize their variables
   [
     set color white
     set size 1.5  ;; easier to see
@@ -100,13 +100,13 @@ ticks
 SLIDER
 3
 150
-177
+216
 183
-initial-number-sheep
-initial-number-sheep
+NR_SHEEP
+NR_SHEEP
 0
-3000
-3000
+1000
+100
 1
 1
 NIL
@@ -125,66 +125,6 @@ sheep-gain-from-food
 1.0
 1
 NIL
-HORIZONTAL
-
-SLIDER
-3
-222
-177
-255
-sheep-reproduce
-sheep-reproduce
-1.0
-20.0
-4
-1.0
-1
-%
-HORIZONTAL
-
-SLIDER
-181
-150
-346
-183
-initial-number-wolves
-initial-number-wolves
-0
-250
-0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-181
-186
-346
-219
-wolf-gain-from-food
-wolf-gain-from-food
-0.0
-100.0
-20
-1.0
-1
-NIL
-HORIZONTAL
-
-SLIDER
-181
-222
-346
-255
-wolf-reproduce
-wolf-reproduce
-0.0
-20.0
-5
-1.0
-1
-%
 HORIZONTAL
 
 SWITCH
@@ -706,7 +646,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.2.1
 @#$#@#$#@
 setup
 set grass? true
@@ -714,35 +654,46 @@ repeat 75 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="100" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <enumeratedValueSet variable="grass?">
-      <value value="true"/>
+    <enumeratedValueSet variable="NR_SHEEP">
+      <value value="100"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-number-wolves">
-      <value value="0"/>
+  </experiment>
+  <experiment name="250" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_SHEEP">
+      <value value="250"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="show-energy?">
-      <value value="false"/>
+  </experiment>
+  <experiment name="500" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_SHEEP">
+      <value value="500"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="wolf-gain-from-food">
-      <value value="20"/>
+  </experiment>
+  <experiment name="1000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_SHEEP">
+      <value value="1000"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="sheep-gain-from-food">
-      <value value="4"/>
+  </experiment>
+  <experiment name="2000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_SHEEP">
+      <value value="2000"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-number-sheep">
+  </experiment>
+  <experiment name="3000" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_SHEEP">
       <value value="3000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="grass-regrowth-time">
-      <value value="30"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="sheep-reproduce">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="wolf-reproduce">
-      <value value="5"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
@@ -750,9 +701,9 @@ repeat 75 [ go ]
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
