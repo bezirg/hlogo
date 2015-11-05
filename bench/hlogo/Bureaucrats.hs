@@ -1,7 +1,6 @@
 import Language.Logo
 import Data.List (nub)
 
-globals []
 --globals ["total"]
 patches_own ["n"]
 turtles_own []

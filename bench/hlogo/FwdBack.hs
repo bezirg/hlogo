@@ -1,6 +1,5 @@
 import Language.Logo
 
-globals []
 patches_own []
 turtles_own []
 

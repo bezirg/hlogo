@@ -5,7 +5,6 @@ import Language.Logo
 #endif
 
 
-globals []
 patches_own ["countdown"]
 breeds ["sheep", "a_sheep"]
 breeds_own "sheep" ["senergy"]

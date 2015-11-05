@@ -4,7 +4,6 @@ import Language.Logo
 #define NR_TURTLES 10
 #endif
 
-globals []
 patches_own []
 turtles_own []
 

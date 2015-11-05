@@ -1,6 +1,5 @@
 import Language.Logo
 
-globals []
 patches_own ["exit_distance"]
 turtles_own []
 breeds ["pedestrians","pedestrian"]
