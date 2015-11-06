@@ -1,3 +1,6 @@
+-- Options: max-pxcor: 100, max-pycor: 100, no-hwrap, no-vwrap
+-- turtles: termites
+-- patches: wood chips
 import Language.Logo
 
 patches_own []

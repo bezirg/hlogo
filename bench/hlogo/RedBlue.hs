@@ -1,3 +1,4 @@
+-- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
 import Language.Logo
 
 #ifndef NR_TURTLES

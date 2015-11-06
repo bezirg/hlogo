@@ -16,7 +16,6 @@ import Data.List
 import Utility
 
 globals ["glob1"]
-patches_own []
 turtles_own []
 links_own []
 breeds ["frogs", "frog"]

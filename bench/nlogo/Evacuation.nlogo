@@ -12,13 +12,13 @@ end
 
 to create-environment
   ;; creating the environment
-  ask patches with [pxcor > 27] [set pcolor lime]
-  ask patches with [pxcor = 27] [set pcolor blue]
-  ask patches with [pxcor = 27 and (pycor > -3) and (pycor < 3) ] [set pcolor red]
- 
+  ask patches with [pxcor > 27] [set pcolor lime] ; outdoors
+  ask patches with [pxcor = 27] [set pcolor blue] ; wall
+  ask patches with [pxcor = 27 and (pycor > -3) and (pycor < 3) ] [set pcolor red] ; door
+
   ;;; setting distances from the exit (used later for moving the turtles)
   ask patches with [pcolor = black] [set exit-distance distance min-one-of patches with [pcolor = red] [distance myself]]
-  ask patches with [pcolor = lime] [set exit-distance -1] 
+  ask patches with [pcolor = lime] [set exit-distance -1]
   ;;; setup pedestrians
   setupPedestrians
   reset-ticks
@@ -29,7 +29,7 @@ end
 
 to setupPedestrians
  create-pedestrians number-of-pedestrians [
-   move-to one-of patches with [pcolor = black and not any? pedestrians-on self and exit-distance > 10]   
+   move-to one-of patches with [pcolor = black and not any? pedestrians-on self and exit-distance > 10]
   ]
 end
 
@@ -42,8 +42,8 @@ to go
 end
 
 to execute-behaviour
- let t min-one-of free-neighbors [exit-distance] 
- if t != nobody [face t move-to t]  
+ let t min-one-of free-neighbors [exit-distance]
+ if t != nobody [face t move-to t]
 end
 
 to-report free-neighbors
@@ -71,8 +71,8 @@ GRAPHICS-WINDOW
 30
 -30
 30
-1
-1
+0
+0
 1
 ticks
 30.0
@@ -83,7 +83,7 @@ BUTTON
 154
 55
 Set up Experiment
-setup 
+setup
 NIL
 1
 T
@@ -481,7 +481,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.2.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -498,9 +498,9 @@ NetLogo 5.0.3
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0

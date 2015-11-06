@@ -9,9 +9,10 @@
 --
 -- The core long-lived components of the simulation engine
 module Language.Logo.Core (
-                            cInit,
-                            __tick,
-                            __who
+                           cInit
+                          ,__tick
+                          ,__who
+                          ,__timer 
 ) where
 
 import Control.Concurrent (forkIO)
@@ -21,6 +22,7 @@ import Language.Logo.Base
 import qualified Data.Map as M (fromAscList, empty)
 import qualified  Data.IntMap as IM (empty)
 import Data.Array (listArray)
+import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
@@ -43,6 +45,10 @@ __tick = unsafePerformIO $ newTVarIO undefined
 __who :: TVar Int
 __who = unsafePerformIO $ newTVarIO undefined
 
+{-# NOINLINE __timer #-}
+-- | The global (atomically-modifiable) timer variable
+__timer :: TVar UTCTime
+__timer = unsafePerformIO $ newTVarIO undefined
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
@@ -54,10 +60,12 @@ cInit po = do
   let max_y = max_pycor_ conf
   let min_x = min_pxcor_ conf
   let min_y = min_pycor_ conf
+  t <- getCurrentTime
   -- initialize globals
   atomically $ do
                 writeTVar __tick 0
                 writeTVar __who 0
+                writeTVar __timer t
   -- spawn patches
   ps <- sequence [do
                    p <- newPatch x y

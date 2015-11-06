@@ -1,3 +1,11 @@
+-- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
+-- turtles: sheep
+-- patches: grass
+-- sheep moves forward 1, eats grass
+-- grass eating increases sheep's energy
+-- sheep's moving decreases sheep's energy
+-- grass grows back
+-- no sheep dies
 import Language.Logo
 
 #ifndef NR_SHEEP

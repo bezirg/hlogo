@@ -1,3 +1,4 @@
+-- Options: max-pxcor: 100 , max-pycor: 100, no-hwrap, no-vwrap
 import Language.Logo
 
 patches_own []

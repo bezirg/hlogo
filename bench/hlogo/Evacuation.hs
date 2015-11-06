@@ -1,3 +1,5 @@
+-- | Options: max-pxcor: 30, max-pycor: 30, no-hwrap, no-vwrap
+
 import Language.Logo
 
 patches_own ["exit_distance"]

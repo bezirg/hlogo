@@ -1,3 +1,5 @@
+-- Options: max-pxcor:45, max-pycor:45, no-hwrap, no-vwrap
+-- no patches, but uses links (thus also turtles)
 import Language.Logo
 
 patches_own []

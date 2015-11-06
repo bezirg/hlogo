@@ -1,3 +1,12 @@
+-- Options: max-pxcor: 25, max-pycor: 25, hwrap, vwrap
+-- patches: grass that regrows over time
+-- breed sheep: eats grass moves around
+-- breed wolves: eats sheep moves around
+-- sheep&wolves eating increases energy
+-- sheep&wolves moving deducts energy
+-- sheep dies if energy < 0 or gets killed by wolf
+-- wolf dies if energy < 0
+-- each sheep&wolf split-reproduces (mitosis) according to a rate, halving each energy
 import Language.Logo
 
 globals ["grass"]

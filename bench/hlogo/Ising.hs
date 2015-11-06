@@ -1,3 +1,4 @@
+-- Options: max-pxcor: 40, max-pycor: 40, hwrap, vwrap
 import Language.Logo
 
 globals ["sum_of_spins"]

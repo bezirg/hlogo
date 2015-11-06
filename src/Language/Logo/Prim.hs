@@ -38,7 +38,7 @@ module Language.Logo.Prim (
                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
 
                            -- * Input/Output
-                           show, unsafe_show, print, unsafe_print, read_from_string,
+                           show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
 
                            -- * IO Operations
                            atomic, ask, of_, with, snapshot
@@ -72,7 +72,7 @@ import qualified Data.Traversable as T (mapM)
 import Data.Maybe (isJust)
 -- for rng
 import System.CPUTime
-import Data.Time ( getCurrentTime, UTCTime(..) )
+import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
 import Data.Ratio       ( numerator, denominator )
 
 
@@ -1559,7 +1559,7 @@ end2 = do
     _ -> throw $ ContextException "link" s
 
 
--- | lifting STM to IO, a wrapper to atomically
+-- | lifting STM to IO, a wrapper to 'atomically' that optionally (based on a CPP flag) can capture STM statistics 
 atomic :: CSTM a -> CIO a
 atomic comms = 
 #ifndef STATS_STM
@@ -2180,8 +2180,12 @@ class (Monad m) => STMorIO m where
     readTurtle :: Int -> C m Double
     readPatch :: Int -> C m Double
     readLink :: Int -> C m Double
+    timer :: C m Double
+    reset_timer :: C m ()
 
 {-# WARNING towards "TODO: wrapping" #-}
+{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version ofit is totall safe" #-}
+{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totall safe" #-}
 
 instance STMorIO STM where
   turtles_here = do
@@ -2418,6 +2422,14 @@ instance STMorIO STM where
       LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVar (pv ! i)
       _ -> throw $ ContextException "link" a
 
+  timer = lift $ do
+      t <- readTVar __timer
+      t' <- unsafeIOToSTM getCurrentTime
+      return $ realToFrac (t' `diffUTCTime` t)              
+
+  reset_timer = do
+      t <- lift $ unsafeIOToSTM getCurrentTime
+      lift $ writeTVar __timer t
 
 instance STMorIO IO where
   turtles_here = do
@@ -2643,6 +2655,17 @@ instance STMorIO IO where
     case a of
       LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVarIO (pv ! i)
       _ -> throw $ ContextException "link" a
+
+  timer = lift $ do
+      t <- readTVarIO __timer
+      t' <- getCurrentTime
+      return $ realToFrac (t' `diffUTCTime` t)              
+
+  reset_timer = do
+      t <- lift $ getCurrentTime
+      atomic $ lift $ writeTVar __timer t
+
+
 
 -- | Reports a shade of color proportional to the value of number. 
 scale_color :: (STMorIO m) => Double -> C m Double -> Double -> Double -> C m Double

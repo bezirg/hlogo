@@ -1,3 +1,9 @@
+-- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
+-- each patch has a current temp which diffuses over time because of leakage
+-- bugs (turtles) have an ideal temp
+-- their unhappiness is the abs (ideal temp - on-patch-temp)
+-- every step they may move to a nearest patch neighbour that will offer them less unhappiness. They also emit some heat
+-- bugs cannot stack
 import Language.Logo
 
 globals ["color_by_unhappinessq"]

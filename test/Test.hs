@@ -46,7 +46,7 @@ import  ControlStructures
 -- import  Tilt
 -- import  Errors
 -- import  Patch
--- import  Timer
+import  Timer
 -- import  Face
 -- import  PatchAhead
 -- import  Turtles
@@ -85,12 +85,13 @@ main = defaultMain [
        canmoveTestGroup , --                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
        comparingagentsTestGroup ,--          movetoTestGroup,       stacktracesTestGroup,
-       controlstructuresTestGroup --,        neighborsTestGroup,    stopTestGroup,
+       controlstructuresTestGroup, --,        neighborsTestGroup,    stopTestGroup,
        --  deadturtlesTestGroup,              noagentsTestGroup,     sumTestGroup,
        --  diffuseTestGroup,                  nsumTestGroup,         ticksTestGroup,
        --  distanceTestGroup,                 observerTestGroup,     tieTestGroup,
        --  equalityTestGroup,                 oneofTestGroup,        tiltTestGroup,
-       --  errorsTestGroup,                   patchTestGroup,        timerTestGroup,
+       timerTestGroup
+       --  errorsTestGroup,                   patchTestGroup,        ,
        --  faceTestGroup,                     patchaheadTestGroup,   turtlesTestGroup,
        --  fileTestGroup,                     patchatTestGroup,      turtleshereTestGroup,
        --  generatorTestGroup,                patchsizeTestGroup,    turtlesonTestGroup,
