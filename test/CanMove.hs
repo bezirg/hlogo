@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module CanMove where
+module CanMove (canmoveTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim
@@ -16,13 +16,11 @@ import Data.List
 import Utility
 
 globals ["glob1"]
-turtles_own []
-links_own []
 breeds ["frogs", "frog"]
 breeds ["mice", "mouse"]
 breeds_own "frogs" []
 breeds_own "mice" []
-
+run [] -- workaround for tests
 
 canmoveTestGroup = $(testGroupGenerator)
 case_CanMove2Box_2D = runT $ do

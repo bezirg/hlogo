@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module BooleanOperators where
+module BooleanOperators (booleanoperatorsTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim

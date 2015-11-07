@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module AnyAll where
+module AnyAll (anyallTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim
@@ -16,13 +16,11 @@ import Data.List
 import Utility
 
 globals ["glob1"]
-turtles_own []
-links_own []
 breeds ["frogs", "frog"]
 breeds ["mice", "mouse"]
 breeds_own "frogs" []
 breeds_own "mice" []
-
+run [] -- workaround for tests
 
 anyallTestGroup = $(testGroupGenerator)
 case_All1 = runT $ do 

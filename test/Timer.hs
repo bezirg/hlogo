@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Timer where
+module Timer (timerTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim

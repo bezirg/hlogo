@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell, TupleSections #-}
 
-module Ask where
+module Ask (askTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim
@@ -17,12 +17,11 @@ import Utility
 
 globals ["glob1"]
 turtles_own ["tvar"]
-links_own []
 breeds ["frogs", "frog"]
 breeds ["mice", "mouse"]
 breeds_own "frogs" []
 breeds_own "mice" []
-
+run [] -- workaround for tests
 
 askTestGroup = $(testGroupGenerator)
 case_AskRNG_2D = runT $ do 

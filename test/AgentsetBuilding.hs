@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module AgentsetBuilding where
+module AgentsetBuilding (agentsetbuildingTestGroup) where
 
 import Language.Logo.Keyword
 import Language.Logo.Prim
@@ -16,12 +16,11 @@ import Data.List
 import Utility
 
 globals ["glob1"]
-turtles_own []
-links_own []
 breeds ["frogs", "frog"]
 breeds ["mice", "mouse"]
 breeds_own "frogs" []
 breeds_own "mice" []
+run [] -- workaround for tests
 
 agentsetbuildingTestGroup = $(testGroupGenerator)
 case_TurtleSet_2D = runT $ do 

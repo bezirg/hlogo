@@ -362,7 +362,7 @@ run procs = do
                   _ -> varE $ mkName "turtles_length"
 
   ll <- lookupValueName "links_length"
-  let llength = case tl of
+  let llength = case ll of
                   Nothing -> litE (integerL 0)
                   _ -> varE $ mkName "links_length"
   
