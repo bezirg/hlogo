@@ -3,13 +3,14 @@
 import Language.Logo
 
 patches_own ["exit_distance"]
-turtles_own []
 breeds ["pedestrians","pedestrian"]
 breeds ["lights","light"]
 breeds_own "pedestrians" []
 breeds_own "lights" []
 
 number_of_pedestrians = 1250
+
+run ["setup"]
 
 setup = do
   create_environment
@@ -67,4 +68,4 @@ free_neighbors =
           em <- liftM head $ (exit_distance `of_`) =<< myself
           return $ c /= blue && not p  && e < em) =<< neighbors
 
-run ['setup]
+

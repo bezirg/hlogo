@@ -16,7 +16,8 @@ import Data.List (nub)
 
 --globals ["total"]
 patches_own ["n"]
-turtles_own []
+
+run ["setup", "go"]
 
 setup = do
   ask (atomic $ set_n 2 >> colorize) =<< patches
@@ -43,7 +44,7 @@ recurs ap = do
              overloaded_patches <- with (liftM (> 3) n) ap
              ask (do
                    atomic $ do
-                     with_n (-4)
+                     with_n ((-) 4)
                      --with_total (-4)
                      colorize
                    ask (atomic $ do
@@ -64,4 +65,3 @@ colorize = do
                    then item (truncate n_) [83,54,45,25]
                    else red
    
-run ['setup, 'go]

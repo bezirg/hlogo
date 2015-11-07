@@ -1,8 +1,7 @@
 -- Options: max-pxcor: 100 , max-pycor: 100, no-hwrap, no-vwrap
 import Language.Logo
 
-patches_own []
-turtles_own []
+run ["setup", "go"]
 
 setup = do
   atomic $ create_turtles 100000
@@ -33,4 +32,4 @@ behave = do
            (back 1 >> forward 1)
 
 
-run ['setup, 'go]
+

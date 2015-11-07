@@ -26,6 +26,8 @@ wolf_gain_from_food = 20
 sheep_reproduce = 4
 wolf_reproduce = 5
 
+run ["setup", "go"]
+
 setup = do
   ask (atomic $ set_pcolor green) =<< patches
   when grassp $ ask (do
@@ -132,4 +134,4 @@ grow_grass = do
 
 
                
-run ['setup, 'go]
+

@@ -1,6 +1,5 @@
 import Language.Logo
 
-patches_own []
 turtles_own ["flockmates", "nearest_neighbor"]
 
 population = 1
@@ -9,6 +8,8 @@ minimum_separation = 1
 max_align_turn = 5
 max_cohere_turn = 3
 max_separate_turn = 1.5
+
+run ["setup", "go"]
 
 setup = do
   ts <- atomic $ crt population
@@ -94,4 +95,4 @@ turn_at_most turn max_turn = atomic $ if abs turn > max_turn
 
 
 
-run ['setup, 'go]
+

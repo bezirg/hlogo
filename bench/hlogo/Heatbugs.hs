@@ -10,6 +10,8 @@ globals ["color_by_unhappinessq"]
 turtles_own ["ideal_temp", "output_heat", "unhappiness"]
 patches_own ["temp"]
 
+run ["setup"] --, "go"]
+
 bug_count = 100
 min_ideal_temp = 10
 max_ideal_temp = 40
@@ -111,4 +113,3 @@ bug_move target = do
           target' <- unsafe_one_of =<< with (liftM not (anyp =<< turtles_here)) =<< neighbors
           when (target /= [Nobody]) $ atomic $ move_to target'
 
-run ['setup] --, 'go]

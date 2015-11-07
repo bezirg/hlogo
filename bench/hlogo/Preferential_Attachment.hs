@@ -2,9 +2,7 @@
 -- no patches, but uses links (thus also turtles)
 import Language.Logo
 
-patches_own []
-turtles_own []
-links_own []
+run ["setup","go"]
 
 setup = do
   make_node =<< nobody

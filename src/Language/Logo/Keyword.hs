@@ -70,64 +70,8 @@ globals vs  =
 -- NB: turtle fields are inherited to all __turtle-like__ agents, i.e. both the turtle agents as well as all any-breed agents.
 turtles_own :: [String] -> Q [Dec]
 turtles_own vs = do
-  y <- newName "y"
-  cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
-                                                                   (tw, a, _, _) <- Reader.ask
-                                                                   case a of
-                                                                     ObserverRef _ -> return ()
-                                                                     _ -> throw $ ContextException "observer" a
-                                                                   let  newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                                                                                 t <- newTurtle i $(litE (integerL (genericLength vs)))
-                                                                                                                                 return (i, t)
-                                                                                                                                | i <- [w..w+n-1]]
-                                                                   let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                   oldWho <- lift $ readTVar __who
-                                                                   lift $ modifyTVar' __who ($(varE y) +)
-                                                                   ns <- newTurtles oldWho $(varE y)
-                                                                   lift $ modifyTVar' tw (addTurtles ns) 
-                                                                   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-                                                                   |]) []]
-  sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
-                                                           (tw, a, _, _) <- Reader.ask
-                                                           case a of
-                                                             PatchRef (px,py) _ -> do
-                                                                 let  newTurtles w n = return . IM.fromAscList =<< sequence [do
-                                                                                                                              t <- newSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py)
-                                                                                                                              return (i, t)
-                                                                                                                             | i <- [w..w+n-1]]
-                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                 oldWho <- lift $ readTVar __who
-                                                                 lift $ modifyTVar' __who ($(varE y) +)
-                                                                 ns <- newTurtles oldWho $(varE y)
-                                                                 lift $ modifyTVar' tw (addTurtles ns) 
-                                                                 return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-                                                             _ -> throw $ ContextException "patch" a
-                                                         |]) []]
-
-
-
-  co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| do
-                                                                           (tw, a, _, _) <- Reader.ask
-                                                                           case a of
-                                                                               ObserverRef _ -> return ()
-                                                                               _ -> throw $ ContextException "observer" a
-                                                                           let newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
-                                                                                                                                        t <- newOrderedTurtle i n j $(litE (integerL (genericLength vs)))
-                                                                                                                                        return (j, t))
-                                                                                                                                      (zip [1..n]  [w..w+n-1])
-                                                                           let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                           lift $ do
-                                                                             oldWho <- readTVar __who
-                                                                             modifyTVar' __who ($(varE y) +)
-                                                                             ns <- newTurtles oldWho $(varE y)
-                                                                             modifyTVar' tw (addTurtles ns) 
-                                                                             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
-
-                                                                        |]) []]
-
-
-  crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
-  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
+  tlInline <- pragInlD (mkName "turtles_length") Inline FunLike AllPhases
+  tl <- valD (varP (mkName "turtles_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
@@ -148,13 +92,14 @@ turtles_own vs = do
 
           return [p',p,w,x]
             ) (zip vs [0..])
-  return $ sp : cts : co : crt : cro: concat pg
+  return $ tlInline: tl : concat pg -- sp : cts : co : crtInline: crt : croInline: cro: concat pg
 
 
 -- | patches_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __patch agent__.
 -- This user-declared patch-field variables have type 'Double' and are initialized to 0.
 patches_own :: [String] -> Q [Dec]
 patches_own vs = do
+  plInline <- pragInlD (mkName "patches_length") Inline FunLike AllPhases
   pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
@@ -177,7 +122,7 @@ patches_own vs = do
                                                                      |]) []]
           return [p',p,w,x]
             ) (zip vs [0..])
-  return $ pl : concat pg
+  return $ plInline: pl : concat pg
 
 
 -- | links_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __link agent__.
@@ -186,13 +131,9 @@ patches_own vs = do
 -- NB: link fields are inherited to all __link-like__ agents, i.e. both the link agents as well as all any-linkbreed agents.
 links_own :: [String] -> Q [Dec]
 links_own vs = do
-  y <- newName "y"
-  cls <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cts <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cfs <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cl <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cto <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cfr <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  llInline <- pragInlD (mkName "links_length") Inline FunLike AllPhases
+  ll <- valD (varP (mkName "links_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
           p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
@@ -212,7 +153,7 @@ links_own vs = do
 
           return [p',p,w,x]
             ) (zip vs [0..])
-  return $ cls : cts : cfs : cl : cto : cfr : concat pg
+  return $ llInline: ll: concat pg
 
 
 -- | breeds_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __breed-exact agent__.
@@ -333,12 +274,11 @@ breeds [p,s] = do
                                                              then [TurtleRef $(varE y) t] 
                                                              else error ("turtle is not a " ++ s) |]) []]
   th <- valD (varP (mkName (p ++ "_here"))) (normalB [| do 
-                                                       [s] <- self
                                                        [PatchRef (px,py) _] <- patch_here
                                                        ts <- turtles
-                                                       filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = tb})) -> do 
-                                                                  x' <- lift $ readTVar x
-                                                                  y' <- lift $ readTVar y
+                                                       filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x_, ycor_ = y_, breed_ = tb})) -> do 
+                                                                  x' <- lift $ readTVar x_
+                                                                  y' <- lift $ readTVar y_
                                                                   b <- lift $ readTVar tb
                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
   uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
@@ -352,12 +292,11 @@ breeds [p,s] = do
                                                                    |]) []
 
   ta <- funD (mkName (p ++ "_at")) [clause [varP x, varP y] (normalB [| do 
-                                                                       [s] <- self; 
                                                                        [PatchRef (px,py) _] <- patch_at $(varE x) $(varE y)
                                                                        ts <- turtles
-                                                                       filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y, breed_ = tb})) -> do 
-                                                                                  x' <- lift $ readTVar x
-                                                                                  y' <- lift $ readTVar y
+                                                                       filterM (\ (TurtleRef _ (MkTurtle {xcor_ = x_, ycor_ = y_, breed_ = tb})) -> do 
+                                                                                  x' <- lift $ readTVar x_
+                                                                                  y' <- lift $ readTVar y_
                                                                                   b <- lift $ readTVar tb
                                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []]
   to <- funD (mkName (p ++ "_on")) [clause [varP y] (normalB [|
@@ -410,13 +349,100 @@ undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments
 --
 -- NOTE TO SELF: cannot have 'run' take procedures as values of 'CIO ()', possibly for the same reason as 'breeds_own', i.e. _GHC stage restriction_. 
 -- It has to take either a list of strings or a list of symbol names (this was chosen). 
-run :: [Name] -> DecsQ
-run as = [d| main = do 
-                    c <- cInit $(varE (mkName "patches_length"))
+run :: [String] -> Q [Dec]
+run procs = do
+  let as = map mkName procs
+  pl <- lookupValueName "patches_length"
+  let plength = case pl of
+                  Nothing -> litE (integerL 0)
+                  _ -> varE $ mkName "patches_length"
+  tl <- lookupValueName "turtles_length"
+  let tlength = case tl of
+                  Nothing -> litE (integerL 0)
+                  _ -> varE $ mkName "turtles_length"
+
+  ll <- lookupValueName "links_length"
+  let llength = case tl of
+                  Nothing -> litE (integerL 0)
+                  _ -> varE $ mkName "links_length"
+  
+
+  y <- newName "y"
+  cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
+                                                                   (tw, a, _, _) <- Reader.ask
+                                                                   case a of
+                                                                     ObserverRef _ -> return ()
+                                                                     _ -> throw $ ContextException "observer" a
+                                                                   let  newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                                                                                 t <- newTurtle i $(tlength)
+                                                                                                                                 return (i, t)
+                                                                                                                                | i <- [w..w+n-1]]
+                                                                   let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                   oldWho <- lift $ readTVar __who
+                                                                   lift $ modifyTVar' __who ($(varE y) +)
+                                                                   ns <- newTurtles oldWho $(varE y)
+                                                                   lift $ modifyTVar' tw (addTurtles ns) 
+                                                                   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                                   |]) []]
+  sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
+                                                           (tw, a, _, _) <- Reader.ask
+                                                           case a of
+                                                             PatchRef (px,py) _ -> do
+                                                                 let  newTurtles w n = return . IM.fromAscList =<< sequence [do
+                                                                                                                              t <- newSprout i $(tlength) (fromIntegral px) (fromIntegral py)
+                                                                                                                              return (i, t)
+                                                                                                                             | i <- [w..w+n-1]]
+                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                 oldWho <- lift $ readTVar __who
+                                                                 lift $ modifyTVar' __who ($(varE y) +)
+                                                                 ns <- newTurtles oldWho $(varE y)
+                                                                 lift $ modifyTVar' tw (addTurtles ns) 
+                                                                 return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                             _ -> throw $ ContextException "patch" a
+                                                         |]) []]
+
+
+
+  co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| do
+                                                                           (tw, a, _, _) <- Reader.ask
+                                                                           case a of
+                                                                               ObserverRef _ -> return ()
+                                                                               _ -> throw $ ContextException "observer" a
+                                                                           let newTurtles w n = return . IM.fromAscList =<< mapM (\ (i,j) -> do
+                                                                                                                                        t <- newOrderedTurtle i n j $(tlength)
+                                                                                                                                        return (j, t))
+                                                                                                                                      (zip [1..n]  [w..w+n-1])
+                                                                           let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                           lift $ do
+                                                                             oldWho <- readTVar __who
+                                                                             modifyTVar' __who ($(varE y) +)
+                                                                             ns <- newTurtles oldWho $(varE y)
+                                                                             modifyTVar' tw (addTurtles ns) 
+                                                                             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+
+                                                                        |]) []]
+
+
+  crtInline <- pragInlD (mkName "crt") Inline FunLike AllPhases                 
+  crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
+  croInline <- pragInlD (mkName "cro") Inline FunLike AllPhases                 
+  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
+
+  clsw <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(llength) |]) []]
+  clst <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(llength) |]) []]
+  clsf <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(llength) |]) []]
+  clw <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(llength) |]) []]
+  clt <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(llength) |]) []]
+  clf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(llength) |]) []]
+
+
+  m <- [d| main = do 
+                    c <- cInit $(plength)
                     Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
-         |]
-
+      |]
+  return $ cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: m
+                 
 -- | Internal, used only in Test code.
 runT :: CIO b -> IO b
 runT as = do c <- cInit 0

@@ -23,6 +23,8 @@ grass_regrowth_time = 30
 initial_number_sheep = NR_SHEEP
 sheep_gain_from_food = 4
 
+run ["setup", "go"]
+
 setup = do
   ask (atomic $ set_pcolor green) =<< patches
   when grassp $ ask (atomic $ do
@@ -83,4 +85,4 @@ grow_grass = do
 
 
                
-run ['setup, 'go]
+

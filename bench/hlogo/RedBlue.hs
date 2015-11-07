@@ -5,8 +5,7 @@ import Language.Logo
 #define NR_TURTLES 10
 #endif
 
-patches_own []
-turtles_own []
+run ["setup", "go"]
 
 setup = do
   ask (do
@@ -28,4 +27,6 @@ behave = do
                    then lt 30
                    else when (c == blue) (rt 30)
 
-run ['setup, 'go]
+
+
+

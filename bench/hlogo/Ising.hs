@@ -3,9 +3,10 @@ import Language.Logo
 
 globals ["sum_of_spins"]
 patches_own ["spin"]
-turtles_own []
 
 temperature = 2.24
+
+run ["setup", "go"]
 
 setup = do
   ask (do
@@ -39,4 +40,4 @@ recolor = do
   
        
 
-run ['setup, 'go]
+

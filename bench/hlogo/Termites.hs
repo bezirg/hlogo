@@ -3,11 +3,10 @@
 -- patches: wood chips
 import Language.Logo
 
-patches_own []
-turtles_own []
-
 density = 20
 number = 400
+
+run ["setup", "go"]
 
 setup = do
   ask (atomic $ do
@@ -77,4 +76,4 @@ wiggle = atomic $ do
   rt r1
   lt r2
 
-run ['setup, 'go]
+

@@ -6,12 +6,12 @@ density = 99                    -- forest density
                                 -- green patches are trees (black patches are rocks)
 
 globals ["initial_trees", "burned_trees"]
-patches_own []
-turtles_own []
 breeds ["fires", "fire"]        -- fire turtles (each sprouted (ignited) upon a green tree)
 breeds ["embers", "ember"]      -- ember turtles were fire turtles (in tick=-1...) and now they are fading their color to black. When they reach black they die
 breeds_own "fires" []
 breeds_own "embers" []
+
+run ["setup", "go"]
 
 setup = do
   ask (atomic $ set_pcolor green) =<< (with (liftM (< density) (unsafe_random_float 100)) =<< patches)
@@ -44,4 +44,3 @@ fade_embers = do
           set_color c
           if c < red - 3.5 then set_pcolor c >> die else return ()) =<< unsafe_embers
 
-run ['setup, 'go]
