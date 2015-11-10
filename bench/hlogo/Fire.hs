@@ -23,7 +23,7 @@ setup = do
 
 go = forever $ do
   ts <- ticks
-  when (ts > 500) (stats_stm >>= unsafe_print >> stop)
+  when (ts > 500) (stats_stm >>= print >> stop)
   -- at each round, all current fires become embers and ask their green neighbour patches to ignite (create new fires)
   ask (do
          ask ignite =<< (with (liftM (== green) pcolor) =<< atomic neighbors4)

@@ -113,7 +113,7 @@ data AgentRef = PatchRef (Int,Int) Patch
 -- | The 'Context' datatype is a tuple the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
 type Context = (TVar World
                , AgentRef       -- self
-               , TChan String
+               , TQueue String
                , AgentRef)      -- myself (the caller only through ask/of-like, i.e. not all callers should be returned)
 
 type C m a = ReaderT Context m a

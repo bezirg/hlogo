@@ -70,7 +70,7 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t > 10000) (unsafe_sheep >>= count >>= unsafe_print_ >> unsafe_wolves >>= count >>= unsafe_print_ >> stop)
+  when (t > 10000) (unsafe_sheep >>= count >>= print >> unsafe_wolves >>= count >>= print >> stop)
   ask (do
          move
          e <- senergy

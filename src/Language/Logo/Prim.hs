@@ -137,23 +137,6 @@ other as = do
 
 
 
--- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
-show :: Show a => a -> CSTM ()
-show a = do
-  (_, r, p, _) <- Reader.ask
-  lift $ writeTChan p $ (case r of
-                           ObserverRef _ -> "observer: "
-                           PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                           LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                           TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
-                           Nobody -> throw DevException
-                        )   ++ Prelude.show a
-
--- | Prints value in the Command Center, followed by a carriage return. 
-print :: Show a => a -> CSTM ()
-print a = do
-  (_, _, p, _) <- Reader.ask
-  lift $ writeTChan p $ Prelude.show a
                            
 
 {-# WARNING carefully "TODO" #-}
@@ -354,6 +337,9 @@ back n = forward (-n)
 bk :: Double -> CSTM ()
 bk = back
 
+-- | As it is right now, if an agent holds a past reference to a turtle, it can still modify it and ask it to do sth. 
+-- The only guarantee is that the __next__ 'turtles','turtles_at','turtles_here','turtles_on'... etc
+-- will not return this dead agent.
 die :: CSTM ()
 die = do
  (tw,a,_,_) <- Reader.ask
@@ -394,7 +380,7 @@ turtle_set ts = liftM (foldr (\ x acc ->
 {-# SPECIALIZE patch_set :: [CSTM [AgentRef]] -> CSTM [AgentRef] #-}
 {-# SPECIALIZE patch_set :: [CIO [AgentRef]] -> CIO [AgentRef] #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
--- | NB: HLogo no support for nested turtle_set concatenation/flattening
+-- | NB: HLogo no support for nested patch_set concatenation/flattening
 patch_set :: Monad m => [C m [AgentRef]] -> C m [AgentRef]
 patch_set ts = liftM (foldr (\ x acc -> 
                                  if x == Nobody -- filter Nobody
@@ -1948,6 +1934,7 @@ unsafe_shuffle l = do
   xs <- unsafe_shuffle (delete x l)
   return $ x:xs
 
+{-# DEPRECATED unsafe_show "it is slightly faster than show since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_show :: Show a => a -> CIO ()
 unsafe_show a = do
@@ -1960,6 +1947,7 @@ unsafe_show a = do
                            Nobody -> throw DevException
                     )   ++ Prelude.show a
 
+{-# DEPRECATED unsafe_print "it is slightly faster than print since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_print :: Show a => a -> CIO ()
 unsafe_print a = lift $ Prelude.print a
@@ -2133,8 +2121,8 @@ extract_rgb c | c == 0 = [0,0,0]
 {-# WARNING approximate_rgb "TODO" #-}
 approximate_rgb = todo
 
--- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects or only depend on 'readTVar', 
--- belong here. The correct lifting (STM or IO) is left to type inference.
+-- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects (IO effects allowed)
+--  or only depend on 'readTVar', belong here. The correct lifting (STM or IO) is left to type inference.
 class (Monad m) => STMorIO m where
     -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
     turtles_here :: C m [AgentRef]
@@ -2182,10 +2170,19 @@ class (Monad m) => STMorIO m where
     readLink :: Int -> C m Double
     timer :: C m Double
     reset_timer :: C m ()
+    -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
+    --
+    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of show inside an 'atomic' transaction, no 'show' will be repeated if the transaction is retried. Compared to 'unsafe_show', the output is not mangled.
+    show :: Show a => a -> C m ()
+    -- | Prints value in the Command Center, followed by a carriage return. 
+    --
+    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
+    print :: Show a => a -> C m ()
+
 
 {-# WARNING towards "TODO: wrapping" #-}
-{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version ofit is totall safe" #-}
-{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totall safe" #-}
+{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
+{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
 
 instance STMorIO STM where
   turtles_here = do
@@ -2430,6 +2427,20 @@ instance STMorIO STM where
   reset_timer = do
       t <- lift $ unsafeIOToSTM getCurrentTime
       lift $ writeTVar __timer t
+  show a = do
+      (_, r, p, _) <- Reader.ask
+      lift $ writeTQueue p $ (case r of
+                               ObserverRef _ -> "observer: "
+                               PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                               LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                               TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
+                               Nobody -> throw DevException
+                            )   ++ Prelude.show a
+  print a = do
+      (_, _, p, _) <- Reader.ask
+      lift $ writeTQueue p $ Prelude.show a
+
+
 
 instance STMorIO IO where
   turtles_here = do
@@ -2665,6 +2676,18 @@ instance STMorIO IO where
       t <- lift $ getCurrentTime
       atomic $ lift $ writeTVar __timer t
 
+  show a = do
+      (_, r, p, _) <- Reader.ask
+      atomic $ lift $ writeTQueue p $ (case r of
+                                         ObserverRef _ -> "observer: "
+                                         PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                                         LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
+                                         TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
+                                         Nobody -> throw DevException
+                                      )   ++ Prelude.show a
+  print a = do
+      (_, _, p, _) <- Reader.ask
+      atomic $ lift $ writeTQueue p $ Prelude.show a
 
 
 -- | Reports a shade of color proportional to the value of number. 
@@ -2777,6 +2800,14 @@ diffuse gettervar settervar perc = do
 {-# SPECIALIZE readPatch :: Int -> CIO Double #-}
 {-# SPECIALIZE readLink :: Int -> CSTM Double #-}
 {-# SPECIALIZE readLink :: Int -> CIO Double #-}
+{-# SPECIALIZE timer :: CSTM Double #-}
+{-# SPECIALIZE timer :: CIO Double #-}
+{-# SPECIALIZE reset_timer :: CSTM () #-}
+{-# SPECIALIZE reset_timer :: CIO () #-}
+{-# SPECIALIZE show :: Show a => a -> CSTM () #-}
+{-# SPECIALIZE show :: Show a => a -> CIO () #-}
+{-# SPECIALIZE print :: Show a => a -> CSTM () #-}
+{-# SPECIALIZE print :: Show a => a -> CIO () #-}
 
 
 

@@ -75,15 +75,15 @@ cInit po = do
   let ts = IM.empty
   let ls = M.empty
   tw <- newTVarIO (MkWorld (M.fromAscList ps) ts ls)
-  tp <- newTChanIO
+  tp <- newTQueueIO
   g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
   return (tw, ObserverRef g, tp, Nobody)
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
-    printer:: TChan String -> IO ()
+    printer:: TQueue String -> IO ()
     printer tp = forever $ do
-                   v <- atomically $ readTChan tp
+                   v <- atomically $ readTQueue tp
                    putStrLn v
 
     -- | Returns a 'Patch' structure with default arguments (based on NetLogo)

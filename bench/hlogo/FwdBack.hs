@@ -11,7 +11,7 @@ go = forever $ do
   t <- ticks
   when (t==8) $ stop
   ask (behave) =<< turtles
-  unsafe_show t
+  show t
   atomic $ tick
 
 behave = do

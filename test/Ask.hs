@@ -14,6 +14,7 @@ import Test.HUnit
 import Control.Monad
 import Data.List
 import Utility
+import Prelude hiding (show)
 
 globals ["glob1"]
 turtles_own ["tvar"]
@@ -167,7 +168,7 @@ case_AskNobody = runT $ do
    atomic $ crt 2
    assertTypeException $ ask (do
                                ask (atomic die) =<< turtle 1
-                               ask (unsafe_show =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
+                               ask (show =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
                              ) =<< turtle 0                 
    
 case_OfDie = runT $ do
