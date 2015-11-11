@@ -25,7 +25,7 @@ run [] -- workaround for tests
 
 comparingagentsTestGroup = $(testGroupGenerator)
 case_ComparingLinks = runT $ do
-  atomic $ crt 3
+  crt 3
   ask (atomic $ fd 5) =<< turtles
   ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 0
   ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 1
@@ -53,7 +53,7 @@ case_ComparingLinks = runT $ do
   
 
 case_ComparingTurtles = runT $ do
-  atomic $ crt 2
+  crt 2
 
   a1 <- atomic $ liftM2 (>) (turtle 0) (turtle 1)
   let e1 = False

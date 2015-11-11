@@ -34,7 +34,7 @@ setup = do
                        set_pcolor c
                      ) =<< patches
 
-  s <- atomic $ create_sheep initial_number_sheep
+  s <- create_sheep initial_number_sheep
   ask (atomic $ do
           s <- random (2 * sheep_gain_from_food)
           x <- random_xcor

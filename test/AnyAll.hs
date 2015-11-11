@@ -41,7 +41,7 @@ case_All1 = runT $ do
   lift $ e4 @=? a4
 
 case_All2 = runT $ do
-  atomic $ crt 1
+  crt 1
   a1 <- allp (return False) =<< turtles
   let e1 = False
   lift $ e1 @=? a1
@@ -86,7 +86,7 @@ case_AnyOptimizations = runT $ do
   let e5 = 0
   lift $ False @=? e5 < a5
 
-  atomic $ crt 1
+  crt 1
 
   a6 <- atomic $ anyp =<< turtles
   let e6 = True

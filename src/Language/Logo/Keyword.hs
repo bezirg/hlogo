@@ -92,7 +92,7 @@ turtles_own vs = do
 
           return [p',p,w,x]
             ) (zip vs [0..])
-  return $ tlInline: tl : concat pg -- sp : cts : co : crtInline: crt : croInline: cro: concat pg
+  return $ tlInline: tl : concat pg
 
 
 -- | patches_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __patch agent__.
@@ -378,10 +378,10 @@ run procs = do
                                                                                                                                  return (i, t)
                                                                                                                                 | i <- [w..w+n-1]]
                                                                    let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                   oldWho <- lift $ readTVar __who
-                                                                   lift $ modifyTVar' __who ($(varE y) +)
+                                                                   oldWho <- lift $ readTVarIO __who
+                                                                   atomic $ lift $ modifyTVar' __who ($(varE y) +)
                                                                    ns <- newTurtles oldWho $(varE y)
-                                                                   lift $ modifyTVar' tw (addTurtles ns) 
+                                                                   atomic $ lift $ modifyTVar' tw (addTurtles ns) 
                                                                    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
                                                                    |]) []]
   sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
@@ -413,12 +413,11 @@ run procs = do
                                                                                                                                         return (j, t))
                                                                                                                                       (zip [1..n]  [w..w+n-1])
                                                                            let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                           lift $ do
-                                                                             oldWho <- readTVar __who
-                                                                             modifyTVar' __who ($(varE y) +)
-                                                                             ns <- newTurtles oldWho $(varE y)
-                                                                             modifyTVar' tw (addTurtles ns) 
-                                                                             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+                                                                           oldWho <- lift $ readTVarIO __who
+                                                                           atomic $ lift $ modifyTVar' __who ($(varE y) +)
+                                                                           ns <- lift $ newTurtles oldWho $(varE y)
+                                                                           atomic $ lift $ modifyTVar' tw (addTurtles ns) 
+                                                                           return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 
                                                                         |]) []]
 
@@ -426,7 +425,7 @@ run procs = do
   crtInline <- pragInlD (mkName "crt") Inline FunLike AllPhases                 
   crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
   croInline <- pragInlD (mkName "cro") Inline FunLike AllPhases                 
-  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CSTM [AgentRef] |]) []
+  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> CIO [AgentRef] |]) []
 
   clsw <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(llength) |]) []]
   clst <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(llength) |]) []]
@@ -479,89 +478,92 @@ random_integer_heading = do
   lift $ writeTVar ts gen'
   return v
 
+{-# INLINE newBreed #-}
 -- | Internal
-newBreed :: String -> Int -> Int -> CSTM Turtle
+newBreed :: String -> Int -> Int -> CIO Turtle
 newBreed b x to = do
-  rpc <- random_primary_color
-  rih <- random_integer_heading
+  rpc <- atomic $ random_primary_color
+  rih <- atomic $ random_integer_heading
   lift $ MkTurtle <$>
        return x <*>
-       newTVar b <*>
-       newTVar rpc <*>          --  random primary color
-       newTVar (fromInteger rih) <*> --  random integer heading
-       newTVar 0 <*>
-       newTVar 0 <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x) <*>
+       newTVarIO b <*>
+       newTVarIO rpc <*>          --  random primary color
+       newTVarIO (fromInteger rih) <*> --  random integer heading
+       newTVarIO 0 <*>
+       newTVarIO 0 <*>
+       newTVarIO "default" <*>
+       newTVarIO "" <*>
+       newTVarIO 9.9 <*>
+       newTVarIO False <*>
+       newTVarIO 1 <*>
+       newTVarIO 1 <*>
+       newTVarIO Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
 #ifdef STATS_STM
-       <*> pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0))
+       <*> newIORef 0 <*>
+       newIORef 0
 #endif
 
+{-# INLINE newOrderedBreed #-}
 -- | Internal
-newOrderedBreed :: Int -> Int -> String -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> CSTM Turtle
+newOrderedBreed :: Int -> Int -> String -> Int -> Int -> IO Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> IO Turtle
 newOrderedBreed i o b x to = do
   let rpc = primary_colors !! ((i-1) `mod` 14)
   let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
   MkTurtle <$>
        return x <*>
-       newTVar b <*>
-       newTVar rpc <*>          --  ordered primary color
-       newTVar rdh <*> --  ordered double heading
-       newTVar 0 <*>
-       newTVar 0 <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x) <*>
+       newTVarIO b <*>
+       newTVarIO rpc <*>          --  ordered primary color
+       newTVarIO rdh <*> --  ordered double heading
+       newTVarIO 0 <*>
+       newTVarIO 0 <*>
+       newTVarIO "default" <*>
+       newTVarIO "" <*>
+       newTVarIO 9.9 <*>
+       newTVarIO False <*>
+       newTVarIO 1 <*>
+       newTVarIO 1 <*>
+       newTVarIO Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
 #ifdef STATS_STM
-       <*> pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0))
+       <*> newIORef 0 <*>
+       newIORef 0
 #endif
 
 
+{-# INLINE newTurtle #-}
 -- | Internal
-newTurtle :: Integral a => Int -> a -> CSTM Turtle
+newTurtle :: Integral a => Int -> a -> CIO Turtle
 newTurtle x to = do
-  rpc <- random_primary_color
-  rih <- random_integer_heading
+  rpc <- atomic $ random_primary_color
+  rih <- atomic $ random_integer_heading
   lift $ MkTurtle <$>
        return x <*>
-       newTVar "turtles" <*>
-       newTVar rpc <*>          --  random primary color
-       newTVar (fromInteger rih) <*> --  random integer heading
-       newTVar 0 <*>
-       newTVar 0 <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-       newTVar (mkStdGen x) <*>
+       newTVarIO "turtles" <*>
+       newTVarIO rpc <*>          --  random primary color
+       newTVarIO (fromInteger rih) <*> --  random integer heading
+       newTVarIO 0 <*>
+       newTVarIO 0 <*>
+       newTVarIO "default" <*>
+       newTVarIO "" <*>
+       newTVarIO 9.9 <*>
+       newTVarIO False <*>
+       newTVarIO 1 <*>
+       newTVarIO 1 <*>
+       newTVarIO Up <*>
+       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
 #ifdef STATS_STM
-       <*> pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0))
+       <*> newIORef 0 <*>
+       newIORef 0
 #endif
 
 -- | Internal
@@ -622,47 +624,48 @@ newBSprout w to x y b = do
 
 
 
+{-# INLINE newOrderedTurtle #-}
 -- | Internal
-newOrderedTurtle :: Int -> Int -> Int -> Int -> STM Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle
+newOrderedTurtle :: Int -> Int -> Int -> Int -> IO Turtle -- ^ Index -> Order -> Who -> VarLength -> CSTM Turtle
 newOrderedTurtle i o x to = do
     let rpc = primary_colors !! ((i-1) `mod` 14)
     let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
     MkTurtle <$>
              return x <*>
-             newTVar "turtles" <*>
-             newTVar rpc <*>          --  ordered primary color
-             newTVar rdh <*> --  ordered double heading
-             newTVar 0 <*>
-             newTVar 0 <*>
-             newTVar "default" <*>
-             newTVar "" <*>
-             newTVar 9.9 <*>
-             newTVar False <*>
-             newTVar 1 <*>
-             newTVar 1 <*>
-             newTVar Up <*>
-             (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
-             newTVar (mkStdGen x) <*>
+             newTVarIO "turtles" <*>
+             newTVarIO rpc <*>          --  ordered primary color
+             newTVarIO rdh <*> --  ordered double heading
+             newTVarIO 0 <*>
+             newTVarIO 0 <*>
+             newTVarIO "default" <*>
+             newTVarIO "" <*>
+             newTVarIO 9.9 <*>
+             newTVarIO False <*>
+             newTVarIO 1 <*>
+             newTVarIO 1 <*>
+             newTVarIO Up <*>
+             (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+             newTVarIO (mkStdGen x) <*>
              pure 0 <*>
              pure 0
 #ifdef STATS_STM
-             <*> pure (unsafePerformIO (newIORef 0)) <*>
-             pure (unsafePerformIO (newIORef 0))
+             <*> newIORef 0 <*>
+             newIORef 0
 #endif
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_breeds :: String -> Int -> Int -> CSTM [AgentRef] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_breeds :: String -> Int -> Int -> CIO [AgentRef] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_breeds b n to = do
   (tw, a, _, _) <- Reader.ask
   -- context checking
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  oldWho <- lift $ readTVar __who
-  lift $ modifyTVar' __who (n +)
+  oldWho <- lift $ readTVarIO __who
+  atomic $ lift $ modifyTVar' __who (n +)
   ns <- newBreeds oldWho
-  lift $ modifyTVar' tw (addTurtles ns) 
+  atomic $ lift $ modifyTVar' tw (addTurtles ns) 
   return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newBreeds w = return . IM.fromAscList =<< sequence [do
@@ -672,19 +675,18 @@ create_breeds b n to = do
                       addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_ordered_breeds :: String -> Int -> Int -> CSTM [AgentRef]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_ordered_breeds :: String -> Int -> Int -> CIO [AgentRef]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_ordered_breeds b n to = do
   (tw, a, _, _) <- Reader.ask
   -- context checking
   case a of
     ObserverRef _ -> return ()
     _ -> throw $ ContextException "observer" a
-  lift $ do
-    oldWho <- readTVar __who
-    modifyTVar' __who (n +)
-    ns <- newTurtles oldWho
-    modifyTVar' tw (addTurtles ns) 
-    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+  oldWho <- lift $ readTVarIO __who
+  atomic $ lift $ modifyTVar' __who (n +)
+  ns <- lift $ newTurtles oldWho
+  atomic $ lift $ modifyTVar' tw (addTurtles ns) 
+  return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
         where
                       newTurtles w = return . IM.fromAscList =<< mapM (\ (i,j) -> do
                                                                               t <- newOrderedBreed i n b j to

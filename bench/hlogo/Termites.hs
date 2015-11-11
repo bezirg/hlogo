@@ -13,7 +13,7 @@ setup = do
          r <- random_float 100
          when (r < density) $ set_pcolor yellow) =<< patches
 
-  ts <- atomic $ create_turtles number
+  ts <- create_turtles number
   ask (atomic $ do
          x <- random_xcor
          y <- random_ycor

@@ -4,7 +4,7 @@ import Language.Logo
 run ["setup", "go"]
 
 setup = do
-  atomic $ create_turtles 100000
+  create_turtles 100000
   reset_ticks
 
 go = forever $ do

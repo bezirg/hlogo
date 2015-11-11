@@ -35,14 +35,14 @@ case_Loop1 = let
                   lift $ e1 @=? a1
 
 case_Foreach1 = runT $ do
-  foreach [1,2,3] (\ x -> atomic $ crt x)
+  foreach [1,2,3] (\ x -> crt x)
   a1 <- count =<< turtles
   let e1 = 6
   lift $ e1 @=? a1
 
 case_While = runT $ do
   atomic $ random_seed 272
-  atomic $ crt 10
+  crt 10
   while (anyp =<< turtles) (ask (atomic $ die) =<< atomic (one_of =<< turtles))
 
   a1 <- anyp =<< turtles
@@ -50,8 +50,8 @@ case_While = runT $ do
   lift $ e1 @=? a1
   
 caseIfElse = runT $ do
-  if (2+2 == 4) then atomic $ crt 10 else atomic $ crt 20
-  if (2+2 == 5) then atomic $ crt 3 else atomic $ crt 4
+  if (2+2 == 4) then crt 10 else crt 20
+  if (2+2 == 5) then crt 3 else crt 4
   
   a1 <- count =<< turtles
   let e1 = 14

@@ -32,13 +32,13 @@ case_TestIsBreed = runT $ do
   let e2 = False
   lift $ e2 @=? a2
 
-  atomic $ create_turtles 1
+  create_turtles 1
 
   a3 <- atomic $ is_frogp =<< turtle 0
   let e3 = False
   lift $ e3 @=? a3
   
-  atomic $ create_frogs 1
+  create_frogs 1
 
   a4 <- atomic $ is_frogp =<< turtle 1
   let e4 = True
@@ -72,7 +72,7 @@ case_IsLinkBreed = runT $ do
   let e2 = False
   lift $ e2 @=? a2
 
-  atomic $ crt 2
+  crt 2
   ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
 
   a3 <- atomic $ is_directed_linkp =<< link 0 1
@@ -81,16 +81,16 @@ case_IsLinkBreed = runT $ do
 
   
 case_SetBreedToNonBreed = runT $ do
-  atomic $ crt 1
+  crt 1
   ask (atomic $ set_breed "turtles") =<< turtle 0
 
-  atomic $ crt 1
+  crt 1
   ask (atomic $ set_breed "frogs") =<< turtle 1
 
-  atomic $ crt 1
+  crt 1
   ask (atomic $ set_breed "patches") =<< turtle 2
 
-  atomic $ crt 1
+  crt 1
   ask (atomic $ set_breed "links") =<< turtle 3
 
 

@@ -25,7 +25,7 @@ run [] -- workaround for tests
 canmoveTestGroup = $(testGroupGenerator)
 case_CanMove2Box_2D = runT $ do
   -- box topology
-  atomic $ crt 1
+  crt 1
   ask (atomic $ set_heading 0 >> fd 5.1) =<< turtle 0
 
   [a1] <- of_ (atomic $ can_movep 12) =<< turtle 0

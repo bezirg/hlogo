@@ -69,9 +69,9 @@ case_AskRNG_2D_Nof = runT $ do
 
 case_RecursiveCallInsideAsk1 = let
     go1 = do
-      atomic $ crt 1
+      crt 1
       go2 5
-      atomic $ crt 1
+      crt 1
     go2 x =
       ask (do
              g <- glob1
@@ -93,9 +93,9 @@ case_RecursiveCallInsideAsk1 = let
 
 case_RecursiveCallInsideAsk2 = let
     go1 = do
-      atomic $ crt 1
+      crt 1
       go2
-      atomic $ crt 1
+      crt 1
     go2 = ask (do
                  g <- glob1
                  atomic $ set_glob1 (g + 1)
@@ -134,7 +134,7 @@ case_AskInsideReporterProcedure = let
       ask (atomic $ set_glob1 =<< liftM fromIntegral who) =<< turtle 1
       return 10
                                   in runT $ do
-                                    atomic $ crt 2
+                                    crt 2
                                     [a1] <- of_ foo =<< turtle 0
                                     let e1 = 10
                                     lift $ e1 @=? a1
@@ -144,7 +144,7 @@ case_AskInsideReporterProcedure = let
                                     lift $ e2 @=? a2
 
 case_AskAllTurtles = runT $ do
-  atomic $ crt 1
+  crt 1
   let a1 = ask (ask (atomic die) =<< turtles) =<< atomic (one_of =<< patches)
   --assertContextException (lift . evaluate =<< a1)
 
@@ -153,7 +153,7 @@ case_AskAllTurtles = runT $ do
   lift $ assertFailure "HLogo does not have the ask limitation (Only the observer can ASK the set of all turtles or patches)"
 
 case_AskAllPatches = runT $ do
-  atomic $ crt 1
+  crt 1
                        
   let a1 = ask (ask (atomic $ sprout 1) =<< patches) =<< atomic (one_of =<< patches)
   --assertContextException (lift . evaluate =<< a1)
@@ -165,13 +165,13 @@ case_AskAllPatches = runT $ do
 
 
 case_AskNobody = runT $ do
-   atomic $ crt 2
+   crt 2
    assertTypeException $ ask (do
                                ask (atomic die) =<< turtle 1
                                ask (show =<< self) =<< turtle 1 -- this should raise an exception to the parent since the agentref is nullified
                              ) =<< turtle 0                 
    
 case_OfDie = runT $ do
-  atomic $ crt 2
+  crt 2
   assertSomeException $ of_ (error "mplo" >> atomic die) =<< turtles
   

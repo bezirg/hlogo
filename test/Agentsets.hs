@@ -25,7 +25,7 @@ run [] -- workaround for tests
 agentsetsTestGroup = $(testGroupGenerator)
 case_Agentsets1 = runT $ do 
 
-   atomic $ crt 10
+   crt 10
    a1 <- atomic $ anyp =<< turtles
    let e1 = True
    lift $ e1 @=? a1
@@ -35,7 +35,7 @@ case_Agentsets1 = runT $ do
    let e2 = False
    lift $ e2 @=? a2
 
-   atomic $ crt 10
+   crt 10
    a3 <- atomic $ anyp =<< turtles
    let e3 = True
    lift $ e3 @=? a3
@@ -45,7 +45,7 @@ case_Agentsets1 = runT $ do
    let e4 = False
    lift $ e4 @=? a4
 
-   atomic $ crt 10
+   crt 10
    a5 <- atomic $ anyp =<< turtles
    let e5 = True
    lift $ e5 @=? a5
@@ -55,7 +55,7 @@ case_Agentsets1 = runT $ do
    let e6 = False
    lift $ e6 @=? a6
 
-   atomic $ crt 10
+   crt 10
    a7 <- atomic $ anyp =<< turtles
    let e7 = True
    lift $ e7 @=? a7
@@ -76,7 +76,7 @@ case_Agentsets2 = runT $ do
   
   assertTypeException (lift . evaluate =<< a1)
 
-  atomic $ crt 10
+  crt 10
   a2' <- atomic $ turtles
   a2 <- of_ (atomic $ who) =<< min_one_of a2' (atomic $ who)
   let e2 = 0
@@ -147,7 +147,7 @@ case_Agentsets3 = runT $ do
 
 case_Agentsets4_2D = runT $ do
   atomic $ random_seed 29020
-  atomic $ crt 100
+  crt 100
   ask (atomic $ fd 3) =<< turtles
   ask (atomic . create_links_with =<< with (do
                                               w1 <- who
@@ -265,7 +265,7 @@ case_AgentSetEquality = runT $ do
    e7 <- atomic no_patches
    lift $ e7 @=? a7
 
-   atomic $ crt 10
+   crt 10
    ask (atomic . create_links_with =<< with (do
                                                w1 <- who
                                                [w2] <- of_ who =<< myself
@@ -331,7 +331,7 @@ case_AgentSetEquality = runT $ do
 
    
 case_SimpleLinkAgentset = runT $ do
-  atomic $ crt 2
+  crt 2
   ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
   ask (atomic $ create_link_from =<< turtle 1) =<< turtle 0
   ask (atomic die) =<< link 0 1
@@ -348,12 +348,12 @@ case_CountTurtlesOptimization = runT $ do
   a1 <- count =<< with (return True) =<< turtles                             
   lift $ False @=? a1 > 0
 
-  atomic $ crt 1
+  crt 1
   a2 <- count =<< with (return True) =<< turtles                             
   lift $ True @=? a2 > 0
   
 case_LinkAgentsetDeadLinks = runT $ do
-  atomic $ crt 10
+  crt 10
   ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
   ask (atomic $ die) =<< links
 

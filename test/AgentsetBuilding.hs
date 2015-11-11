@@ -24,13 +24,13 @@ run [] -- workaround for tests
 
 agentsetbuildingTestGroup = $(testGroupGenerator)
 case_TurtleSet_2D = runT $ do 
-               atomic $ crt 1
+               crt 1
                       
                e1 <- of_ (atomic $ turtle_set [self]) =<< turtle 0
                a1 <- turtles
                lift $ concat e1 @=? a1
 
-               atomic $ crt 10
+               crt 10
                e2 <- atomic $ turtle_set [sort_ =<< turtles, turtle 0]
                a2 <- turtles
                lift $ [] @=? e2 \\ a2
@@ -54,8 +54,8 @@ case_TurtleSet_2D = runT $ do
                
                lift $ e6 @=? a6
 
-               atomic $ create_frogs 5
-               atomic $ create_mice 7
+               create_frogs 5
+               create_mice 7
 
                let e7 = 12
                a7 <- count =<< turtle_set [unsafe_frogs, unsafe_mice]
@@ -84,7 +84,7 @@ case_EmptyTurtleSet = runT $ do
 case_TurtleSetNestedLists = assertFailure "HLogo currently does not support flattening deeply nested agentsets"
 
 case_PatchSet2_2D = runT $ do
-   atomic $ crt 1
+   crt 1
    a1 <- of_ (atomic $ patch_set [self])  =<< turtle 0
    assertTypeException (lift $ evaluate $ head a1)
 
@@ -138,7 +138,7 @@ case_PatchSetNestedLists_2D = assertFailure "HLogo currently does not support fl
 case_PatchSetNestedLists_3D = assertFailure "HLogo does not currently support 3D lattices"
 
 case_LinkSet_2D = runT $ do
-   atomic $ crt 3
+   crt 3
    ask (atomic $ create_link_with =<< turtle 1) =<< turtle 0
    
    let a1 = of_ (atomic $ link_set [self]) =<< atomic (link 0 2)
