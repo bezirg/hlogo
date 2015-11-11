@@ -65,7 +65,7 @@ test-suite test
   main-is:            Test.hs
   build-depends:      hlogo, base, transformers>=0.4, test-framework, test-framework-hunit, test-framework-th, HUnit
   extensions:         DeriveDataTypeable, TemplateHaskell, CPP
-  ghc-options:        -fno-ignore-asserts
+  ghc-options:        -fno-ignore-asserts -threaded "-with-rtsopts=-N2"
   hs-source-dirs:     test                        
 
 -- BENCHMARKS

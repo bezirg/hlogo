@@ -75,7 +75,7 @@ import  Timer
 -- import  RandomCors
 
 
-main = defaultMain [
+main = defaultMainWithArgs [
         agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
         agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
        anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
@@ -101,5 +101,5 @@ main = defaultMain [
        --  inconeTestGroup,                   proceduresTestGroup,   withlocalrandomnessTestGroup,
        --  initializationTestGroup,           randomTestGroup,       wordTestGroup,
        --  inradiusTestGroup,                 randomcorsTestGroup
-       ]
+       ] ["-j","1"]
         

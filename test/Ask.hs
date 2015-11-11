@@ -27,6 +27,7 @@ run [] -- workaround for tests
 askTestGroup = $(testGroupGenerator)
 case_AskRNG_2D = runT $ do 
   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
+  clear_turtles
   wait 0.1  
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
@@ -49,23 +50,25 @@ case_AskRNG_2D = runT $ do
 
 case_AskRNG_2D_Nof = runT $ do 
   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
+  clear_turtles
   wait 0.1  
   -- this is not the same as 4 times one_of! (above), because we delete successive draws from the agentset (so as not to return duplicates)
   ask (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches) 
 
-  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
-  let e1 = [(14,13,95,224)]
-  lift $ e1 @=? a1
-  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
-  let e2 = [(-12,9,75,287)]
-  lift $ e2 @=? a2
-  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
-  let e3 = [(-16,-4,5,275)]
-  lift $ e3 @=? a3
-  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
-  let e4 = [(9,13,135,150)]
-  lift $ e4 @=? a4
 
+  let e1 = [(14,13,95,224)]
+  let e2 = [(-12,9,75,287)]
+  let e3 = [(-16,-4,5,275)]
+  let e4 = [(9,13,135,150)]
+
+  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
+  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
+  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
+  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
+  
+  -- we have to do this because turtle-n ends up in different patches, since patches run in parallel
+  -- so we cannot associate a n-who of turtle to its attributes
+  lift $ assertBool "wrong attributes of turtles" $ null ([a1,a2,a3,a4]\\[e1,e2,e3,e4])
 
 case_RecursiveCallInsideAsk1 = let
     go1 = do
@@ -139,6 +142,8 @@ case_AskInsideReporterProcedure = let
                                     let e1 = 10
                                     lift $ e1 @=? a1
                                     
+                                    wait 0.1
+                                    
                                     a2 <- glob1
                                     let e2 = 1
                                     lift $ e2 @=? a2
@@ -163,6 +168,20 @@ case_AskAllPatches = runT $ do
 
   lift $ assertFailure "HLogo does not have the ask limitation (Only the observer can ASK the set of all turtles or patches)"
 
+
+case_AskObserverBlock = runT $ do
+   reset_ticks
+   atomic $ set_glob1 0
+   crt 10
+   ask (do
+         wait 0.01
+         t <- ticks
+         when (t == 1) $ atomic $ set_glob1 1) =<< turtles
+   tick
+   wait 0.5
+   a1 <- glob1
+   let e1 = 0
+   lift $ e1 @=? a1
 
 case_AskNobody = runT $ do
    crt 2
