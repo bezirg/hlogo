@@ -23,7 +23,7 @@ setup = do
   ask (atomic $ set_n 2 >> colorize) =<< patches
   c <- count =<< patches
   --atomic $ set_total $ 2 * fromIntegral c
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   ts <- ticks
@@ -34,7 +34,7 @@ go = forever $ do
          --with_total (+1)
          colorize) active_patches
   recurs active_patches
-  atomic $ tick
+  tick
 
 
 recurs ap = do

@@ -26,9 +26,7 @@ import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
-#ifdef STATS_STM
-import Data.IORef (newIORef)
-#endif
+import Data.IORef (IORef, newIORef, writeIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
@@ -37,8 +35,8 @@ import Control.Applicative
 -- | The global (atomically-modifiable) tick variable
 --
 -- Double because NetLogo also allows different than 1-tick increments
-__tick :: TVar Double
-__tick = unsafePerformIO $ newTVarIO undefined
+__tick :: IORef Double
+__tick = unsafePerformIO $ newIORef undefined
 
 {-# NOINLINE __who #-}
 -- | The global (atomically-modifiable) who-counter variable
@@ -62,8 +60,8 @@ cInit po = do
   let min_y = min_pycor_ conf
   t <- getCurrentTime
   -- initialize globals
+  writeIORef __tick 0
   atomically $ do
-                writeTVar __tick 0
                 writeTVar __who 0
                 writeTVar __timer t
   -- spawn patches

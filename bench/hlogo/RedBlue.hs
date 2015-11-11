@@ -8,18 +8,18 @@ import Language.Logo
 run ["setup", "go"]
 
 setup = do
-  ask (do
-         [c] <- unsafe_one_of [black, black, black, black, black, black, black, black, red, blue]
-         atomic $ set_pcolor c) =<< patches
+  ask (atomic $ do
+         [c] <- one_of [black, black, black, black, black, black, black, black, red, blue]
+         set_pcolor c) =<< patches
   atomic $ create_turtles NR_TURTLES
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   t <- ticks
   when (t==10) $ stop
   x <- of_ behave =<< turtles
-  atomic $ print x
-  atomic $ tick
+  print x
+  tick
 
 behave = do
   c <- pcolor

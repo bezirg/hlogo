@@ -20,7 +20,7 @@ setup = do
          set_color white
          setxy x y
          set_size 5) ts
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   t <- ticks
@@ -30,7 +30,7 @@ go = forever $ do
         find_new_pile
         put_down_chip
       ) =<< turtles
-  atomic $ tick
+  tick
 
 
 search_for_chip = do

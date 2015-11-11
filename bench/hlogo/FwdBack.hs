@@ -5,14 +5,14 @@ run ["setup", "go"]
 
 setup = do
   atomic $ create_turtles 100000
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   t <- ticks
   when (t==8) $ stop
-  ask (behave) =<< turtles
+  ask behave =<< turtles
   show t
-  atomic $ tick
+  tick
 
 behave = do
    atomic $ do 

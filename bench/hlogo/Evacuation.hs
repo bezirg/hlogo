@@ -31,7 +31,7 @@ create_environment = do
   ask (atomic $ set_exit_distance (-1)) =<< with (liftM (== lime) pcolor) =<< patches
   --- setup pedestrians
   setupPedestrians
-  atomic $ reset_ticks
+  reset_ticks
   snapshot
 
 
@@ -51,7 +51,7 @@ go = forever $ do
    when (not ts) $ stop
    ask (atomic $ die) =<< with (liftM (== lime) pcolor) =<< unsafe_pedestrians -- They exit
    ask execute_behaviour =<< unsafe_pedestrians
-   atomic $ tick
+   tick
 
 execute_behaviour = do
   fn <- free_neighbors

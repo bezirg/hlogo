@@ -39,7 +39,7 @@ setup = do
             ) s
       ) =<< unsafe_n_of bug_count =<< patches
   -- snapshot
-  atomic $ reset_ticks
+  reset_ticks
 
 color_by_ideal_temp = do
  let range_adjustment = (max_ideal_temp - min_ideal_temp) / 2
@@ -57,7 +57,7 @@ go = forever $ do
   -- ask step =<< turtles 
   recolor_turtles
   recolor_patches
-  atomic $ tick
+  tick
           
 recolor_turtles = do
   c <- color_by_unhappinessq

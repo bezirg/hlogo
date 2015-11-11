@@ -45,7 +45,7 @@ setup = do
           set_senergy s
           setxy x y
        ) s
-  atomic $ reset_ticks
+  reset_ticks
 
 
 go = forever $ do
@@ -59,7 +59,7 @@ go = forever $ do
             eat_grass
        ) =<< unsafe_sheep
   when grassp (ask grow_grass =<< patches)
-  atomic $ tick
+  tick
 
 move = atomic $ do
   r <- random 50

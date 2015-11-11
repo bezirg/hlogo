@@ -40,7 +40,7 @@ case_Agentsets1 = runT $ do
    let e3 = True
    lift $ e3 @=? a3
 
-   atomic $ ca
+   ca
    a4 <- atomic $ anyp =<< turtles
    let e4 = False
    lift $ e4 @=? a4
@@ -50,7 +50,7 @@ case_Agentsets1 = runT $ do
    let e5 = True
    lift $ e5 @=? a5
 
-   atomic $ ct
+   ct
    a6 <- atomic $ anyp =<< turtles
    let e6 = False
    lift $ e6 @=? a6
@@ -60,13 +60,13 @@ case_Agentsets1 = runT $ do
    let e7 = True
    lift $ e7 @=? a7
 
-   atomic $ cp
+   cp
    a8 <- atomic $ anyp =<< turtles
    let e8 = True
    lift $ e8 @=? a8
    
-   atomic $ ct
-   atomic $ cp
+   ct
+   cp
    a9 <- atomic $ anyp =<< turtles
    let e9 = False
    lift $ e9 @=? a9

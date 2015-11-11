@@ -15,13 +15,13 @@ setup = do
        ) =<< patches
   ss <- of_ spin =<< patches
   atomic $ set_sum_of_spins $ sum ss
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   t <- ticks
   when (t > 100000) stop
   ask update =<< unsafe_one_of =<< patches
-  atomic $ tick
+  tick
 
 update = do
   s <- spin

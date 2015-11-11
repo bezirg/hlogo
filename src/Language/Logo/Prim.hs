@@ -29,7 +29,7 @@ module Language.Logo.Prim (
                            black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color, extract_rgb, approximate_rgb,
 
                            -- * List related
-                           sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, but_first, but_last, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
+                           sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, butfirst, butlast, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
 
                            -- * Math
                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
@@ -83,9 +83,9 @@ import Data.Colour.SRGB (sRGB24)
 
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Data.Functor.Identity (runIdentity)
+import Data.IORef
 
 #ifdef STATS_STM
-import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Foldable as F (foldlM)
 #endif
@@ -870,7 +870,7 @@ world_height = return $ max_pycor_ conf - min_pycor_ conf + 1
 
 
 -- | Resets all global variables to zero, and calls clear-ticks, clear-turtles, clear-patches, clear-drawing, clear-all-plots, and clear-output. 
-clear_all :: CSTM ()
+clear_all :: CIO ()
 clear_all = do
   clear_ticks
   clear_turtles
@@ -881,12 +881,12 @@ clear_all = do
 
 {-# INLINE ca #-}
 -- | alias for 'clear_all'
-ca :: CSTM ()
+ca :: CIO ()
 ca = clear_all
 
 {-# WARNING clear_all_plots "TODO" #-}
 -- | Clears every plot in the model.
-clear_all_plots :: CSTM ()
+clear_all_plots :: CIO ()
 clear_all_plots = do
     (_, a, _, _) <- Reader.ask
     case a of
@@ -895,7 +895,7 @@ clear_all_plots = do
 
 {-# WARNING clear_drawing "TODO" #-}
 -- | Clears all lines and stamps drawn by turtles. 
-clear_drawing :: CSTM ()
+clear_drawing :: CIO ()
 clear_drawing = do
     (_, a, _, _) <- Reader.ask
     case a of
@@ -904,12 +904,12 @@ clear_drawing = do
 
 {-# INLINE cd #-}
 -- | alias for 'clear_drawing'
-cd :: CSTM ()
+cd :: CIO ()
 cd = clear_drawing
 
 {-# WARNING clear_output "TODO" #-}
 -- | Clears all text from the model's output area, if it has one. Otherwise does nothing. 
-clear_output :: CSTM ()
+clear_output :: CIO ()
 clear_output = do
     (_, a, _, _) <- Reader.ask
     case a of
@@ -919,18 +919,19 @@ clear_output = do
 
 -- | Kills all turtles.
 -- Also resets the who numbering, so the next turtle created will be turtle 0.
-clear_turtles :: CSTM ()
+clear_turtles :: CIO ()
 clear_turtles = do
   (tw, a, _, _) <- Reader.ask
   case a of
-    ObserverRef _ -> do
-                  (MkWorld ps _ ls) <- lift $ readTVar tw
-                  lift $ writeTVar tw (MkWorld ps IM.empty ls)
+    ObserverRef _ -> atomic $ lift $ do
+                  (MkWorld ps _ ls) <- readTVar tw
+                  writeTVar tw (MkWorld ps IM.empty ls)
+                  writeTVar __who 0
     _ -> throw $ ContextException "observer" a
 
 {-# INLINE ct #-}
 -- | alias for 'clear_turtles'
-ct :: CSTM ()
+ct :: CIO ()
 ct = clear_turtles
 
 -- | Kills all links.
@@ -944,13 +945,13 @@ clear_links = do
     _ -> throw $ ContextException "observer" s
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
-clear_patches :: CSTM ()
+clear_patches :: CIO ()
 clear_patches = do
   (tw, s, _, _) <- Reader.ask
   case s of
-    ObserverRef _ -> do
-                  (MkWorld ps _ _) <- lift $ readTVar tw
-                  lift $ T.mapM (\ (MkPatch {pcolor_=tc, plabel_=tl, plabel_color_=tlc, pvars_=to})  -> do
+    ObserverRef _ -> atomic $ lift $ do
+                  (MkWorld ps _ _) <- readTVar tw
+                  T.mapM (\ (MkPatch {pcolor_=tc, plabel_=tl, plabel_color_=tlc, pvars_=to})  -> do
                               writeTVar tc 0
                               writeTVar tl ""
                               writeTVar tlc 9.9
@@ -961,55 +962,50 @@ clear_patches = do
 
 {-# INLINE cp #-}
 -- | alias for 'clear_patches'
-cp :: CSTM ()
+cp :: CIO ()
 cp = clear_patches
 
 
 -- | Clears the tick counter.
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
-clear_ticks :: CSTM ()
+clear_ticks :: CIO ()
 clear_ticks = do
     (_, a, _, _) <- Reader.ask
     case a of
-      ObserverRef _ -> lift $ writeTVar __tick undefined
+      ObserverRef _ -> lift $ writeIORef __tick undefined
       _ -> throw $ ContextException "observer" a
 
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
-reset_ticks :: CSTM ()
+reset_ticks :: CIO ()
 reset_ticks = do
     (_, a, _, _) <- Reader.ask
     case a of
-      ObserverRef _ -> lift $ writeTVar __tick 0
+      ObserverRef _ -> lift $ writeIORef __tick 0
       _ -> throw $ ContextException "observer" a
 
 -- | Advances the tick counter by one and updates all plots. 
-tick :: CSTM ()
+{-# INLINE tick #-}
+tick :: CIO ()
 tick = tick_advance 1
 
 {-# WARNING tick_advance "TODO: dynamic typing, float" #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
-tick_advance :: Double -> CSTM ()
+tick_advance :: Double -> CIO ()
 tick_advance n = do
   (_, a, _, _) <- Reader.ask
   case a of
-    ObserverRef _ -> lift $ modifyTVar' __tick (+n)
+    ObserverRef _ -> lift $ modifyIORef' __tick (+n)
     _ -> throw $ ContextException "observer" a
 
-{-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
--- | Reports the current value of the tick counter. The result is always a number and never negative. 
-ticks :: STMorIO m => C m Double
-ticks = readGlobal __tick
-
-
-{-# INLINE but_first #-}
+{-# INLINE butfirst #-}
 -- | When used on a list, but-first reports all of the list items of list except the first
-but_first :: [a] -> [a]
-but_first = tail
+butfirst :: [a] -> [a]
+butfirst = tail
 
-{-# INLINE but_last #-}
+{-# INLINE butlast #-}
 -- | but-last reports all of the list items of list except the last. 
-but_last :: [a] -> [a]
-but_last = init
+butlast :: [a] -> [a]
+butlast = init
 
 {-# INLINE emptyp #-}
 -- | Reports true if the given list or string is empty, false otherwise. 
@@ -2178,11 +2174,14 @@ class (Monad m) => STMorIO m where
     --
     -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
     print :: Show a => a -> C m ()
+    -- | Reports the current value of the tick counter. The result is always a number and never negative. 
+    ticks :: C m Double
 
 
 {-# WARNING towards "TODO: wrapping" #-}
 {-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
 {-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
+{-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
 
 instance STMorIO STM where
   turtles_here = do
@@ -2440,6 +2439,8 @@ instance STMorIO STM where
       (_, _, p, _) <- Reader.ask
       lift $ writeTQueue p $ Prelude.show a
 
+  ticks = lift $ unsafeIOToSTM $ readIORef __tick
+
 
 
 instance STMorIO IO where
@@ -2689,6 +2690,8 @@ instance STMorIO IO where
       (_, _, p, _) <- Reader.ask
       atomic $ lift $ writeTQueue p $ Prelude.show a
 
+  ticks = lift $ readIORef __tick
+
 
 -- | Reports a shade of color proportional to the value of number. 
 scale_color :: (STMorIO m) => Double -> C m Double -> Double -> Double -> C m Double
@@ -2792,8 +2795,6 @@ diffuse gettervar settervar perc = do
 {-# SPECIALIZE  link :: Int -> Int -> CIO [AgentRef] #-}
 {-# SPECIALIZE links :: CSTM [AgentRef] #-}
 {-# SPECIALIZE links :: CIO [AgentRef] #-}
-{-# SPECIALIZE readGlobal :: Int -> CSTM Double #-}
-{-# SPECIALIZE readGlobal :: Int -> CIO Double #-}
 {-# SPECIALIZE readTurtle :: Int -> CSTM Double #-}
 {-# SPECIALIZE readTurtle :: Int -> CIO Double #-}
 {-# SPECIALIZE readPatch :: Int -> CSTM Double #-}
@@ -2808,6 +2809,8 @@ diffuse gettervar settervar perc = do
 {-# SPECIALIZE show :: Show a => a -> CIO () #-}
 {-# SPECIALIZE print :: Show a => a -> CSTM () #-}
 {-# SPECIALIZE print :: Show a => a -> CIO () #-}
+{-# SPECIALIZE ticks :: CSTM Double #-}
+{-# SPECIALIZE ticks :: CIO Double #-}
 
 
 

@@ -21,14 +21,14 @@ setup = do
           y <- unsafe_random_ycor
           atomic $ setxy x y
        ) ts
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   t <- ticks
   when (t > 10000) stop
   ask flock =<< turtles
   repeat_ 5 (ask (atomic $ fd 0.2) =<< turtles)
-  atomic $ tick
+  tick
 
 flock = do
   fm <- find_flockmates

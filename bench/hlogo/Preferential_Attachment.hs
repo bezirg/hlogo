@@ -7,13 +7,14 @@ run ["setup","go"]
 setup = do
   make_node =<< nobody
   make_node =<< unsafe_turtle 0
+  reset_ticks
 
 go = forever $ do
-  t <- unsafe_ticks
+  t <- ticks
   when (t > 1500) stop
   ask (atomic $ set_color gray) =<< unsafe_links
   make_node =<< find_partner
-  atomic $ tick
+  tick
 
 make_node n = do
   t <- atomic $ crt 1

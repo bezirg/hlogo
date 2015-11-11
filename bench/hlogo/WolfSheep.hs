@@ -65,7 +65,7 @@ setup = do
   --g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
 
   --atomic $ set_grass (fromIntegral g)
-  atomic $ reset_ticks
+  reset_ticks
 
 
 go = forever $ do
@@ -89,7 +89,7 @@ go = forever $ do
   when grassp (ask grow_grass =<< patches)
   --g <- count =<< with (liftM (== green) unsafe_pcolor) =<< unsafe_patches
   --atomic $ set_grass (fromIntegral g)
-  atomic $ tick
+  tick
 
 move = do
   r <- unsafe_random 50

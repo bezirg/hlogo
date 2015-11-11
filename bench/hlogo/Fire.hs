@@ -19,7 +19,7 @@ setup = do
   sit <- count =<< (with (liftM (== green) pcolor) =<< patches)
   atomic $ set_initial_trees (fromIntegral sit)
   atomic $ set_burned_trees 0
-  atomic $ reset_ticks
+  reset_ticks
 
 go = forever $ do
   ts <- ticks
@@ -30,7 +30,7 @@ go = forever $ do
          atomic $ set_breed "embers"
        ) =<< unsafe_fires
   fade_embers
-  atomic $ tick
+  tick
 
 ignite = do
   s <- atomic $ sprout_fires 1
