@@ -35,7 +35,7 @@ module Language.Logo.Prim (
                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
 
                            -- * Misc
-                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all, ca, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
+                           patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
 
                            -- * Input/Output
                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
@@ -869,21 +869,6 @@ world_width = return $ max_pxcor_ conf - min_pxcor_ conf + 1
 world_height :: (Monad m) => C m Int
 world_height = return $ max_pycor_ conf - min_pycor_ conf + 1
 
-
--- | Resets all global variables to zero, and calls clear-ticks, clear-turtles, clear-patches, clear-drawing, clear-all-plots, and clear-output. 
-clear_all :: CIO ()
-clear_all = do
-  clear_ticks
-  clear_turtles
-  clear_patches
-  clear_drawing
-  clear_all_plots
-  clear_output
-
-{-# INLINE ca #-}
--- | alias for 'clear_all'
-ca :: CIO ()
-ca = clear_all
 
 {-# WARNING clear_all_plots "TODO" #-}
 -- | Clears every plot in the model.

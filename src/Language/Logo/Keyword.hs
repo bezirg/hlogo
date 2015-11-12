@@ -43,9 +43,13 @@ import Data.IORef (newIORef)
 -- | globals macro takes a list of variable names (as strings) and creates top-level global variables.
 -- Global variables have type 'Double' and are initialized to 0.
 globals :: [String] -> Q [Dec]
-globals vs  = 
-              -- create 2 getters (1 prim and 1 unsafe) per global variable
-              (liftM concat $ mapM (\ v -> do
+globals vs  = do
+    clear_globals <- valD (varP $ mkName "clear_globals") 
+                (normalB $ if null vs
+                           then [| return () :: CIO () |]
+                           else doE $ map (\ v -> noBindS [| atomic (lift (writeTVar $(varE (mkName ("__" ++ v))) 0)) |]) vs) []
+    -- create 2 getters (1 prim and 1 unsafe) per global variable
+    settersGetters <- liftM concat $ mapM (\ v -> do
                       noInline <- pragInlD (mkName ("__" ++ v)) NoInline FunLike AllPhases                 
                       topLevelVar <- valD (varP (mkName ("__" ++ v)))
                                                    (normalB [| unsafePerformIO $ newTVarIO 0 :: TVar Double |]) []
@@ -60,9 +64,8 @@ globals vs  =
                                                               (normalB [| lift $ modifyTVar' $(varE (mkName ("__" ++ v))) $(varE y) |]) []]
 
                       return [noInline, topLevelVar, getVar, getVarSig, setVar, withVar]
-                    )  vs)
-
-
+                                         )  vs
+    return $ clear_globals: settersGetters
 
 -- | turtles_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __turtle agent__.
 -- This user-declared turtle-field variables have type 'Double' and are initialized to 0.
@@ -71,7 +74,7 @@ globals vs  =
 turtles_own :: [String] -> Q [Dec]
 turtles_own vs = do
   tlInline <- pragInlD (mkName "turtles_length") Inline FunLike AllPhases
-  tl <- valD (varP (mkName "turtles_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+  tl <- valD (varP (mkName "turtles_length")) (normalB (litE (integerL (genericLength vs)))) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
@@ -100,7 +103,7 @@ turtles_own vs = do
 patches_own :: [String] -> Q [Dec]
 patches_own vs = do
   plInline <- pragInlD (mkName "patches_length") Inline FunLike AllPhases
-  pl <- valD (varP (mkName "patches_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+  pl <- valD (varP (mkName "patches_length")) (normalB (litE (integerL (genericLength vs)))) []
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
@@ -132,7 +135,7 @@ patches_own vs = do
 links_own :: [String] -> Q [Dec]
 links_own vs = do
   llInline <- pragInlD (mkName "links_length") Inline FunLike AllPhases
-  ll <- valD (varP (mkName "links_length")) (normalB [| $(litE (integerL (genericLength vs))) |]) []
+  ll <- valD (varP (mkName "links_length")) (normalB (litE (integerL (genericLength vs)))) []
 
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
@@ -353,20 +356,13 @@ run :: [String] -> Q [Dec]
 run procs = do
   let as = map mkName procs
   pl <- lookupValueName "patches_length"
-  let plength = case pl of
-                  Nothing -> litE (integerL 0)
-                  _ -> varE $ mkName "patches_length"
+  let plength = maybe (litE $ integerL 0) varE pl
   tl <- lookupValueName "turtles_length"
-  let tlength = case tl of
-                  Nothing -> litE (integerL 0)
-                  _ -> varE $ mkName "turtles_length"
-
+  let tlength = maybe (litE $ integerL 0) varE tl
   ll <- lookupValueName "links_length"
-  let llength = case ll of
-                  Nothing -> litE (integerL 0)
-                  _ -> varE $ mkName "links_length"
-  
-
+  let llength = maybe (litE $ integerL 0) varE ll
+  gl <- lookupValueName "clear_globals"
+  clear_globals <- valD (varP $ mkName "clear_globals") (normalB [| return () :: CIO () |]) []
   y <- newName "y"
   cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
                                                                    (tw, a, _, _) <- Reader.ask
@@ -435,12 +431,27 @@ run procs = do
   clf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(llength) |]) []]
 
 
+  clear_all <- [d| 
+               {-# INLINE clear_all #-}
+               clear_all = do
+                   $(varE (mkName "clear_globals"))
+                   clear_ticks
+                   clear_turtles
+                   clear_patches
+                   clear_drawing
+                   clear_all_plots
+                   clear_output
+               {-# INLINE ca #-}
+               ca = clear_all |]
+
   m <- [d| main = do 
                     c <- cInit $(plength)
                     Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
       |]
-  return $ cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: m
+  return $ (case gl of
+              Nothing -> (clear_globals :)
+              _ -> id) (cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: clear_all ++ m)
                  
 -- | Internal, used only in Test code.
 runT :: CIO b -> IO b
