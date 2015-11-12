@@ -56,7 +56,8 @@ import Control.Concurrent.STM
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
 import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Thread as Thread
+import qualified Control.Concurrent.Thread as Thread (forkIO, result)
+import qualified Control.Concurrent.Thread.Group as ThreadG (forkIO, forkOn, wait)
 import Data.List
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
@@ -1576,31 +1577,40 @@ increaseTotalSTM s = case s of
 ask :: CIO a -> [AgentRef] -> CIO ()
 ask f as = do
  (tw, s, p,_) <- Reader.ask
- case s of
-   Nobody -> throw $ ContextException "agent" Nobody
-   _ -> return ()
- when (as == [Nobody]) $ throw $ TypeException "agentset" Nobody
- ws <- case split_ conf of
-        "none" -> lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
-        "horizontal" -> lift $ mapM (\ (processor_i, asi) -> 
-                                   liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
-                                               then Thread.forkIO (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
-                                               else if null asi
-                                                    then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
-                                                    else Thread.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (hsplit numCapabilities as)
-        "vertical" -> lift $ mapM (\ (processor_i, asi) -> 
-                                   liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
-                                               then Thread.forkIO (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
-                                               else if null asi
-                                                    then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
-                                                    else Thread.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (vsplit numCapabilities as)
-        "both" -> error "the both splitting is not ready yet. TODO"
-        _ -> error "not valid splitting option"
+ case as of
+   [Nobody] -> throw $ TypeException "agentset" Nobody
+   _ -> case s of
+        Nobody -> throw $ ContextException "agent" Nobody
+        ObserverRef _ -> lift (ask' >> ThreadG.wait __tg)
+        _ -> lift ask'
+    where
+     ask' = mapM_ (\ asSection -> 
+                       ThreadG.forkIO __tg $ sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asSection]
+                  ) (split numCapabilities as)
+
+        -- do
+        -- ws <- case split_ conf of
+        -- "none" -> 
+        -- "horizontal" -> lift $ mapM (\ (processor_i, asi) -> 
+        --                            liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
+        --                                        then ThreadG.forkIO __tg (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
+        --                                        else if null asi
+        --                                             then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
+        --                                             else ThreadG.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (hsplit numCapabilities as)
+        -- "vertical" -> lift $ mapM (\ (processor_i, asi) -> 
+        --                            liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
+        --                                        then ThreadG.forkIO __tg (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
+        --                                        else if null asi
+        --                                             then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
+        --                                             else ThreadG.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (vsplit numCapabilities as)
+        -- "both" -> error "the both splitting is not ready yet. TODO"
+        -- _ -> error "not valid splitting option"
                       
- lift $ sequence_ ws 
+ -- lift $ sequence_ ws 
 
 -- | Internal
 split :: Int -> [a] -> [[a]]
+-- split 1 l = [l]
 split n l = let (d,m) = length l `divMod` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
@@ -1637,13 +1647,19 @@ hsplit n as = IM.toList $ foldl (\ im a -> case a of
 of_ :: CIO a -> [AgentRef] -> CIO [a]
 of_ f as = do
   (tw, s, p, _) <- Reader.ask
-  case s of
-    Nobody -> throw $ ContextException "agent" Nobody
-    _ -> return ()
-  when (as == [Nobody]) $ throw $ TypeException "agentset" Nobody 
-  ws <- lift $ mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
-  rs <- lift $ sequence [Thread.result =<< w | w <- ws]
-  return $ concat rs            -- lists traversals can be optimized
+  case as of
+    [Nobody] -> throw $ TypeException "agentset" Nobody 
+    _ -> case s of
+          Nobody -> throw $ ContextException "agent" Nobody
+          ObserverRef _ -> lift $ do
+             ws <- mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             rs <- sequence [Thread.result =<< w | w <- ws]
+             ThreadG.wait __tg  -- wait for potential internal asks inside the of reporters
+             return $ concat rs -- lists traversals can be optimized
+          _ -> lift $ do
+             ws <- mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             liftM concat $ sequence [Thread.result =<< w | w <- ws] -- lists traversals can be optimized
+                 
   
 -- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
 -- in other words, the agents satisfying the given condition. 

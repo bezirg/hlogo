@@ -28,7 +28,7 @@ data PenMode = Down | Up | Erase
 -- an attribute value of 'Turtle'.
 -- For now only the default turtle attributes are supported.
 data Turtle = MkTurtle {
-      who_ :: Int               -- on creation
+      who_ :: !Int               -- on creation
     , breed_ :: TVar String          -- on creation
     , color_ :: TVar Double
     , heading_ :: TVar Double
@@ -43,8 +43,8 @@ data Turtle = MkTurtle {
     , pen_mode_ :: TVar PenMode
     , tvars_ :: Array Int (TVar Double)
     , tgen :: TVar StdGen
-    , init_xcor_ :: Int
-    , init_ycor_ :: Int
+    , init_xcor_ :: !Int
+    , init_ycor_ :: !Int
 #ifdef STATS_STM
     , ttotalstm :: IORef Int
     , tsuccstm :: IORef Int
@@ -55,8 +55,8 @@ data Turtle = MkTurtle {
 -- Each field is a transactional variable (TVar) storing an attribute value of 'Patch'
 -- For now only the default patch attributes are supported.
 data Patch = MkPatch {
-      pxcor_ :: Int             -- on creation
-    , pycor_ :: Int             -- on creation
+      pxcor_ :: !Int             -- on creation
+    , pycor_ :: !Int             -- on creation
     , pcolor_ :: TVar Double
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
@@ -69,8 +69,8 @@ data Patch = MkPatch {
       } deriving (Eq)
 
 data Link = MkLink {
-      end1_ :: Int              -- on creation
-    , end2_ :: Int              -- on creation
+      end1_ :: !Int              -- on creation
+    , end2_ :: !Int              -- on creation
     , directed_ :: Bool          -- on creation
     , lcolor_ :: TVar Double
     , llabel_ :: TVar String

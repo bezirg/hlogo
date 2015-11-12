@@ -141,9 +141,7 @@ case_AskInsideReporterProcedure = let
                                     [a1] <- of_ foo =<< turtle 0
                                     let e1 = 10
                                     lift $ e1 @=? a1
-                                    
-                                    wait 0.1
-                                    
+
                                     a2 <- glob1
                                     let e2 = 1
                                     lift $ e2 @=? a2

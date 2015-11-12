@@ -378,9 +378,9 @@ run procs = do
                                                                                                                                  return (i, t)
                                                                                                                                 | i <- [w..w+n-1]]
                                                                    let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
-                                                                   oldWho <- lift $ readTVarIO __who
-                                                                   atomic $ lift $ modifyTVar' __who ($(varE y) +)
-                                                                   ns <- newTurtles oldWho $(varE y)
+                                                                   oldWho <- lift $ readTVarIO __who -- it is safe to be not fully atomic
+                                                                   atomic $ lift $ modifyTVar' __who ($(varE y) +) -- since create_turtles
+                                                                   ns <- newTurtles oldWho $(varE y) -- operates only on observer
                                                                    atomic $ lift $ modifyTVar' tw (addTurtles ns) 
                                                                    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
                                                                    |]) []]

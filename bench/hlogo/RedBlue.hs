@@ -17,8 +17,7 @@ setup = do
 go = forever $ do
   t <- ticks
   when (t==10) $ stop
-  x <- of_ behave =<< turtles
-  print x
+  ask behave =<< turtles
   tick
 
 behave = do

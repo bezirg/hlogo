@@ -13,6 +13,7 @@ module Language.Logo.Core (
                           ,__tick
                           ,__who
                           ,__timer 
+                          ,__tg
 ) where
 
 import Control.Concurrent (forkIO)
@@ -27,6 +28,7 @@ import Control.Monad
 import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef (IORef, newIORef, writeIORef)
+import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
@@ -47,6 +49,11 @@ __who = unsafePerformIO $ newTVarIO undefined
 -- | The global (atomically-modifiable) timer variable
 __timer :: TVar UTCTime
 __timer = unsafePerformIO $ newTVarIO undefined
+
+{-# NOINLINE __tg #-}
+-- | The global group of running threads. Observer uses this ThreadGroup in 'ask', as a synchronization point to wait until all of them are finished.
+__tg :: ThreadG.ThreadGroup
+__tg = unsafePerformIO $ ThreadG.new
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
