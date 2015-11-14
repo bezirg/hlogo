@@ -12,8 +12,8 @@ module Language.Logo.Base where
 
 import Control.Concurrent.STM
 import Control.Monad.Trans.Reader
-import qualified Data.IntMap as IM
-import qualified Data.Map as M
+import qualified Data.IntMap.Strict as IM
+import qualified Data.Map.Strict as M
 import Data.Array
 import Data.Typeable
 import System.Random (StdGen)
@@ -103,9 +103,9 @@ type Links = M.Map (Int, Int) Link
 data World = MkWorld Patches Turtles Links
 
 -- | An 'AgentRef' is a reference to an agent of the framework.
-data AgentRef = PatchRef (Int,Int) Patch
-              | TurtleRef Int Turtle
-              | LinkRef (Int,Int) Link
+data AgentRef = PatchRef !(Int,Int) Patch
+              | TurtleRef !Int Turtle
+              | LinkRef !(Int,Int) Link
               | ObserverRef (TVar StdGen)     -- ^ 'ObserverRef' is needed to restrict the context of specific built-in functions.  It carries its random generator. It should not be a first-class citizen (returned as an AgentRef)
               | Nobody          -- ^ 'Nobody' is the null reference in NetLogo.
                 deriving (Eq, Typeable)

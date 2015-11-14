@@ -57,10 +57,10 @@ import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Thread as Thread (forkIO, result)
-import qualified Control.Concurrent.Thread.Group as ThreadG (forkIO, forkOn, wait)
+import qualified Control.Concurrent.Thread.Group as ThreadG (forkIO, wait)
 import Data.List
-import qualified Data.IntMap as IM
-import qualified Data.Map as M
+import qualified Data.IntMap.Strict as IM
+import qualified Data.Map.Strict as M
 import Data.Array
 import Control.Applicative
 import System.Random hiding (random, split)
@@ -231,6 +231,7 @@ pink = 135
 
 {-# SPECIALIZE count :: [AgentRef] -> CSTM Int #-}
 {-# SPECIALIZE count :: [AgentRef] -> CIO Int #-}
+--count :: (Monad m, Num a) => [AgentRef] -> C m a
 -- | Reports the number of agents in the given agentset. 
 count :: Monad m => [AgentRef] -> C m Int
 count [Nobody] = throw $ TypeException "agent" Nobody
@@ -410,6 +411,7 @@ set_heading v = do
 
 {-# SPECIALIZE pxcor :: CSTM Int #-}
 {-# SPECIALIZE pxcor :: CIO Int #-}
+-- pxcor :: (Monad m, Num a) => C m a
 -- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pxcor :: (Monad m) => C m Int
 pxcor = do
@@ -420,6 +422,7 @@ pxcor = do
 
 {-# SPECIALIZE pycor :: CSTM Int #-}
 {-# SPECIALIZE pycor :: CIO Int #-}
+-- pycor :: (Monad m, Num a) => C m a
 -- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pycor :: (Monad m) => C m Int
 pycor = do
@@ -692,7 +695,7 @@ lt = left
 {-# WARNING delta "TODO: there is some problem here, an argument is ignored" #-}
 -- | Internal
 delta :: (Num a, Ord a) => a -> a -> t -> a
-delta a1 a2 aboundary =
+delta a1 a2 _aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
 
@@ -1595,7 +1598,7 @@ ask f as = do
 
 -- | Internal
 split :: Int -> [a] -> [[a]]
--- split 1 l = [l]
+split 1 l = [l]
 split n l = let (d,m) = length l `divMod` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
@@ -2116,6 +2119,7 @@ extract_rgb c | c == 0 = [0,0,0]
                               else [truncate((255 - fromIntegral r)*step)+r, truncate((255 - fromIntegral g)*step)+g, truncate((255 - fromIntegral b)*step)+b]
 
 {-# WARNING approximate_rgb "TODO" #-}
+approximate_rgb :: a
 approximate_rgb = todo
 
 -- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects (IO effects allowed)

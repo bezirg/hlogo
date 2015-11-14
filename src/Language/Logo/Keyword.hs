@@ -27,8 +27,8 @@ import qualified Control.Monad.Trans.Reader as Reader
 import Control.Concurrent.STM
 import Data.Array
 import Data.List (genericLength)
-import qualified Data.Map as M
-import qualified Data.IntMap as IM
+import qualified Data.Map.Strict as M
+import qualified Data.IntMap.Strict as IM
 import Data.Typeable (cast)
 import Control.Monad (liftM, filterM, replicateM)
 import System.Random (randomR, mkStdGen)
