@@ -29,6 +29,7 @@ import Data.Array
 import Data.List (genericLength)
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
+--import qualified Data.Vector.Mutable as MV (grow, write)
 import Data.Typeable (cast)
 import Control.Monad (liftM, filterM, replicateM)
 import System.Random (randomR, mkStdGen)
@@ -180,7 +181,7 @@ breeds_own p vs = do
                                                                                                                               t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
-                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                 let addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
                                                                  oldWho <- lift $ readTVar __who
                                                                  lift $ modifyTVar' __who ($(varE y) +)
                                                                  ns <- newTurtles oldWho $(varE y)
@@ -261,7 +262,7 @@ breeds [p,s] = do
   us <- funD (mkName ("unsafe_" ++ s)) [clause [varP y] 
                                        (normalB [| do 
                                                    (tw,_, _, _) <- Reader.ask :: CIO Context
-                                                   (MkWorld _ ts _) <- lift (readTVarIO tw)
+                                                   (MkWorld ts _) <- lift (readTVarIO tw)
                                                    let {t = ts IM.! $(varE y)}
                                                    b <- lift $ readTVarIO (breed_ t)
                                                    return $ if b == $(litE (stringL p)) 
@@ -270,7 +271,7 @@ breeds [p,s] = do
 
   ss <- funD (mkName s) [clause [varP y] (normalB [| do 
                                                     (tw,_, _, _) <- Reader.ask :: CSTM Context
-                                                    (MkWorld _ ts _) <- lift (readTVar tw)
+                                                    (MkWorld ts _) <- lift (readTVar tw)
                                                     let {t = ts IM.! $(varE y)}
                                                     b <- lift $ readTVar (breed_ t)
                                                     return $ if b == $(litE (stringL p)) 
@@ -329,7 +330,7 @@ directed_link_breed [p,s] = do
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do (tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
 directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
@@ -342,7 +343,7 @@ undirected_link_breed [p,s] = do
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do (tw,_, _, _) <- Reader.ask :: CSTM Context; (MkWorld _ ls) <- lift $ readTVar tw; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
 undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
@@ -373,12 +374,35 @@ run procs = do
                                                                                                                                  t <- newTurtle i $(tlength)
                                                                                                                                  return (i, t)
                                                                                                                                 | i <- [w..w+n-1]]
-                                                                   let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                   let addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
                                                                    oldWho <- lift $ readTVarIO __who -- it is safe to be not fully atomic
                                                                    atomic $ lift $ modifyTVar' __who ($(varE y) +) -- since create_turtles
                                                                    ns <- newTurtles oldWho $(varE y) -- operates only on observer
                                                                    atomic $ lift $ modifyTVar' tw (addTurtles ns) 
                                                                    return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
+
+
+        -- (_, a, _, _) <- Reader.ask
+        -- case a of
+        --   ObserverRef _ -> do
+        --          oldWho <- lift $ readTVarIO __who -- it is safe to be not fully atomic
+        --          let newWho = oldWho + $(varE y)
+        --          atomic $ lift $ writeTVar __who newWho  -- since create_turtles
+        --          oldArr <- lift $ readTVarIO __turtles
+        --          let oldLength = length oldArr
+        --          arr <- if newWho > oldLength
+        --                then do
+        --                  newArr <- MV.grow oldArr (oldLength + newWho) -- grow & update the tvar ref &return the new array
+        --                  atomic $ lift $ writeTVar __turtles newArr
+        --                  return newArr
+        --                else return oldArr
+        --          sequence [do
+        --                     t <- newTurtle i $(tlength)
+        --                     lift $ MV.write arr i t
+        --                     return (TurtleRef i t)
+        --                     | i <- [oldWho..newWho-1]]
+        --   _ -> throw $ ContextException "observer" a
+                 
                                                                    |]) []]
   sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
                                                            (tw, a, _, _) <- Reader.ask
@@ -388,7 +412,7 @@ run procs = do
                                                                                                                               t <- newSprout i $(tlength) (fromIntegral px) (fromIntegral py)
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
-                                                                 let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                 let addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
                                                                  oldWho <- lift $ readTVar __who
                                                                  lift $ modifyTVar' __who ($(varE y) +)
                                                                  ns <- newTurtles oldWho $(varE y)
@@ -408,7 +432,7 @@ run procs = do
                                                                                                                                         t <- newOrderedTurtle i n j $(tlength)
                                                                                                                                         return (j, t))
                                                                                                                                       (zip [1..n]  [w..w+n-1])
-                                                                           let addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                                                                           let addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
                                                                            oldWho <- lift $ readTVarIO __who
                                                                            atomic $ lift $ modifyTVar' __who ($(varE y) +)
                                                                            ns <- lift $ newTurtles oldWho $(varE y)
@@ -683,7 +707,7 @@ create_breeds b n to = do
                                                                               t <- newBreed b i to
                                                                               return (i, t)
                                                                              | i <- [w..w+n-1]]
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                      addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_ordered_breeds :: String -> Int -> Int -> CIO [AgentRef]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
@@ -703,7 +727,7 @@ create_ordered_breeds b n to = do
                                                                               t <- newOrderedBreed i n b j to
                                                                               return (j, t))
                                                                              (zip [1..n] [w..w+n-1])
-                      addTurtles ts' (MkWorld ps ts ls)  = MkWorld ps (ts `IM.union` ts') ls
+                      addTurtles ts' (MkWorld ts ls)  = MkWorld (ts `IM.union` ts') ls
 
 
 
@@ -773,9 +797,9 @@ create_links_from_ as nls = do
   (tw, a, _,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink f x s =  do
                        n <- newLink f x nls
@@ -796,9 +820,9 @@ create_links_to_ as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
                        n <- newLink x t nls
@@ -821,9 +845,9 @@ create_links_with_ as nls =  do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink t x  | (TurtleRef t _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
                        n <- newLBreed x t False "links" nls
@@ -835,9 +859,9 @@ create_breeded_links_to b as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _  -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink t x | (TurtleRef t _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
                        n <- newLBreed x t True b nls
@@ -850,9 +874,9 @@ create_breeded_links_from b as nls = do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink f x | (TurtleRef f _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink f x s =  do
                        n <- newLBreed f x True b nls
@@ -864,9 +888,9 @@ create_breeded_links_with b as nls =  do
   (tw, a, _, _) <- Reader.ask
   case a of
     TurtleRef x _ -> do
-           (MkWorld ps ts ls) <- lift $ readTVar tw
+           (MkWorld ts ls) <- lift $ readTVar tw
            ls' <- foldr (=<<) (return ls) [ insertLink t x  | (TurtleRef t _) <- as]
-           lift $ writeTVar tw (MkWorld ps ts ls')
+           lift $ writeTVar tw (MkWorld ts ls')
     _ -> throw $ ContextException "turtle" a
     where insertLink t x s =  do
                        n <- newLBreed x t False b nls

@@ -15,6 +15,7 @@ import Control.Monad.Trans.Reader
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Array
+-- import Data.Vector.Mutable (IOVector)
 import Data.Typeable
 import System.Random (StdGen)
 #ifdef STATS_STM
@@ -91,16 +92,18 @@ data Link = MkLink {
 data TieMode = None | Fixed
 
 -- | The 'Patches' ADT is an ordered map (dictionary) from coordinates (Int, Int) to 'Patch' data structures
-type Patches = M.Map (Int, Int) Patch
+type Patches = Array (Int,Int) Patch
 
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle
+
+-- type Turtles_ = IOVector Turtle
 
 -- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
 type Links = M.Map (Int, Int) Link
 
 -- | The 'World' is the union of 'Patches' and 'Turtles'
-data World = MkWorld Patches Turtles Links
+data World = MkWorld Turtles Links
 
 -- | An 'AgentRef' is a reference to an agent of the framework.
 data AgentRef = PatchRef !(Int,Int) Patch

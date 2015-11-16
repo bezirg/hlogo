@@ -315,15 +315,14 @@ setxy x' y' = do
 
 -- | The turtle moves forward by number steps, one step at a time. (If number is negative, the turtle moves backward.) 
 forward :: Double -> CSTM ()
-forward n | n == 0 = do
-                        (_, a, _, _) <- Reader.ask
-                        case a of
-                          TurtleRef _ _ -> return ()
-                          _ -> throw $ ContextException "turtle" a
-          | n > 1 = jump 1 >> forward (n-1)
+forward 0 = do
+  (_, a, _, _) <- Reader.ask
+  case a of
+    TurtleRef _ _ -> return ()
+    _ -> throw $ ContextException "turtle" a
+forward n | n > 1 = jump 1 >> forward (n-1)
           | n < -1 = jump (-1) >> forward (n+1)
-          | (0 < n && n <= 1) || (-1 <= n && n < 0) = jump n
-          | otherwise = throw DevException
+          | otherwise = jump n
  
 {-# INLINE fd #-}
 -- | alias for 'forward'
@@ -347,11 +346,11 @@ die = do
  (tw,a,_,_) <- Reader.ask
  case a of
    TurtleRef t _ -> do
-          (MkWorld ps ts ls) <- lift $ readTVar tw
-          lift $ writeTVar tw $ MkWorld ps (IM.delete t ts) ls
+          (MkWorld ts ls) <- lift $ readTVar tw
+          lift $ writeTVar tw $ MkWorld (IM.delete t ts) ls
    LinkRef (e1,e2) (MkLink {directed_ = d}) -> do
-          (MkWorld ps ts ls) <- lift $ readTVar tw
-          lift $ writeTVar tw $ MkWorld ps ts (M.delete (e1,e2) 
+          (MkWorld ts ls) <- lift $ readTVar tw
+          lift $ writeTVar tw $ MkWorld ts (M.delete (e1,e2) 
                                                 (if d -- is directed
                                                 then ls
                                                 else M.delete (e2,e1) ls
@@ -913,8 +912,8 @@ clear_turtles = do
   (tw, a, _, _) <- Reader.ask
   case a of
     ObserverRef _ -> atomic $ lift $ do
-                  (MkWorld ps _ ls) <- readTVar tw
-                  writeTVar tw (MkWorld ps IM.empty ls)
+                  (MkWorld _ ls) <- readTVar tw
+                  writeTVar tw (MkWorld IM.empty ls)
                   writeTVar __who 0
     _ -> throw $ ContextException "observer" a
 
@@ -929,8 +928,8 @@ clear_links = do
   (tw, s, _,_) <- Reader.ask
   case s of
     ObserverRef _ -> do
-                (MkWorld ps ts _) <- lift $ readTVar tw
-                lift $ writeTVar tw (MkWorld ps ts M.empty)
+                (MkWorld ts _) <- lift $ readTVar tw
+                lift $ writeTVar tw (MkWorld ts M.empty)
     _ -> throw $ ContextException "observer" s
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
@@ -938,15 +937,14 @@ clear_patches :: CIO ()
 clear_patches = do
   (tw, s, _, _) <- Reader.ask
   case s of
-    ObserverRef _ -> atomic $ lift $ do
-                  (MkWorld ps _ _) <- readTVar tw
-                  T.mapM (\ (MkPatch {pcolor_=tc, plabel_=tl, plabel_color_=tlc, pvars_=to})  -> do
-                              writeTVar tc 0
-                              writeTVar tl ""
-                              writeTVar tlc 9.9
-                              mapM_ (`writeTVar` 0) (elems to) -- patches-own to 0
-                           ) ps
-                  return ()
+    ObserverRef _ -> do
+                  mapM_ (\ (MkPatch {pxcor_=px, pycor_=py, pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen=pg})  -> do
+                              atomic $ lift $ writeTVar pc 0
+                              atomic $ lift $ writeTVar pl ""
+                              atomic $ lift $ writeTVar plc 9.9
+                              atomic $ lift $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
+                              atomic $ lift $ writeTVar pg $ mkStdGen (px + py * 1000)
+                           ) __patches
     _ -> throw $ ContextException "observer" s
 
 {-# INLINE cp #-}
@@ -1459,7 +1457,7 @@ my_links = do
   (tw,a, _, _) <- Reader.ask 
   case a of
      TurtleRef x _ -> do
-             (MkWorld _ _ ls) <- lift $ readTVar tw
+             (MkWorld _ ls) <- lift $ readTVar tw
              return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
      _ -> throw $ ContextException "turtle" a
 
@@ -1469,7 +1467,7 @@ my_out_links = do
   (tw, a, _, _) <- Reader.ask 
   case a of
     TurtleRef x _ -> do
-                 (MkWorld _ _ ls) <- lift $ readTVar tw
+                 (MkWorld _ ls) <- lift $ readTVar tw
                  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
     _ -> throw $ ContextException "turtle" a
 
@@ -1479,7 +1477,7 @@ my_in_links = do
   (tw, a, _, _) <- Reader.ask 
   case a of
     TurtleRef x _ -> do
-                (MkWorld _ _ ls) <- lift $ readTVar tw
+                (MkWorld _ ls) <- lift $ readTVar tw
                 return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
     _ -> throw $ ContextException "turtle" a
 
@@ -1803,7 +1801,7 @@ hatch n = do
             oldWho <- lift $ readTVar __who
             lift $ modifyTVar' __who (n +)
             ns <- lift $ newTurtles oldWho
-            let addTurtles ts' (MkWorld ps_ ts_ ls_)  = MkWorld ps_ (ts_ `IM.union` ts') ls_
+            let addTurtles ts' (MkWorld ts_ ls_)  = MkWorld (ts_ `IM.union` ts') ls_
             lift $ modifyTVar' tw (addTurtles ns) 
             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 
@@ -2131,10 +2129,6 @@ class (Monad m) => STMorIO m where
     turtles_at :: Double -> Double -> C m [AgentRef] -- ^ dx -> dy -> CSTM (Set AgentRef)
     -- | patch-here reports the patch under the turtle. 
     patch_here :: C m [AgentRef]
-    -- | Reports the agentset consisting of all patches. 
-    patches :: C m [AgentRef]
-    -- | Given the x and y coordinates of a point, reports the patch containing that point. 
-    patch :: Double -> Double -> C m [AgentRef]
     -- | Reports the agentset consisting of all turtles. 
     turtles :: C m [AgentRef]
     -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
@@ -2183,6 +2177,24 @@ class (Monad m) => STMorIO m where
     ticks :: C m Double
 
 
+-- | Reports the agentset consisting of all patches. 
+patches :: Monad m => C m [AgentRef]
+patches = return $ map (uncurry PatchRef) (assocs __patches)
+
+-- | Given the x and y coordinates of a point, reports the patch containing that point. 
+patch :: Monad m => Double -> Double -> C m [AgentRef]
+patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
+                     then [Nobody]
+                     else [PatchRef (x'', y'') (__patches ! (x'', y''))]
+           where
+             x' = round x
+             y' = round y
+             (x'',y'') = (      -- normalize
+                          ((x' + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
+                          ((y' + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
+                         )
+
+
 {-# WARNING towards "TODO: wrapping" #-}
 {-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
 {-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
@@ -2216,33 +2228,15 @@ instance STMorIO STM where
                  y' <- lift $ readTVar y
                  patch x' y'
       _ -> throw $ ContextException "patch" a
-  patches = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ps _ _) <- lift $ readTVar tw
-    return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
-  patch x y = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ps _ _) <- lift $ readTVar tw
-    return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-             then [Nobody]
-             else
-                 [PatchRef (x'', y'') (ps M.! (x'', y''))]
-           where
-             x' = round x
-             y' = round y
-             (x'',y'') = (      -- normalize
-                          ((x' + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
-                          ((y' + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
-                         )
 
   turtles = do
     (tw,_, _, _) <- Reader.ask
-    MkWorld _ ts _ <- lift $ readTVar tw
+    MkWorld ts _ <- lift $ readTVar tw
     return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
   turtle n = do
     (tw,_, _, _) <- Reader.ask
-    (MkWorld _ ts _) <- lift $ readTVar tw
+    (MkWorld ts _) <- lift $ readTVar tw
     return $ maybe [Nobody] (return . TurtleRef n) $ IM.lookup n ts
 
   heading = do
@@ -2390,13 +2384,13 @@ instance STMorIO STM where
 
   link f t = do
     (tw,_, _,_) <- Reader.ask
-    (MkWorld _ _ ls) <- lift $ readTVar tw
+    (MkWorld _ ls) <- lift $ readTVar tw
     return [maybe Nobody (LinkRef (f,t)) $ M.lookup (f,t) ls]
 
 
   links = do
     (tw,_, _,_) <- Reader.ask
-    (MkWorld _ _ ls) <- lift $ readTVar tw
+    (MkWorld _ ls) <- lift $ readTVar tw
     return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
@@ -2469,34 +2463,14 @@ instance STMorIO IO where
                         patch x' y'
       _ -> throw $ ContextException "turtle" s
 
-  patches = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ps _ _) <- lift $ readTVarIO tw
-    return $ M.foldrWithKey (\ k x ks -> PatchRef k x: ks) [] ps
-
-  patch x y = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ps _ _) <- lift $ readTVarIO tw
-    return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
-             then [Nobody]
-             else
-                 [PatchRef (x'', y'') (ps M.! (x'', y''))]
-           where
-             x' = round x
-             y' = round y
-             (x'',y'') = (      -- normalize
-                          ((x' + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
-                          ((y' + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
-                         )
-
   turtles = do
     (tw,_, _, _) <- Reader.ask
-    (MkWorld _ ts _) <- lift $ readTVarIO tw
+    (MkWorld ts _) <- lift $ readTVarIO tw
     return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
   turtle n = do
     (tw,_, _, _) <- Reader.ask
-    (MkWorld _ ts _) <- lift $ readTVarIO tw
+    (MkWorld ts _) <- lift $ readTVarIO tw
     return [TurtleRef n (ts IM.! n)]
 
   heading = do
@@ -2641,12 +2615,12 @@ instance STMorIO IO where
 
   link x y = do
     (tw,_, _, _) <- Reader.ask
-    (MkWorld _ _ ls) <- lift $ readTVarIO tw
+    (MkWorld _ ls) <- lift $ readTVarIO tw
     return [LinkRef (x,y) (ls M.! (x,y))]
 
   links = do
     (tw,_, _, _) <- Reader.ask
-    (MkWorld _ _ ls) <- lift $ readTVarIO tw
+    (MkWorld _ ls) <- lift $ readTVarIO tw
     return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2

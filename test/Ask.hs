@@ -27,8 +27,7 @@ run [] -- workaround for tests
 askTestGroup = $(testGroupGenerator)
 case_AskRNG_2D = runT $ do 
   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
-  clear_turtles
-  wait 0.1  
+  ca
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
   ask (atomic $ sprout 1) =<< atomic (one_of =<<  patches)
@@ -50,8 +49,7 @@ case_AskRNG_2D = runT $ do
 
 case_AskRNG_2D_Nof = runT $ do 
   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
-  clear_turtles
-  wait 0.1  
+  ca
   -- this is not the same as 4 times one_of! (above), because we delete successive draws from the agentset (so as not to return duplicates)
   ask (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches) 
 

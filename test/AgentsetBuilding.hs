@@ -111,6 +111,10 @@ case_PatchSet2_2D = runT $ do
    a7 <-  sort_ =<< of_ pxcor =<< atomic (patch_set [patch 3 0, patch 1 0, patch 2 0])
    let e7 = [1,2,3]
    lift $ e7 @=? a7
+
+   a8 <-  sort_ =<< of_ pycor =<< atomic (patch_set [patch 3 0, patch 1 0, patch 2 0])
+   let e8 = [0,0,0]
+   lift $ e8 @=? a8
    
    a8 <- atomic $ count =<< (patch_set [patch 0 0, patch 0 0])
    let e8 = 1

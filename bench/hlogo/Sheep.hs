@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
 -- turtles: sheep
 -- patches: grass
@@ -68,19 +69,19 @@ move = atomic $ do
   lt l
   fd 1
 
-eat_grass = do
+eat_grass = atomic $ do
   c <- pcolor
   when (c == green) $ do
-              atomic $ set_pcolor brown
-              atomic $ with_senergy (+ sheep_gain_from_food)
+              set_pcolor brown
+              with_senergy (+ sheep_gain_from_food)
 
 grow_grass = do
   c <- pcolor
   when (c == brown) $ do
                d <- countdown
-               atomic $ if (d <= 0)
-                        then set_pcolor green >> set_countdown grass_regrowth_time
-                        else set_countdown $ d -1
+               if (d <= 0)
+               then atomic $ set_pcolor green >> set_countdown grass_regrowth_time
+               else atomic $ set_countdown $ d -1
 
 
 
