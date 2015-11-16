@@ -56,9 +56,9 @@ data Turtle = MkTurtle {
 -- Each field is a transactional variable (TVar) storing an attribute value of 'Patch'
 -- For now only the default patch attributes are supported.
 data Patch = MkPatch {
-      pxcor_ :: !Int             -- on creation
-    , pycor_ :: !Int             -- on creation
-    , pcolor_ :: TVar Double
+    --   pxcor_ :: !Int             -- on creation
+    -- , pycor_ :: !Int             -- on creation
+    pcolor_ :: TVar Double
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
     , pvars_ :: Array Int (TVar Double)
@@ -131,8 +131,8 @@ type CIO a = ReaderT Context IO a
 instance Ord Turtle where
     compare (MkTurtle {who_ = w1}) (MkTurtle {who_ = w2}) = compare w1 w2
 
-instance Ord Patch where
-    compare (MkPatch {pxcor_ = x1, pycor_ = y1}) (MkPatch {pxcor_ = x2, pycor_ = y2}) = compare (x1,y1) (x2,y2)
+-- instance Ord Patch where
+--     compare (MkPatch {pxcor_ = x1, pycor_ = y1}) (MkPatch {pxcor_ = x2, pycor_ = y2}) = compare (x1,y1) (x2,y2)
 
 instance Ord Link where
     compare (MkLink {end1_ = xe1, end2_ = xe2}) (MkLink {end1_ = ye1, end2_ = ye2}) = compare (xe1,xe2) (ye1,ye2)

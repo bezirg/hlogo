@@ -101,8 +101,6 @@ cInit po = do
 newPatch :: Int -> Int -> IO Patch
 newPatch x y = let po = 1       -- patches_own only one element for now
                in MkPatch <$>
-               return x <*>
-               return y <*>
                newTVarIO 0 <*>
                newTVarIO "" <*>
                newTVarIO 9.9 <*>

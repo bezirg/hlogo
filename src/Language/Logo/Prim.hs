@@ -416,7 +416,7 @@ pxcor :: (Monad m) => C m Int
 pxcor = do
   (_,a, _, _) <- Reader.ask
   case a of
-    PatchRef _ (MkPatch {pxcor_ = x}) -> return x
+    PatchRef (x,_) _ -> return x
     _ -> throw $ ContextException "patch" a
 
 {-# SPECIALIZE pycor :: CSTM Int #-}
@@ -427,7 +427,7 @@ pycor :: (Monad m) => C m Int
 pycor = do
   (_,a, _, _) <- Reader.ask
   case a of
-    PatchRef _ (MkPatch {pycor_ = y}) -> return y
+    PatchRef (_,y) _ -> return y
     _ -> throw $ ContextException "patch" a
 
 set_plabel :: String -> CSTM ()
@@ -938,12 +938,12 @@ clear_patches = do
   (tw, s, _, _) <- Reader.ask
   case s of
     ObserverRef _ -> do
-                  mapM_ (\ (MkPatch {pxcor_=px, pycor_=py, pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen=pg})  -> do
+                  mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen=pg})  -> do
                               atomic $ lift $ writeTVar pc 0
                               atomic $ lift $ writeTVar pl ""
                               atomic $ lift $ writeTVar plc 9.9
                               atomic $ lift $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
-                              atomic $ lift $ writeTVar pg $ mkStdGen (px + py * 1000)
+                              atomic $ lift $ writeTVar pg $ mkStdGen 3
                            ) __patches
     _ -> throw $ ContextException "observer" s
 
@@ -2426,17 +2426,19 @@ instance STMorIO STM where
       t <- lift $ unsafeIOToSTM getCurrentTime
       lift $ writeTVar __timer t
   show a = do
-      (_, r, p, _) <- Reader.ask
-      lift $ writeTQueue p $ (case r of
-                               ObserverRef _ -> "observer: "
-                               PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                               LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                               TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
-                               Nobody -> throw DevException
-                            )   ++ Prelude.show a
+      (_, s, p, _) <- Reader.ask
+      case s of
+        ObserverRef _ -> lift $ unsafeIOToSTM $ putStrLn ("observer: " ++ Prelude.show a)
+        PatchRef (x,y) _ -> lift $ writeTQueue p $ "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
+        LinkRef (x,y) _ -> lift $ writeTQueue p $ "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
+        TurtleRef i _ -> lift $ writeTQueue p $ "(turtle " ++ Prelude.show i ++ "): " ++ Prelude.show a
+        Nobody -> throw DevException
+
   print a = do
-      (_, _, p, _) <- Reader.ask
-      lift $ writeTQueue p $ Prelude.show a
+      (_, s, p, _) <- Reader.ask
+      case s of
+        ObserverRef _ -> lift $ unsafeIOToSTM $ Prelude.print a
+        _ -> lift $ writeTQueue p $ Prelude.show a
 
   ticks = lift $ unsafeIOToSTM $ readIORef __tick
 
@@ -2657,17 +2659,19 @@ instance STMorIO IO where
       atomic $ lift $ writeTVar __timer t
 
   show a = do
-      (_, r, p, _) <- Reader.ask
-      atomic $ lift $ writeTQueue p $ (case r of
-                                         ObserverRef _ -> "observer: "
-                                         PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                                         LinkRef (x,y) _ -> "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
-                                         TurtleRef i _ -> "(turtle " ++ Prelude.show i ++ "): "
-                                         Nobody -> throw DevException
-                                      )   ++ Prelude.show a
+      (_, s, p, _) <- Reader.ask
+      case s of
+        ObserverRef _ -> lift $ putStrLn ("observer: " ++ Prelude.show a)
+        PatchRef (x,y) _ -> atomic $ lift $ writeTQueue p $ "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
+        LinkRef (x,y) _ -> atomic $ lift $ writeTQueue p $ "(link " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
+        TurtleRef i _ -> atomic $ lift $ writeTQueue p $ "(turtle " ++ Prelude.show i ++ "): " ++ Prelude.show a
+        Nobody -> throw DevException
+
   print a = do
-      (_, _, p, _) <- Reader.ask
-      atomic $ lift $ writeTQueue p $ Prelude.show a
+      (_, s, p, _) <- Reader.ask
+      case s of
+        ObserverRef _ -> lift $ Prelude.print a
+        _ -> atomic $ lift $ writeTQueue p $ Prelude.show a
 
   ticks = lift $ readIORef __tick
 
