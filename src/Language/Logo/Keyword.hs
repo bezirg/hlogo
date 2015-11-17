@@ -24,6 +24,7 @@ import Language.Logo.Prim
 import Language.Logo.Exception
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
+import Control.Concurrent (runInUnboundThread)
 import Control.Concurrent.STM
 import Data.Array
 import Data.List (genericLength)
@@ -468,7 +469,7 @@ run procs = do
                {-# INLINE ca #-}
                ca = clear_all |]
 
-  m <- [d| main = do 
+  m <- [d| main = runInUnboundThread $ do 
                     c <- cInit $(plength)
                     Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 

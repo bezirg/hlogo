@@ -1596,7 +1596,7 @@ ask f as = do
 
 -- | Internal
 split :: Int -> [a] -> [[a]]
-split 1 l = [l]
+--split 1 l = [l]
 split n l = let (d,m) = length l `divMod` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'

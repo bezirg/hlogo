@@ -39,8 +39,8 @@ confOpt = Conf {
           , min_pycor_ = (-16) &= name "mix-pycor"  &= typ "NUM" &= help "Setting the max_pycor"
           , patch_size_ = 13 &= name "patch-size" &= typ "NUM" &= help "Set the size of the patch in pixels"
           , origin_location_ = "center" &= explicit &= name "o" &= name "origin-location" &= help "Setting the origin location"
-          , horizontal_wrap_ = True &= explicit &= name "h" &= name "horizontal-wrap" &= help "When set, enables horizontal wrapping"
-          , vertical_wrap_ = True &= explicit &= name "v" &= name "vertical-wrap" &= help "When set, enables vertical wrapping"
+          , horizontal_wrap_ = False &= explicit &= name "h" &= name "horizontal-wrap" &= help "When set, enables horizontal wrapping"
+          , vertical_wrap_ = False &= explicit &= name "v" &= name "vertical-wrap" &= help "When set, enables vertical wrapping"
           , split_ = "none" &= explicit &= name "split" &= help "Set the spatial clustering of agents to threads. Options: none, horizontal, vertical, both"
           } &= program "hlogo" &= help "HLogo framework" &= summary "HLogo v0.0.1, (C) Nikolaos Bezirgiannis, Ilias Sakellariou"
 
