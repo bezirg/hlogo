@@ -41,7 +41,7 @@ module Language.Logo.Prim (
                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
 
                            -- * IO Operations
-                           atomic, ask, of_, with, snapshot
+                           atomic, ask, askPatches, of_, with, snapshot
 
 
 ) where
@@ -1600,6 +1600,28 @@ ask f as = do
                       
  -- lift $ sequence_ ws 
 
+{-# WARNING askPatches "TODO: both splitting" #-}
+-- | The specified agent or agentset runs the given commands. 
+askPatches :: CIO a -> CIO ()
+askPatches f = do
+      (tw, s, p,_) <- Reader.ask
+      case s of
+        Nobody -> throw $ ContextException "agent" Nobody
+        ObserverRef _ -> lift $ do
+                          mapM_ (\ (core, ycorSlice) -> 
+                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
+                                ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
+                          ThreadG.wait __tg                               
+        _ -> lift $ do
+                          mapM_ (\ (core, ycorSlice) -> 
+                                -- this splits it in rows
+                                --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
+                                -- ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
+                                -- this splits it in columns, for some strange reason this works slightly faster. Maybe because data locality works better with smaller chunks than having largely-contiguous chunks
+                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
+                                ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
+
+  
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]
 split 1 l = [(1,l)]
