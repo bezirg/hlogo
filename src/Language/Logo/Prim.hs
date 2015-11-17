@@ -1567,8 +1567,12 @@ ask f as = do
    [Nobody] -> throw $ TypeException "agentset" Nobody
    _ -> case s of
         Nobody -> throw $ ContextException "agent" Nobody
+#ifdef ASK_SYNCHRONOUS
+        _ -> lift (ask' >> ThreadG.wait __tg)
+#else
         ObserverRef _ -> lift (ask' >> ThreadG.wait __tg)
         _ -> lift ask'
+#endif
     where
      ask' = mapM_ (\ (core, asSection) -> 
                        ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asSection]
@@ -1640,7 +1644,9 @@ of_ f as = do
           ObserverRef _ -> lift $ do
              ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
              rs <- sequence [Thread.result =<< w | w <- ws]
+#ifndef ASK_SYNCHRONOUS
              ThreadG.wait __tg  -- wait for potential internal asks inside the of reporters
+#endif
              return $ concat rs -- lists traversals can be optimized
           _ -> lift $ do
              ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
@@ -1957,7 +1963,7 @@ stats_stm =
 #else
    do
     (tw, _, _, _) <- Reader.ask
-    MkWorld wps wts wls <- lift $ readTVarIO tw
+    MkWorld wts wls <- lift $ readTVarIO tw
     (vtt, vts) <- lift $ F.foldlM (\ (acct, accs) (MkTurtle {ttotalstm=tt, tsuccstm=ts}) -> do
                                   rtt <- readIORef tt
                                   rts <- readIORef ts
@@ -1965,7 +1971,7 @@ stats_stm =
     (vpt, vps) <- lift $ F.foldlM (\ (acct, accs) (MkPatch {ptotalstm=pt, psuccstm=ps}) -> do
                                   rpt <- readIORef pt
                                   rps <- readIORef ps
-                                  return (acct+rpt, accs+rps)) (0,0) wps
+                                  return (acct+rpt, accs+rps)) (0,0) __patches
     (vlt, vls) <- lift $ F.foldlM (\ (acct, accs) (MkLink {ltotalstm=pt, lsuccstm=ps}) -> do
                                   rlt <- readIORef pt
                                   rls <- readIORef ps

@@ -1,5 +1,5 @@
 name:                 hlogo
-version:              0.1.1
+version:              0.1.2
 synopsis:             HLogo, a simulation framework in Haskell
 description:          Input programs are written in a dialect of Logo, as an embedded DSL of Haskell.
 author:               Nikolaos Bezirgiannis <bezirgia@cwi.nl>, Wishnu Prasetya <s.w.b.prasetya@uu.nl>, Ilias Sakellariou <iliass@uom.gr>
@@ -15,10 +15,13 @@ source-repository head
   type:     git
   location: git@bitbucket.org:bezirg/hlogo.git
 
-Flag stats-stm {
+Flag stats-stm
   Description: When compiled with this flag on, it collects runtime statistics for total and succesful stm rollbacks. To print the collected statistics use the HLogo's 'stats_stm' primitive"
   Default:     False
-}
+
+Flag ask-synchronous
+  Description: When compiled with this flag on, the ask will block waiting until all spawned threads have finished. Even if this flag is off, any ask called by the observer is always synchronous.
+  Default:     False
 
 library
   build-depends:      
@@ -55,6 +58,8 @@ library
   ghc-options:        -Wall -fno-warn-unused-do-bind
   if flag(stats-stm)
      cpp-options:     -DSTATS_STM
+  if flag(ask-synchronous)
+     cpp-options:     -DASK_SYNCHRONOUS
   hs-source-dirs:     src
 
 -- TEST SUITE
