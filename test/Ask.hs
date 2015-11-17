@@ -82,6 +82,7 @@ case_RecursiveCallInsideAsk1 = let
 
                                in
                                  runT $ do
+                                   ca
                                    atomic $ set_glob1 0
                                    go1
                                    a1 <- count =<< turtles
@@ -104,6 +105,7 @@ case_RecursiveCallInsideAsk2 = let
                  when (r > 0) go2) -- recurses until it reaches random=0
                =<< turtle 0
                                 in runT $ do
+                                  ca
                                   atomic $ set_glob1 0 -- not needed, because untyped (double) globals are initialized anyway to 0 
                                   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
                                   go1

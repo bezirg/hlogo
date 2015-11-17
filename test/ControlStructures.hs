@@ -35,6 +35,7 @@ case_Loop1 = let
                   lift $ e1 @=? a1
 
 case_Foreach1 = runT $ do
+  ca
   foreach [1,2,3] (\ x -> crt x)
   a1 <- count =<< turtles
   let e1 = 6

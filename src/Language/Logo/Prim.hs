@@ -101,7 +101,7 @@ import qualified Data.Foldable as F (foldlM)
 -- |  Reports this turtle or patch. 
 self :: Monad m => C m [AgentRef] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ _ -> return [a]
     PatchRef _ _ -> return [a]
@@ -116,7 +116,7 @@ self = do
 -- NB: Implemented for ask, of, with
 myself :: (Monad m) => C m [AgentRef]
 myself = do
-  (_,s,_,m) <- Reader.ask
+  (s,_,m) <- Reader.ask
   return $ case s of
              TurtleRef _ _ -> [m]
              PatchRef _ _ -> [m]
@@ -150,7 +150,7 @@ carefully c c' = catch c (\ ex -> let _ = (ex :: SomeException) in c')
 -- | Reports the patch at (dx, dy) from the caller, that is, the patch containing the point dx east and dy patches north of this agent. 
 patch_at :: STMorIO m => Double -> Double ->  C m [AgentRef]
 patch_at x y = do
-  ( _, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     PatchRef (px, py) _ -> patch (fromIntegral px) (fromIntegral py)
     TurtleRef _ _ -> do
@@ -253,7 +253,7 @@ allp r as = do
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> CSTM ()
 jump n = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty, heading_ = th}) -> do
            x <- lift $ readTVar tx
@@ -285,7 +285,7 @@ jump n = do
 -- | The turtle sets its x-coordinate to x and its y-coordinate to y. 
 setxy :: Double -> Double -> CSTM ()
 setxy x' y' = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
                 let max_x = max_pxcor_ conf
@@ -316,7 +316,7 @@ setxy x' y' = do
 -- | The turtle moves forward by number steps, one step at a time. (If number is negative, the turtle moves backward.) 
 forward :: Double -> CSTM ()
 forward 0 = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ _ -> return ()
     _ -> throw $ ContextException "turtle" a
@@ -343,19 +343,16 @@ bk = back
 -- will not return this dead agent.
 die :: CSTM ()
 die = do
- (tw,a,_,_) <- Reader.ask
+ (a,_,_) <- Reader.ask
  case a of
    TurtleRef t _ -> do
-          (MkWorld ts ls) <- lift $ readTVar tw
-          lift $ writeTVar tw $ MkWorld (IM.delete t ts) ls
+          lift $ modifyTVar' __turtles (IM.delete t)
    LinkRef (e1,e2) (MkLink {directed_ = d}) -> do
-          (MkWorld ts ls) <- lift $ readTVar tw
-          lift $ writeTVar tw $ MkWorld ts (M.delete (e1,e2) 
-                                                (if d -- is directed
-                                                then ls
-                                                else M.delete (e2,e1) ls
-                                                )
-                                              )
+          lift $ modifyTVar' __links (M.delete (e1,e2) . 
+                                           (if d -- is directed
+                                            then id
+                                            else M.delete (e2,e1)
+                                           ))
    _ -> throw $ ContextException "turtle or patch" a
 
 
@@ -403,7 +400,7 @@ can_movep n = liftM ( /= [Nobody]) $ patch_ahead n
 
 set_heading :: Double -> CSTM ()
 set_heading v = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (heading_ t) v
     _ -> throw $ ContextException "turtle" a
@@ -414,7 +411,7 @@ set_heading v = do
 -- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pxcor :: (Monad m) => C m Int
 pxcor = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     PatchRef (x,_) _ -> return x
     _ -> throw $ ContextException "patch" a
@@ -425,21 +422,21 @@ pxcor = do
 -- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
 pycor :: (Monad m) => C m Int
 pycor = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     PatchRef (_,y) _ -> return y
     _ -> throw $ ContextException "patch" a
 
 set_plabel :: String -> CSTM ()
 set_plabel s = do
-  (_,a,_,_) <- Reader.ask
+  (a,_,_) <- Reader.ask
   case a of
     PatchRef _ (MkPatch {plabel_ = p}) -> lift $ writeTVar p s
     _ -> throw $ ContextException "patch" a
 
 set_pcolor :: Double -> CSTM ()
 set_pcolor s = do
-  (_,a,_,_) <- Reader.ask
+  (a,_,_) <- Reader.ask
   case a of
     PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ writeTVar tc s
     TurtleRef _ _ -> do
@@ -449,14 +446,14 @@ set_pcolor s = do
 
 set_breed :: String -> CSTM ()
 set_breed v = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (breed_ t) v
     _ -> throw $ ContextException "turtle" a
 
 set_color :: Double -> CSTM ()
 set_color v = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (color_ t) v
     LinkRef _ (MkLink {lcolor_ = c}) -> lift $ writeTVar c v
@@ -464,7 +461,7 @@ set_color v = do
 
 set_label_color :: Double -> CSTM ()
 set_label_color v = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (label_color_ t) v
     LinkRef _ (MkLink {llabel_color_ = c}) -> lift $ writeTVar c v
@@ -473,7 +470,7 @@ set_label_color v = do
 
 set_xcor :: Double -> CSTM ()
 set_xcor x' = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {xcor_ = tx}) -> do
                let max_x = max_pxcor_ conf
@@ -492,7 +489,7 @@ set_xcor x' = do
 
 set_size :: Double -> CSTM ()
 set_size v = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ t -> lift $ writeTVar (size_ t) v
     _ -> throw $ ContextException "turtle" a
@@ -503,7 +500,7 @@ set_size v = do
 
 set_ycor :: Double -> CSTM ()
 set_ycor y' = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {ycor_ = ty}) -> do
                let max_y = max_pycor_ conf
@@ -524,7 +521,7 @@ set_ycor y' = do
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: Monad m => C m Int
 who = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef i _ -> return i
     _ -> throw $ ContextException "turtle" a
@@ -561,7 +558,7 @@ new_seed = do
 
 random_seed :: Int -> CSTM ()
 random_seed i = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let g = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -573,7 +570,7 @@ random_seed i = do
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
 random_xcor :: CSTM Double
 random_xcor = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let g = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -588,7 +585,7 @@ random_xcor = do
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, y. 
 random_ycor :: CSTM Double
 random_ycor = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let g = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -603,7 +600,7 @@ random_ycor = do
 -- | Reports a random integer ranging from min-pxcor to max-pxcor inclusive. 
 random_pxcor :: CSTM Int
 random_pxcor = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let g = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -618,7 +615,7 @@ random_pxcor = do
 -- | Reports a random integer ranging from min-pycor to max-pycor inclusive. 
 random_pycor :: CSTM Int
 random_pycor = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let g = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -636,7 +633,7 @@ random_pycor = do
 random               :: (Random a , Eq a, Ord a, Num a) => a -> CSTM a
 random x | x == 0     = return 0
          | otherwise = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -654,7 +651,7 @@ random x | x == 0     = return 0
 random_float               :: Double -> CSTM Double
 random_float x | x == 0     = return 0
          | otherwise = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -674,7 +671,7 @@ home = setxy 0 0
 -- | The turtle turns right by number degrees. (If number is negative, it turns left.) 
 right :: Double -> CSTM ()
 right n = do
-  (_, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     TurtleRef _ t -> lift $ modifyTVar' (heading_ t) (\ h -> mod_ (h+n) 360)
     _ -> throw $ ContextException "turtle" s
@@ -740,7 +737,7 @@ towardsxy = todo
 -- | The turtle makes itself invisible. 
 hide_turtle :: CSTM ()
 hide_turtle = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {hiddenp_ = th}) -> lift $ writeTVar th True
     _ -> throw $ ContextException "turtle" a
@@ -753,7 +750,7 @@ ht = hide_turtle
 -- | The turtle becomes visible again. 
 show_turtle :: CSTM ()
 show_turtle = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {hiddenp_ = th}) -> lift $ writeTVar th False
     _ -> throw $ ContextException "turtle" a
@@ -766,7 +763,7 @@ st = show_turtle
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_down :: CSTM ()
 pen_down = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Down
     _ -> throw $ ContextException "turtle" a
@@ -779,7 +776,7 @@ pd = pen_down
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_up :: CSTM ()
 pen_up = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Up
     _ -> throw $ ContextException "turtle" a
@@ -792,7 +789,7 @@ pu = pen_up
 pen_erase :: CSTM ()
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_erase = do
-  (_,a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     TurtleRef _ (MkTurtle {pen_mode_ = tp}) -> lift $ writeTVar tp Erase
     _ -> throw $ ContextException "turtle" a
@@ -878,7 +875,7 @@ world_height = return $ max_pycor_ conf - min_pycor_ conf + 1
 -- | Clears every plot in the model.
 clear_all_plots :: CIO ()
 clear_all_plots = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       ObserverRef _ -> return ()
       _ -> throw $ ContextException "observer" a
@@ -887,7 +884,7 @@ clear_all_plots = do
 -- | Clears all lines and stamps drawn by turtles. 
 clear_drawing :: CIO ()
 clear_drawing = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       ObserverRef _ -> return ()
       _ -> throw $ ContextException "observer" a
@@ -901,7 +898,7 @@ cd = clear_drawing
 -- | Clears all text from the model's output area, if it has one. Otherwise does nothing. 
 clear_output :: CIO ()
 clear_output = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       ObserverRef _ -> return ()
       _ -> throw $ ContextException "observer" a
@@ -911,11 +908,10 @@ clear_output = do
 -- Also resets the who numbering, so the next turtle created will be turtle 0.
 clear_turtles :: CIO ()
 clear_turtles = do
-  (tw, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     ObserverRef _ -> atomic $ lift $ do
-                  (MkWorld _ ls) <- readTVar tw
-                  writeTVar tw (MkWorld IM.empty ls)
+                  writeTVar __turtles IM.empty
                   writeTVar __who 0
     _ -> throw $ ContextException "observer" a
 
@@ -925,19 +921,17 @@ ct :: CIO ()
 ct = clear_turtles
 
 -- | Kills all links.
-clear_links :: CSTM ()
+clear_links :: CIO ()
 clear_links = do
-  (tw, s, _,_) <- Reader.ask
+  (s, _,_) <- Reader.ask
   case s of
-    ObserverRef _ -> do
-                (MkWorld ts _) <- lift $ readTVar tw
-                lift $ writeTVar tw (MkWorld ts M.empty)
+    ObserverRef _ -> atomic $ lift $ writeTVar __links M.empty
     _ -> throw $ ContextException "observer" s
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: CIO ()
 clear_patches = do
-  (tw, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     ObserverRef _ -> do
                   mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen=pg})  -> do
@@ -959,7 +953,7 @@ cp = clear_patches
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: CIO ()
 clear_ticks = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       ObserverRef _ -> lift $ writeIORef __tick undefined
       _ -> throw $ ContextException "observer" a
@@ -967,7 +961,7 @@ clear_ticks = do
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: CIO ()
 reset_ticks = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       ObserverRef _ -> lift $ writeIORef __tick 0
       _ -> throw $ ContextException "observer" a
@@ -981,7 +975,7 @@ tick = tick_advance 1
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 tick_advance :: Double -> CIO ()
 tick_advance n = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     ObserverRef _ -> lift $ modifyIORef' __tick (+n)
     _ -> throw $ ContextException "observer" a
@@ -1074,7 +1068,7 @@ position = find
 one_of :: [a] -> CSTM [a]
 one_of [] = error "empty list"
 one_of l = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -1091,7 +1085,7 @@ one_of l = do
 agent_one_of :: [AgentRef] -> CSTM [AgentRef]
 agent_one_of [] = nobody
 agent_one_of l = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -1207,8 +1201,8 @@ sort_by c l = return $ sortBy c l
 -- | Reports a list of agents, sorted according to each agent's value for reporter. Ties are broken randomly. 
 sort_on :: Ord a => CSTM a -> [AgentRef] -> CSTM [AgentRef]
 sort_on rep as = do
-  (tw, s, p, _) <- Reader.ask
-  xs <- lift . sequence $ [Reader.runReaderT rep (tw, a, p, s) | a <- as]
+  (s, p, _) <- Reader.ask
+  xs <- lift . sequence $ [Reader.runReaderT rep (a, p, s) | a <- as]
   let rs = zip xs as
   return $ map snd $ sortBy (compare `on` fst) rs where
 
@@ -1368,7 +1362,7 @@ subtract_headings h1 h2 = let
 -- | The link makes itself invisible. 
 hide_link :: CSTM ()
 hide_link = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     LinkRef _ (MkLink {lhiddenp_ = h}) -> lift $ writeTVar h True
     _ -> throw $ ContextException "link" a
@@ -1376,7 +1370,7 @@ hide_link = do
 -- | The turtle becomes visible again. 
 show_link :: CSTM ()
 show_link = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     LinkRef _ (MkLink {lhiddenp_ = h}) -> lift $ writeTVar h False
     _ -> throw $ ContextException "link" a
@@ -1385,7 +1379,7 @@ show_link = do
 -- | Reports the distance between the endpoints of the link. 
 link_length :: CSTM Double
 link_length = do
-  (_, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     LinkRef (f,t) _ -> do
                 [TurtleRef _ (MkTurtle {xcor_ = fx, ycor_ = fy})] <- turtle f
@@ -1403,7 +1397,7 @@ link_length = do
 -- | Report the undirected link between turtle and the caller. If no link exists then it reports nobody. 
 link_with :: [AgentRef] -> CSTM [AgentRef]
 link_with [TurtleRef x _] = do
-  (_, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     TurtleRef y _ -> do
            lxy <- link x y
@@ -1421,7 +1415,7 @@ link_with a = throw $ TypeException "turtle" (head a)
 -- | Report the directed link from turtle to the caller. If no link exists then it reports nobody. 
 in_link_from :: [AgentRef] -> CSTM [AgentRef]
 in_link_from [TurtleRef x _] = do
-  (_, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     TurtleRef y _ -> do
            lxy <- link x y
@@ -1439,7 +1433,7 @@ in_link_from a = throw $ TypeException "turtle" (head a)
 -- | Reports the directed link from the caller to turtle. If no link exists then it reports nobody. 
 out_link_to :: [AgentRef] -> CSTM [AgentRef]
 out_link_to [TurtleRef x _] = do
-  (_, s, _, _) <- Reader.ask
+  (s, _, _) <- Reader.ask
   case s of
     TurtleRef y _ -> do
            lxy <- link x y
@@ -1456,30 +1450,30 @@ out_link_to a = throw $ TypeException "turtle" (head a)
 -- | Reports an agentset of all undirected links connected to the caller. 
 my_links :: CSTM [AgentRef]
 my_links = do
-  (tw,a, _, _) <- Reader.ask 
+  (a, _, _) <- Reader.ask 
   case a of
      TurtleRef x _ -> do
-             (MkWorld _ ls) <- lift $ readTVar tw
+             ls <- lift $ readTVar __links
              return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
      _ -> throw $ ContextException "turtle" a
 
 -- | Reports an agentset of all the directed links going out from the caller to other nodes. 
 my_out_links :: CSTM [AgentRef]
 my_out_links = do
-  (tw, a, _, _) <- Reader.ask 
+  (a, _, _) <- Reader.ask 
   case a of
     TurtleRef x _ -> do
-                 (MkWorld _ ls) <- lift $ readTVar tw
+                 ls <- lift $ readTVar __links
                  return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
     _ -> throw $ ContextException "turtle" a
 
 -- |  Reports an agentset of all the directed links coming in from other nodes to the caller. 
 my_in_links :: CSTM [AgentRef]
 my_in_links = do
-  (tw, a, _, _) <- Reader.ask 
+  (a, _, _) <- Reader.ask 
   case a of
     TurtleRef x _ -> do
-                (MkWorld _ ls) <- lift $ readTVar tw
+                ls <- lift $ readTVar __links
                 return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
     _ -> throw $ ContextException "turtle" a
 
@@ -1490,7 +1484,7 @@ no_links = return []
 -- | Ties end1 and end2 of the link together. If the link is a directed link end1 is the root turtle and end2 is the leaf turtle. The movement of the root turtle affects the location and heading of the leaf turtle. If the link is undirected the tie is reciprocal so both turtles can be considered root turtles and leaf turtles. Movement or change in heading of either turtle affects the location and heading of the other turtle. 
 tie :: CSTM ()
 tie = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     LinkRef _ (MkLink {tie_mode = t}) -> lift $ writeTVar t Fixed
     _ -> throw $ ContextException "link" a
@@ -1498,7 +1492,7 @@ tie = do
 -- | Unties end2 from end1 (sets tie-mode to "none") if they were previously tied together. If the link is an undirected link, then it will untie end1 from end2 as well. It does not remove the link between the two turtles. 
 untie :: CSTM ()
 untie = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     LinkRef _ (MkLink {tie_mode = t}) -> lift $ writeTVar t None
     _ -> throw $ ContextException "link" a
@@ -1517,14 +1511,14 @@ link_set ts = liftM (foldr (\ x acc -> if x == Nobody -- filter Nobody
 
 end1 :: CSTM [AgentRef]
 end1 = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     LinkRef (e1, _e2) _ -> turtle e1
     _ -> throw $ ContextException "link" s
 
 end2 :: CSTM [AgentRef]
 end2 = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     LinkRef (_e1, e2) _ -> turtle e2
     _ -> throw $ ContextException "link" s
@@ -1564,7 +1558,7 @@ increaseTotalSTM s = case s of
 -- | The specified agent or agentset runs the given commands. 
 ask :: CIO a -> [AgentRef] -> CIO ()
 ask f as = do
- (tw, s, p,_) <- Reader.ask
+ (s, p,_) <- Reader.ask
  case as of
    [Nobody] -> throw $ TypeException "agentset" Nobody
    _ -> case s of
@@ -1577,7 +1571,7 @@ ask f as = do
 #endif
     where
      ask' = mapM_ (\ (core, asSection) -> 
-                       ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asSection]
+                       ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a, p, s) | a <- asSection]
                   ) (split numCapabilities as)
 
         -- do
@@ -1604,12 +1598,12 @@ ask f as = do
 -- | The specified agent or agentset runs the given commands. 
 askPatches :: CIO a -> CIO ()
 askPatches f = do
-      (tw, s, p,_) <- Reader.ask
+      (s, p,_) <- Reader.ask
       case s of
         Nobody -> throw $ ContextException "agent" Nobody
         ObserverRef _ -> lift $ do
                           mapM_ (\ (core, ycorSlice) -> 
-                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
+                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
                                 ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
                           ThreadG.wait __tg                               
         _ -> lift $ do
@@ -1618,7 +1612,7 @@ askPatches f = do
                                 --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
                                 -- ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
                                 -- this splits it in columns, for some strange reason this works slightly faster. Maybe because data locality works better with smaller chunks than having largely-contiguous chunks
-                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
+                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
                                 ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
 
   
@@ -1660,20 +1654,20 @@ hsplit n as = IM.toList $ foldl (\ im a -> case a of
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
 of_ :: CIO a -> [AgentRef] -> CIO [a]
 of_ f as = do
-  (tw, s, p, _) <- Reader.ask
+  (s, p, _) <- Reader.ask
   case as of
     [Nobody] -> throw $ TypeException "agentset" Nobody 
     _ -> case s of
           Nobody -> throw $ ContextException "agent" Nobody
           ObserverRef _ -> lift $ do
-             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a, p, s) | a <- asi])) (split numCapabilities as)
              rs <- sequence [Thread.result =<< w | w <- ws]
 #ifndef ASK_SYNCHRONOUS
              ThreadG.wait __tg  -- wait for potential internal asks inside the of reporters
 #endif
              return $ concat rs -- lists traversals can be optimized
           _ -> lift $ do
-             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a, p, s) | a <- asi])) (split numCapabilities as)
              liftM concat $ sequence [Thread.result =<< w | w <- ws] -- lists traversals can be optimized
                  
   
@@ -1794,7 +1788,7 @@ is_link_setp _ = throw DevException
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> CSTM [AgentRef]
 hatch n = do
-  (tw, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
 #ifdef STATS_STM
     TurtleRef _ (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _ix _iy _tt _ts) -> do
@@ -1831,8 +1825,7 @@ hatch n = do
             oldWho <- lift $ readTVar __who
             lift $ modifyTVar' __who (n +)
             ns <- lift $ newTurtles oldWho
-            let addTurtles ts' (MkWorld ts_ ls_)  = MkWorld (ts_ `IM.union` ts') ls_
-            lift $ modifyTVar' tw (addTurtles ns) 
+            lift $ modifyTVar' __turtles (`IM.union` ns) 
             return $ map (uncurry TurtleRef) $ IM.toList ns -- todo: can be optimized
 
     _ -> throw $ ContextException "turtle" a
@@ -1841,7 +1834,7 @@ hatch n = do
 -- (If that agent is a patch, the effect is to move the turtle to the center of that patch.) 
 move_to :: [AgentRef] -> CSTM ()
 move_to a = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> 
               case a of
@@ -1966,7 +1959,7 @@ unsafe_shuffle l = do
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_show :: Show a => a -> CIO ()
 unsafe_show a = do
-  (_, r, _, _) <- Reader.ask
+  (r, _, _) <- Reader.ask
   lift $ putStrLn $ (case r of
                            ObserverRef _ -> "observer: "
                            PatchRef (x,y) _ -> "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): "
@@ -2008,7 +2001,7 @@ stats_stm =
 
 with_breed :: (String -> String) -> CSTM ()
 with_breed f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {breed_ = tb}) -> lift $ modifyTVar' tb f
     --LinkRef _ (MkLink {lbreed_ = tb}) -> lift $ modifyTVar' tb f
@@ -2016,7 +2009,7 @@ with_breed f = do
 
 with_color :: (Double -> Double) -> CSTM ()
 with_color f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {color_ = tb}) -> lift $ modifyTVar' tb f
     LinkRef _ (MkLink {lcolor_ = tb}) -> lift $ modifyTVar' tb f
@@ -2024,21 +2017,21 @@ with_color f = do
 
 with_heading :: (Double -> Double) -> CSTM ()
 with_heading f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {heading_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "turtle" s
 
 with_shape :: (String -> String) -> CSTM ()
 with_shape f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {shape_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "turtle" s
 
 with_label :: (String -> String) -> CSTM ()
 with_label f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {label_ = tb}) -> lift $ modifyTVar' tb f
     LinkRef _ (MkLink {llabel_ = tb}) -> lift $ modifyTVar' tb f
@@ -2046,7 +2039,7 @@ with_label f = do
 
 with_label_color :: (Double -> Double) -> CSTM ()
 with_label_color f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {label_color_ = tb}) -> lift $ modifyTVar' tb f
     LinkRef _ (MkLink {llabel_color_ = tb}) -> lift $ modifyTVar' tb f
@@ -2054,35 +2047,35 @@ with_label_color f = do
 
 with_size :: (Double -> Double) -> CSTM ()
 with_size f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     TurtleRef _ (MkTurtle {size_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "turtle" s
 
 with_pcolor :: (Double -> Double) -> CSTM ()
 with_pcolor f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     PatchRef _ (MkPatch {pcolor_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "patch" s
 
 with_plabel :: (String -> String) -> CSTM ()
 with_plabel f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     PatchRef _ (MkPatch {plabel_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "patch" s
 
 with_plabel_color :: (Double -> Double) -> CSTM ()
 with_plabel_color f = do
-  (_,s,_,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   case s of
     PatchRef _ (MkPatch {plabel_color_ = tb}) -> lift $ modifyTVar' tb f
     _ -> throw $ ContextException "patch" s
 
 snapshot :: CIO ()
 snapshot = do
-  ( _, s, _,  _) <- Reader.ask
+  (s, _,  _) <- Reader.ask
   case s of
     ObserverRef _ -> do
              ticksNow <- ticks
@@ -2251,7 +2244,7 @@ instance STMorIO STM where
                return $ round x' == px && round y' == py
             ) ts
   patch_here = do
-    (_, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
                  x' <- lift $ readTVar x
@@ -2260,29 +2253,29 @@ instance STMorIO STM where
       _ -> throw $ ContextException "patch" a
 
   turtles = do
-    (tw,_, _, _) <- Reader.ask
-    MkWorld ts _ <- lift $ readTVar tw
+    (_, _, _) <- Reader.ask
+    ts <- lift $ readTVar __turtles
     return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
   turtle n = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ts _) <- lift $ readTVar tw
+    (_, _, _) <- Reader.ask
+    ts <- lift $ readTVar __turtles
     return $ maybe [Nobody] (return . TurtleRef n) $ IM.lookup n ts
 
   heading = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVar h
       _ -> throw (ContextException "turtle" a)
 
   xcor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVar x
       _ -> throw $ ContextException "turtle" a
 
   pcolor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVar tc
       TurtleRef _ _ -> do
@@ -2290,20 +2283,20 @@ instance STMorIO STM where
              lift $ readTVar tc
       _ -> throw $ ContextException "turtle or patch" a
   ycor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVar y
       _ -> throw $ ContextException "turtle" a
 
   color = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVar c
       LinkRef _ (MkLink {lcolor_ = c}) -> lift $ readTVar c
       _ -> throw $ ContextException "turtle or link" a
 
   breed = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVar b
       LinkRef _ (MkLink {lbreed_ = b}) -> return b
@@ -2317,7 +2310,7 @@ instance STMorIO STM where
   distance _ = throw $ TypeException "single turtle or patch" Nobody
 
   distancexy x' y' = do
-    (_,a,_,_) <- Reader.ask
+    (a,_,_) <- Reader.ask
     (x,y) <- case a of
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
@@ -2337,7 +2330,7 @@ instance STMorIO STM where
                      else abs (a2 -a1)
 
   towards a = do
-    ( _, s, _,  _) <- Reader.ask
+    (s, _,  _) <- Reader.ask
     (x1,y1) <- case s of
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
@@ -2367,7 +2360,7 @@ instance STMorIO STM where
                   else (270 + toDegrees (pi + atan2 (-dy') dx')) `mod_` 360
 
   in_radius as n = do
-    ( _, a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     (x, y) <- case a of
                PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
                TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
@@ -2379,7 +2372,7 @@ instance STMorIO STM where
                            delta y y' (fromIntegral (max_pycor_ conf) :: Int) ^ (2::Int)) <= n) as
 
   neighbors = do
-    ( _, a, _,  _) <- Reader.ask
+    (a, _,  _) <- Reader.ask
     (x,y) <- case a of
       PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
@@ -2398,7 +2391,7 @@ instance STMorIO STM where
                   else patch x y
 
   neighbors4 = do
-    ( _, a, _,  _) <- Reader.ask
+    (a, _,  _) <- Reader.ask
     (x,y) <- case a of
       PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVar tx) (lift $ readTVar ty)
@@ -2413,14 +2406,14 @@ instance STMorIO STM where
                   else patch x y
 
   link f t = do
-    (tw,_, _,_) <- Reader.ask
-    (MkWorld _ ls) <- lift $ readTVar tw
+    (_, _,_) <- Reader.ask
+    ls <- lift $ readTVar __links
     return [maybe Nobody (LinkRef (f,t)) $ M.lookup (f,t) ls]
 
 
   links = do
-    (tw,_, _,_) <- Reader.ask
-    (MkWorld _ ls) <- lift $ readTVar tw
+    (_, _,_) <- Reader.ask
+    ls <- lift $ readTVar __links
     return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
@@ -2429,20 +2422,20 @@ instance STMorIO STM where
   readGlobal = lift . readTVar
 
   readTurtle i = do
-    (_,a ,_,_) <- Reader.ask
+    (a ,_,_) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVar (pv ! i)
       _ -> throw $ ContextException "turtle" a
 
   readPatch i = do 
-    (_,a,_,_) <- Reader.ask
+    (a,_,_) <- Reader.ask
     case a of
       PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVar $ pv ! i
       TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVar $ pv !i
       _ -> throw $ ContextException "turtle or patch" a
 
   readLink i = do
-    (_,a ,_,_) <- Reader.ask
+    (a ,_,_) <- Reader.ask
     case a of
       LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVar (pv ! i)
       _ -> throw $ ContextException "link" a
@@ -2456,7 +2449,7 @@ instance STMorIO STM where
       t <- lift $ unsafeIOToSTM getCurrentTime
       lift $ writeTVar __timer t
   show a = do
-      (_, s, p, _) <- Reader.ask
+      (s, p, _) <- Reader.ask
       case s of
         ObserverRef _ -> lift $ unsafeIOToSTM $ putStrLn ("observer: " ++ Prelude.show a)
         PatchRef (x,y) _ -> lift $ writeTQueue p $ "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
@@ -2465,7 +2458,7 @@ instance STMorIO STM where
         Nobody -> throw DevException
 
   print a = do
-      (_, s, p, _) <- Reader.ask
+      (s, p, _) <- Reader.ask
       case s of
         ObserverRef _ -> lift $ unsafeIOToSTM $ Prelude.print a
         _ -> lift $ writeTQueue p $ Prelude.show a
@@ -2476,7 +2469,7 @@ instance STMorIO STM where
 
 instance STMorIO IO where
   turtles_here = do
-    (_,s,_,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     h <- case s of
           TurtleRef _ _ -> patch_here
           PatchRef _ _ -> return [s]
@@ -2487,7 +2480,7 @@ instance STMorIO IO where
     p <- patch_at x y
     with (return . (== p)  =<< patch_here) =<< turtles
   patch_here = do
-    (_,s, _, _) <- Reader.ask
+    (s, _, _) <- Reader.ask
     case s of
       TurtleRef _ (MkTurtle {xcor_ = x, ycor_ = y}) -> do
                         x' <- lift $ readTVarIO x
@@ -2496,29 +2489,29 @@ instance STMorIO IO where
       _ -> throw $ ContextException "turtle" s
 
   turtles = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ts _) <- lift $ readTVarIO tw
+    (_, _, _) <- Reader.ask
+    ts <- lift $ readTVarIO __turtles
     return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
 
   turtle n = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld ts _) <- lift $ readTVarIO tw
+    (_, _, _) <- Reader.ask
+    ts <- lift $ readTVarIO __turtles
     return [TurtleRef n (ts IM.! n)]
 
   heading = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {heading_ = h}) -> lift $ readTVarIO h
       _ -> throw (ContextException "turtle" a)
 
   xcor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {xcor_ = x}) -> lift $ readTVarIO x
       _ -> throw $ ContextException "turtle" a
 
   pcolor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       PatchRef _ (MkPatch {pcolor_ = tc}) -> lift $ readTVarIO tc
       TurtleRef _ _ -> do
@@ -2527,19 +2520,19 @@ instance STMorIO IO where
       _ -> throw $ ContextException "patch" a
 
   ycor = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {ycor_ = y}) -> lift $ readTVarIO y
       _ -> throw $ ContextException "turtle" a
 
   color = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {color_ = c}) -> lift $ readTVarIO c
       _ -> throw $ ContextException "turtle" a
 
   breed = do
-    (_,a, _, _) <- Reader.ask
+    (a, _, _) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {breed_ = b}) -> lift $ readTVarIO b
       LinkRef _ (MkLink {lbreed_ = b}) -> return b
@@ -2554,7 +2547,7 @@ instance STMorIO IO where
 
 
   distancexy x' y' = do
-    (_,a,_,_) <- Reader.ask
+    (a,_,_) <- Reader.ask
     (x,y) <- case a of
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
@@ -2574,7 +2567,7 @@ instance STMorIO IO where
                      else abs (a2 -a1)
 
   towards a = do
-    (_, s, _,  _) <- Reader.ask
+    (s, _,  _) <- Reader.ask
     (x1,y1) <- case s of
               PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
               TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do
@@ -2604,7 +2597,7 @@ instance STMorIO IO where
                   else (270 + toDegrees (pi + atan2 (-dy') dx')) `mod_` 360
 
   in_radius as n = do
-    (_,a,_,_) <- Reader.ask
+    (a,_,_) <- Reader.ask
     (x, y) <- case a of
       PatchRef (x,y) _ -> return (fromIntegral x, fromIntegral y)
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
@@ -2612,7 +2605,7 @@ instance STMorIO IO where
     with (distancexy x y >>= \ d -> return $ d <= n) as
 
   neighbors = do
-    (_, a, _,  _) <- Reader.ask
+    (a, _,  _) <- Reader.ask
     (x,y) <- case a of
       PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
@@ -2631,7 +2624,7 @@ instance STMorIO IO where
                   else patch x y
 
   neighbors4 = do
-    (_, a, _,  _) <- Reader.ask
+    (a, _,  _) <- Reader.ask
     (x,y) <- case a of
       PatchRef (x,y) _ ->  return (fromIntegral x, fromIntegral y)
       TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> liftM2 (,) (lift $ readTVarIO tx) (lift $ readTVarIO ty)
@@ -2646,13 +2639,13 @@ instance STMorIO IO where
                   else patch x y
 
   link x y = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld _ ls) <- lift $ readTVarIO tw
+    (_, _, _) <- Reader.ask
+    ls <- lift $ readTVarIO __links
     return [LinkRef (x,y) (ls M.! (x,y))]
 
   links = do
-    (tw,_, _, _) <- Reader.ask
-    (MkWorld _ ls) <- lift $ readTVarIO tw
+    (_, _, _) <- Reader.ask
+    ls <- lift $ readTVarIO __links
     return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
@@ -2661,20 +2654,20 @@ instance STMorIO IO where
   readGlobal = lift . readTVarIO
 
   readTurtle i = do
-    (_,a ,_,_) <- Reader.ask
+    (a ,_,_) <- Reader.ask
     case a of
       TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ readTVarIO (pv ! i)
       _ -> throw $ ContextException "turtle" a
 
   readPatch i = do 
-    (_,a,_,_) <- Reader.ask
+    (a,_,_) <- Reader.ask
     case a of
       PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ readTVarIO $ pv ! i
       TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ readTVarIO $ pv !i
       _ -> throw $ ContextException "turtle or patch" a
 
   readLink i = do
-    (_,a ,_,_) <- Reader.ask
+    (a ,_,_) <- Reader.ask
     case a of
       LinkRef _ (MkLink {lvars_ = pv}) -> lift $ readTVarIO (pv ! i)
       _ -> throw $ ContextException "link" a
@@ -2689,7 +2682,7 @@ instance STMorIO IO where
       atomic $ lift $ writeTVar __timer t
 
   show a = do
-      (_, s, p, _) <- Reader.ask
+      (s, p, _) <- Reader.ask
       case s of
         ObserverRef _ -> lift $ putStrLn ("observer: " ++ Prelude.show a)
         PatchRef (x,y) _ -> atomic $ lift $ writeTQueue p $ "(patch " ++ Prelude.show x ++ " " ++ Prelude.show y ++ "): " ++ Prelude.show a
@@ -2698,7 +2691,7 @@ instance STMorIO IO where
         Nobody -> throw DevException
 
   print a = do
-      (_, s, p, _) <- Reader.ask
+      (s, p, _) <- Reader.ask
       case s of
         ObserverRef _ -> lift $ Prelude.print a
         _ -> atomic $ lift $ writeTQueue p $ Prelude.show a
@@ -2751,7 +2744,7 @@ modulateDouble c = runIdentity $
 -- can be done better, in a single sequential atomic
 diffuse :: CSTM Double -> (Double -> CSTM ()) -> Double -> CIO ()
 diffuse gettervar settervar perc = do
-  (_, a, _, _) <- Reader.ask
+  (a, _, _) <- Reader.ask
   case a of
     ObserverRef _ -> ask (do
                           ns <- neighbors

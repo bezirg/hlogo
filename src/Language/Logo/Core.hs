@@ -14,9 +14,10 @@ module Language.Logo.Core (
                           ,__who
                           ,__timer 
                           ,__tg
-                          -- ,__turtles
                           ,__patches
-) where
+                          ,__turtles
+                          ,__links
+                          ) where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
@@ -29,7 +30,6 @@ import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
---import qualified Data.Vector.Mutable as MV (new)
 import Data.IORef (IORef, newIORef, writeIORef)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 #if __GLASGOW_HASKELL__ < 710
@@ -58,17 +58,19 @@ __timer = unsafePerformIO $ newTVarIO undefined
 __tg :: ThreadG.ThreadGroup
 __tg = unsafePerformIO $ ThreadG.new
 
--- {-# NOINLINE __turtles #-}
--- -- | The global turtles vector
--- __turtles :: TVar Turtles_
--- __turtles = unsafePerformIO $ newTVarIO =<< MV.new 0
-
 {-# NOINLINE __patches #-}
 -- | The global turtles vector
 __patches :: Patches
 __patches = listArray ((min_pxcor_ conf, min_pycor_ conf), (max_pxcor_ conf, max_pycor_ conf))
             (unsafePerformIO $ sequence [newPatch x y | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- [min_pycor_ conf..max_pycor_ conf]])
 
+{-# NOINLINE __turtles #-}
+__turtles :: TVar Turtles
+__turtles = unsafePerformIO $ newTVarIO IM.empty
+
+{-# NOINLINE __links #-}
+__links :: TVar Links
+__links = unsafePerformIO $ newTVarIO M.empty
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
@@ -83,13 +85,10 @@ cInit po = do
                 writeTVar __who 0
                 writeTVar __timer t
   -- initialize
-  let ts = IM.empty
-  let ls = M.empty
-  tw <- newTVarIO (MkWorld ts ls)
   tp <- newTQueueIO
   g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer tp
-  return (tw, ObserverRef g, tp, Nobody)
+  return (ObserverRef g, tp, Nobody)
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
     printer:: TQueue String -> IO ()

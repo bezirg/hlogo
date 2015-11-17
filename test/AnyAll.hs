@@ -24,6 +24,7 @@ run [] -- workaround for tests
 
 anyallTestGroup = $(testGroupGenerator)
 case_All1 = runT $ do 
+  ca            
   a1 <- allp (return True) =<< patches
   let e1 = True
   lift $ e1 @=? a1
@@ -56,6 +57,7 @@ case_All3_2D = runT $ do
   lift $ e2 @=? a2
 
 case_All4 = runT $ do
+  ca
   ask (atomic $ sprout 1) =<< patches
   a1 <- allp (do
               s <- self
@@ -66,6 +68,7 @@ case_All4 = runT $ do
   lift $ e1 @=? a1
 
 case_AnyOptimizations = runT $ do
+  ca
   a1 <- atomic $ anyp =<< turtles
   let e1 = False
   lift $ e1 @=? a1

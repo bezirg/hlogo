@@ -115,6 +115,7 @@ case_Agentsets2 = runT $ do
   lift $ e9 @=? head a9
 
 case_Agentsets3 = runT $ do
+  ca                  
   atomic $ random_seed 18174
   
   a1 <- atomic $ count =<< n_of 0 =<< turtles
@@ -237,6 +238,7 @@ case_Agentsets5Box_2D = runT $ do
   -- requires at_points
 
 case_AgentSetEquality = runT $ do
+   ca                       
    a1 <- atomic turtles
    e1 <- atomic turtles
    lift $ e1 @=? a1
@@ -331,6 +333,7 @@ case_AgentSetEquality = runT $ do
 
    
 case_SimpleLinkAgentset = runT $ do
+  ca
   crt 2
   ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
   ask (atomic $ create_link_from =<< turtle 1) =<< turtle 0
@@ -345,6 +348,7 @@ case_SimpleLinkAgentset = runT $ do
   lift $ e22 @=? concat a22
 
 case_CountTurtlesOptimization = runT $ do
+  ca                                
   a1 <- count =<< with (return True) =<< turtles                             
   lift $ False @=? a1 > 0
 

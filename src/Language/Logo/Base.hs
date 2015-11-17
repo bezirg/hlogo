@@ -102,9 +102,6 @@ type Turtles = IM.IntMap Turtle
 -- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
 type Links = M.Map (Int, Int) Link
 
--- | The 'World' is the union of 'Patches' and 'Turtles'
-data World = MkWorld Turtles Links
-
 -- | An 'AgentRef' is a reference to an agent of the framework.
 data AgentRef = PatchRef !(Int,Int) Patch
               | TurtleRef !Int Turtle
@@ -114,8 +111,7 @@ data AgentRef = PatchRef !(Int,Int) Patch
                 deriving (Eq, Typeable)
 
 -- | The 'Context' datatype is a tuple the current agents of the 'World' (through a transactional variable), a caller reference 'AgentRef', a safe String-channel for Input/Output  and the CallerRef (myself)
-type Context = (TVar World
-               , AgentRef       -- self
+type Context = (AgentRef       -- self
                , TQueue String
                , AgentRef)      -- myself (the caller only through ask/of-like, i.e. not all callers should be returned)
 
