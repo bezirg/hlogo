@@ -667,6 +667,7 @@ random_float x | x == 0     = return 0
   return v
 
 -- | This turtle moves to the origin (0,0). Equivalent to setxy 0 0. 
+{-# INLINE home #-}
 home :: CSTM ()
 home = setxy 0 0
 
@@ -683,6 +684,7 @@ rt :: Double -> CSTM ()
 rt = right
 
 -- | The turtle turns left by number degrees. (If number is negative, it turns right.) 
+{-# INLINE left #-}
 left :: Double -> CSTM ()
 left n = right (-n)
 
@@ -1600,7 +1602,7 @@ ask f as = do
 
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]
---split 1 l = [l]
+split 1 l = [(1,l)]
 split n l = let (d,m) = length l `divMod` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'

@@ -1,10 +1,15 @@
 {-# LANGUAGE CPP #-}
--- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
+-- Options: hwrap, vwrap
 import Language.Logo
 
 #ifndef NR_TURTLES
 #define NR_TURTLES 10
 #endif
+
+args = ["--max-pxcor=100"
+       ,"--max-pycor=100"
+       ,"--min-pxcor=-100"
+       ,"--min-pycor=-100"]
 
 run ["setup", "go"]
 
@@ -17,7 +22,7 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t==10) $ stop
+  when (t==1000) stop
   ask behave =<< turtles
   tick
 

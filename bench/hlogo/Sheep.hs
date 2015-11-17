@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
--- Options: max-pxcor: 100, max-pycor: 100, hwrap, vwrap
+-- Options: hwrap, vwrap
 -- turtles: sheep
 -- patches: grass
 -- sheep moves forward 1, eats grass
@@ -23,6 +23,11 @@ grassp = True
 grass_regrowth_time = 30
 initial_number_sheep = NR_SHEEP
 sheep_gain_from_food = 4
+
+args = ["--max-pxcor=100"
+       ,"--max-pycor=100"
+       ,"--min-pxcor=-100"
+       ,"--min-pycor=-100"]
 
 run ["setup", "go"]
 

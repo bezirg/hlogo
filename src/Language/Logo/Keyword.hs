@@ -30,6 +30,7 @@ import Data.Array
 import Data.List (genericLength)
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
+import System.Environment (withArgs)
 --import qualified Data.Vector.Mutable as MV (grow, write)
 import Data.Typeable (cast)
 import Control.Monad (liftM, filterM, replicateM)
@@ -365,6 +366,7 @@ run procs = do
   let llength = maybe (litE $ integerL 0) varE ll
   gl <- lookupValueName "clear_globals"
   clear_globals <- valD (varP $ mkName "clear_globals") (normalB [| return () :: CIO () |]) []
+  mArgs <- lookupValueName "args"
   y <- newName "y"
   cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
                                                                    (tw, a, _, _) <- Reader.ask
@@ -469,11 +471,18 @@ run procs = do
                {-# INLINE ca #-}
                ca = clear_all |]
 
-  m <- [d| main = runInUnboundThread $ do 
-                    c <- cInit $(plength)
-                    Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
+  
+  m <- case mArgs of
+        Nothing -> [d| main = runInUnboundThread $ do 
+                               c <- cInit $(plength)
+                               Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
-      |]
+                  |]
+        Just args -> [d| main = withArgs $(varE args) $ runInUnboundThread $ do 
+                               c <- cInit $(plength)
+                               Reader.runReaderT (sequence_ $(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
+                                                                 (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as))) c 
+                  |]
   return $ (case gl of
               Nothing -> (clear_globals :)
               _ -> id) (cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: clear_all ++ m)
