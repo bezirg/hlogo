@@ -56,8 +56,8 @@ import Control.Concurrent.STM
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
 import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Thread as Thread (forkIO, result)
-import qualified Control.Concurrent.Thread.Group as ThreadG (forkIO, wait)
+import qualified Control.Concurrent.Thread as Thread (forkOn, result)
+import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
 import Data.List
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
@@ -1570,8 +1570,8 @@ ask f as = do
         ObserverRef _ -> lift (ask' >> ThreadG.wait __tg)
         _ -> lift ask'
     where
-     ask' = mapM_ (\ asSection -> 
-                       ThreadG.forkIO __tg $ sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asSection]
+     ask' = mapM_ (\ (core, asSection) -> 
+                       ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asSection]
                   ) (split numCapabilities as)
 
         -- do
@@ -1595,14 +1595,14 @@ ask f as = do
  -- lift $ sequence_ ws 
 
 -- | Internal
-split :: Int -> [a] -> [[a]]
+split :: Int -> [a] -> [(Int, [a])]
 --split 1 l = [l]
 split n l = let (d,m) = length l `divMod` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
-                               in t : split' (x-1) 0 rem_list
+                                in (x,t) : split' (x-1) 0 rem_list
                 split' x m' l' = let (t, rem_list) = splitAt (d+1) l'
-                                 in t : split' (x-1) (m'-1) rem_list
+                                 in (x,t) : split' (x-1) (m'-1) rem_list
             in split' n m l
 
 -- | Internal
@@ -1638,12 +1638,12 @@ of_ f as = do
     _ -> case s of
           Nobody -> throw $ ContextException "agent" Nobody
           ObserverRef _ -> lift $ do
-             ws <- mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
              rs <- sequence [Thread.result =<< w | w <- ws]
              ThreadG.wait __tg  -- wait for potential internal asks inside the of reporters
              return $ concat rs -- lists traversals can be optimized
           _ -> lift $ do
-             ws <- mapM (\ asi -> liftM snd $ Thread.forkIO (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
+             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (split numCapabilities as)
              liftM concat $ sequence [Thread.result =<< w | w <- ws] -- lists traversals can be optimized
                  
   
