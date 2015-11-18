@@ -1603,23 +1603,22 @@ askPatches f = do
         Nobody -> throw $ ContextException "agent" Nobody
         ObserverRef _ -> lift $ do
                           mapM_ (\ (core, ycorSlice) -> 
-                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
-                                ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
+                                     ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
+                                     ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
                           ThreadG.wait __tg                               
         _ -> lift $ do
                           mapM_ (\ (core, ycorSlice) -> 
                                 -- this splits it in rows
-                                --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (tw, PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
+                                --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
                                 -- ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
                                 -- this splits it in columns, for some strange reason this works slightly faster. Maybe because data locality works better with smaller chunks than having largely-contiguous chunks
                                      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
                                 ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
 
-  
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]
 split 1 l = [(1,l)]
-split n l = let (d,m) = length l `divMod` n
+split n l = let (d,m) = length l `quotRem` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
                                 in (x,t) : split' (x-1) 0 rem_list
@@ -1629,7 +1628,7 @@ split n l = let (d,m) = length l `divMod` n
 
 -- | Internal
 vsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
-vsplit n as = IM.toList $ foldl (\ im a -> case a of
+vsplit n as = IM.toAscList $ foldl' (\ im a -> case a of
                                             PatchRef (x1, _) _ -> IM.insertWith (++) ((x1 + max_x) `div` sector) [a] im
                                             TurtleRef _ (MkTurtle {init_xcor_ = ix}) -> IM.insertWith (++) ((ix + max_x) `div` sector) [a] im
                                             _ -> IM.insertWith (++) n [a] im -- it is not a patch or a turtle, so it is a link, it should be scheduled by GHC and not by us, put it at the extra n
@@ -1640,7 +1639,7 @@ vsplit n as = IM.toList $ foldl (\ im a -> case a of
 
 -- | Internal
 hsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
-hsplit n as = IM.toList $ foldl (\ im a -> case a of
+hsplit n as = IM.toAscList $ foldl' (\ im a -> case a of
                                             PatchRef (_, y1) _ -> IM.insertWith (++) ((y1 + max_y) `div` sector) [a] im
                                             TurtleRef _ (MkTurtle {init_ycor_ = iy}) -> IM.insertWith (++) ((iy + max_y) `div` sector) [a] im
                                             _ -> IM.insertWith (++) n [a] im -- it is not a patch, so it should be scheduled by GHC and not by us, put it at the extra n
@@ -2255,7 +2254,7 @@ instance STMorIO STM where
   turtles = do
     (_, _, _) <- Reader.ask
     ts <- lift $ readTVar __turtles
-    return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
+    return $ IM.foldlWithKey' (\ ks k x -> TurtleRef k x: ks) [] ts
 
   turtle n = do
     (_, _, _) <- Reader.ask
@@ -2414,7 +2413,7 @@ instance STMorIO STM where
   links = do
     (_, _,_) <- Reader.ask
     ls <- lift $ readTVar __links
-    return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+    return $ nubBy checkForUndirected $ M.foldlWithKey' (\ ks k x -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
           checkForUndirected _ _ = False
@@ -2491,7 +2490,7 @@ instance STMorIO IO where
   turtles = do
     (_, _, _) <- Reader.ask
     ts <- lift $ readTVarIO __turtles
-    return $ IM.foldrWithKey (\ k x ks -> TurtleRef k x: ks) [] ts
+    return $ IM.foldlWithKey' (\ ks k x -> TurtleRef k x: ks) [] ts
 
   turtle n = do
     (_, _, _) <- Reader.ask
@@ -2646,7 +2645,7 @@ instance STMorIO IO where
   links = do
     (_, _, _) <- Reader.ask
     ls <- lift $ readTVarIO __links
-    return $ nubBy checkForUndirected $ M.foldrWithKey (\ k x ks -> LinkRef k x: ks) [] ls
+    return $ nubBy checkForUndirected $ M.foldlWithKey' (\ ks k x -> LinkRef k x: ks) [] ls
         where
           checkForUndirected (LinkRef (e1,e2) (MkLink {directed_ = False})) (LinkRef (e1',e2') (MkLink {directed_ = False})) = e1 == e2' && e1' == e2
           checkForUndirected _ _ = False
