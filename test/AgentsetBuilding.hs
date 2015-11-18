@@ -148,9 +148,11 @@ case_LinkSet_2D = runT $ do
    let a1 = of_ (atomic $ link_set [self]) =<< atomic (link 0 2)
    assertTypeException (lift . evaluate =<< a1)
 
+   -- TODO: bug here, be careful with undirected links and equality
    a2 <- of_ (atomic $ link_set [self]) =<< atomic (link 0 1)
    e2 <- atomic $ links
    lift $ e2 @=? concat a2
+
 
    ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
    a3 <- atomic $ link_set [sort_ =<< links, link 0 1]

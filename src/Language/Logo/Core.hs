@@ -17,6 +17,7 @@ module Language.Logo.Core (
                           ,__patches
                           ,__turtles
                           ,__links
+                          ,__printQueue
                           ) where
 
 import Control.Concurrent (forkIO)
@@ -72,6 +73,10 @@ __turtles = unsafePerformIO $ newTVarIO IM.empty
 __links :: TVar Links
 __links = unsafePerformIO $ newTVarIO M.empty
 
+{-# NOINLINE __printQueue #-}
+__printQueue :: TQueue String
+__printQueue = unsafePerformIO $ newTQueueIO
+
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
@@ -85,16 +90,13 @@ cInit po = do
                 writeTVar __who 0
                 writeTVar __timer t
   -- initialize
-  tp <- newTQueueIO
   g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
-  forkIO $ printer tp
-  return (ObserverRef g, tp, Nobody)
+  forkIO $ printer
+  return (ObserverRef g, Nobody)
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
-    printer:: TQueue String -> IO ()
-    printer tp = forever $ do
-                   v <- atomically $ readTQueue tp
-                   putStrLn v
+    printer :: IO ()
+    printer = forever $ putStrLn =<< atomically (readTQueue __printQueue)
 
 -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
 newPatch :: Int -> Int -> IO Patch

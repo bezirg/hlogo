@@ -84,13 +84,13 @@ turtles_own vs = do
           p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
@@ -113,14 +113,14 @@ patches_own vs = do
           p <- valD (varP (mkName v)) (normalB [| readPatch $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                 (a,_,_) <- Reader.ask :: CSTM Context
+                                                 (a,_) <- Reader.ask :: CSTM Context
                                                  case a of
                                                    PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                    TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                    _ -> throw $ ContextException "turtle or patch" a
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                 (a,_,_) <- Reader.ask :: CSTM Context
+                                                 (a,_) <- Reader.ask :: CSTM Context
                                                  case a of
                                                    PatchRef _ (MkPatch {pvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
                                                    TurtleRef _ _ -> patch_here >>= \ ([PatchRef _ (MkPatch {pvars_ = pv})]) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
@@ -145,13 +145,13 @@ links_own vs = do
           p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y) 
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y) 
                                                                          _ -> throw $ ContextException "link" a
@@ -176,7 +176,7 @@ breeds_own p vs = do
   cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
                                                 (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   sp <- funD (mkName ("sprout_" ++ p)) [clause [varP y] (normalB [| do
-                                                           (a, _, _) <- Reader.ask
+                                                           (a, _) <- Reader.ask
                                                            case a of
                                                              PatchRef (px,py) _ -> do
                                                                  let  newTurtles w n = return . IM.fromAscList =<< sequence [do
@@ -200,13 +200,13 @@ breeds_own p vs = do
           p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          TurtleRef _ (MkTurtle {tvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "turtle" a
@@ -229,13 +229,13 @@ link_breeds_own p vs = do
 
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ writeTVar (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "link" a
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
-                                                                       (a,_,_) <- Reader.ask :: CSTM Context; 
+                                                                       (a,_) <- Reader.ask :: CSTM Context; 
                                                                        case a of
                                                                          LinkRef _ (MkLink {lvars_ = pv}) -> lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
                                                                          _ -> throw $ ContextException "link" a
@@ -262,8 +262,7 @@ breeds [p,s] = do
   y <- newName "y"
   us <- funD (mkName ("unsafe_" ++ s)) [clause [varP y] 
                                        (normalB [| do 
-                                                   (_, _, _) <- Reader.ask :: CIO Context
-                                                   ts <- lift (readTVarIO __turtles)
+                                                   ts <- lift (readTVarIO __turtles) :: CIO Turtles
                                                    let {t = ts IM.! $(varE y)}
                                                    b <- lift $ readTVarIO (breed_ t)
                                                    return $ if b == $(litE (stringL p)) 
@@ -271,8 +270,7 @@ breeds [p,s] = do
                                                             else error ("turtle is not a " ++ s) |]) []]
 
   ss <- funD (mkName s) [clause [varP y] (normalB [| do 
-                                                    (_, _, _) <- Reader.ask :: CSTM Context
-                                                    ts <- lift (readTVar __turtles)
+                                                    ts <- lift (readTVar __turtles) :: CSTM Turtles
                                                     let {t = ts IM.! $(varE y)}
                                                     b <- lift $ readTVar (breed_ t)
                                                     return $ if b == $(litE (stringL p)) 
@@ -287,7 +285,7 @@ breeds [p,s] = do
                                                                   b <- lift $ readTVar tb
                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL p))) ts |]) []
   uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
-                                                                     (a, _,  _) <- Reader.ask
+                                                                     (a,_) <- Reader.ask
                                                                      h <- case a of
                                                                              TurtleRef _ _ -> patch_here
                                                                              PatchRef _ _ -> return [a]
@@ -331,7 +329,7 @@ directed_link_breed [p,s] = do
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (_, _, _) <- Reader.ask :: CSTM Context; ls <- lift $ readTVar __links; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do ls <- lift $ readTVar __links :: CSTM Links; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
 directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
@@ -344,7 +342,7 @@ undirected_link_breed [p,s] = do
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
-                        (normalB [| do (_, _, _) <- Reader.ask :: CSTM Context; ls <- lift $ readTVar __links; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
+                        (normalB [| do ls <- lift $ readTVar __links :: CSTM Links; return [maybe Nobody (LinkRef ($(varE x),$(varE y))) $M.lookup ($(varE x),$(varE y)) ls] |]) []]
   return [sp, ss]
 undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
@@ -368,7 +366,7 @@ run procs = do
   mArgs <- lookupValueName "args"
   y <- newName "y"
   cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
-                                                                   (a, _, _) <- Reader.ask
+                                                                   (a,_) <- Reader.ask
                                                                    case a of
                                                                      ObserverRef _ -> return ()
                                                                      _ -> throw $ ContextException "observer" a
@@ -406,7 +404,7 @@ run procs = do
                  
                                                                    |]) []]
   sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
-                                                           (a, _, _) <- Reader.ask
+                                                           (a,_) <- Reader.ask
                                                            case a of
                                                              PatchRef (px,py) _ -> do
                                                                  let  newTurtles w n = return . IM.fromAscList =<< sequence [do
@@ -424,7 +422,7 @@ run procs = do
 
 
   co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| do
-                                                                           (a, _, _) <- Reader.ask
+                                                                           (a,_) <- Reader.ask
                                                                            case a of
                                                                                ObserverRef _ -> return ()
                                                                                _ -> throw $ ContextException "observer" a
@@ -493,7 +491,7 @@ runT as = do c <- cInit 0
 -- | Internal
 random_primary_color :: CSTM Double
 random_primary_color = do
-  (s,_,_) <- Reader.ask
+  (s,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -508,7 +506,7 @@ random_primary_color = do
 -- | Internal
 random_integer_heading :: CSTM Integer
 random_integer_heading = do
-  (s,_,_) <- Reader.ask
+  (s,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
             TurtleRef _ t -> tgen t
@@ -699,7 +697,7 @@ newOrderedTurtle i o x to = do
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeds :: String -> Int -> Int -> CIO [AgentRef] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_breeds b n to = do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   -- context checking
   case a of
     ObserverRef _ -> return ()
@@ -718,7 +716,7 @@ create_breeds b n to = do
 -- | Internal, Utility function to make TemplateHaskell easier
 create_ordered_breeds :: String -> Int -> Int -> CIO [AgentRef]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_ordered_breeds b n to = do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   -- context checking
   case a of
     ObserverRef _ -> return ()
@@ -799,7 +797,7 @@ create_link_from_ f ls = case f of
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_from_ :: [AgentRef] -> Int -> CSTM ()
 create_links_from_ as nls = do
-  (a, _,_) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
            ls <- lift $ readTVar __links
@@ -822,7 +820,7 @@ create_link_to_ t ls = case t of
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_to_ :: [AgentRef] -> Int -> CSTM ()
 create_links_to_ as nls = do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
            ls <- lift $ readTVar __links
@@ -847,7 +845,7 @@ create_link_with_ w ls = case w of
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
 create_links_with_ :: [AgentRef] -> Int -> CSTM ()
 create_links_with_ as nls =  do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
            ls <- lift $ readTVar __links
@@ -861,7 +859,7 @@ create_links_with_ as nls =  do
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_to :: String -> [AgentRef] -> Int -> CSTM ()
 create_breeded_links_to b as nls = do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _  -> do
            ls <- lift $ readTVar __links
@@ -876,7 +874,7 @@ create_breeded_links_to b as nls = do
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_from :: String -> [AgentRef] -> Int -> CSTM ()
 create_breeded_links_from b as nls = do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
            ls <- lift $ readTVar __links
@@ -890,7 +888,7 @@ create_breeded_links_from b as nls = do
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeded_links_with :: String -> [AgentRef] -> Int -> CSTM ()
 create_breeded_links_with b as nls =  do
-  (a, _, _) <- Reader.ask
+  (a,_) <- Reader.ask
   case a of
     TurtleRef x _ -> do
            ls <- lift $ readTVar __links
