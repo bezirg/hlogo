@@ -657,8 +657,7 @@ random x = do
 -- If number is negative, reports a random floating point number less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0. 
 random_float               :: Double -> CSTM Double
-random_float x | x == 0     = return 0
-         | otherwise = do
+random_float x = do
   (s,_) <- Reader.ask
   let ts = case s of
             ObserverRef tg -> tg
@@ -1328,7 +1327,7 @@ modes = todo
 
 {-# INLINE remainder #-}
 -- | Reports the remainder when number1 is divided by number2. 
-remainder :: Integer -> Integer -> Integer
+remainder :: Int -> Int -> Int
 remainder = rem
 
 {-# WARNING variance "TODO" #-}

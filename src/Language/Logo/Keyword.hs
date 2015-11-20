@@ -504,7 +504,7 @@ random_primary_color = do
   return (primary_colors !! v)
 
 -- | Internal
-random_integer_heading :: CSTM Integer
+random_integer_heading :: CSTM Int
 random_integer_heading = do
   (s,_) <- Reader.ask
   let ts = case s of
@@ -514,7 +514,7 @@ random_integer_heading = do
             LinkRef _ l -> lgen l
             Nobody -> throw DevException
   gen <- lift $ readTVar ts
-  let (v,gen') = randomR (0,360 :: Integer) gen
+  let (v,gen') = randomR (0,360 :: Int) gen
   lift $ writeTVar ts gen'
   return v
 
@@ -528,7 +528,7 @@ newBreed b x to = do
        return x <*>
        newTVarIO b <*>
        newTVarIO rpc <*>          --  random primary color
-       newTVarIO (fromInteger rih) <*> --  random integer heading
+       newTVarIO (fromIntegral rih) <*> --  random integer heading
        newTVarIO 0 <*>
        newTVarIO 0 <*>
        newTVarIO "default" <*>
@@ -538,7 +538,7 @@ newBreed b x to = do
        newTVarIO 1 <*>
        newTVarIO 1 <*>
        newTVarIO Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
        newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
@@ -567,7 +567,7 @@ newOrderedBreed i o b x to = do
        newTVarIO 1 <*>
        newTVarIO 1 <*>
        newTVarIO Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
        newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
@@ -579,7 +579,7 @@ newOrderedBreed i o b x to = do
 
 {-# INLINE newTurtle #-}
 -- | Internal
-newTurtle :: Integral a => Int -> a -> CIO Turtle
+newTurtle :: Int -> Int -> CIO Turtle
 newTurtle x to = do
   rpc <- atomic $ random_primary_color
   rih <- atomic $ random_integer_heading
@@ -587,7 +587,7 @@ newTurtle x to = do
        return x <*>
        newTVarIO "turtles" <*>
        newTVarIO rpc <*>          --  random primary color
-       newTVarIO (fromInteger rih) <*> --  random integer heading
+       newTVarIO (fromIntegral rih) <*> --  random integer heading
        newTVarIO 0 <*>
        newTVarIO 0 <*>
        newTVarIO "default" <*>
@@ -597,7 +597,7 @@ newTurtle x to = do
        newTVarIO 1 <*>
        newTVarIO 1 <*>
        newTVarIO Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+       (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
        newTVarIO (mkStdGen x) <*>
        pure 0 <*>
        pure 0
@@ -607,7 +607,7 @@ newTurtle x to = do
 #endif
 
 -- | Internal
-newSprout :: Integral a => Int -> a -> Double -> Double -> CSTM Turtle
+newSprout :: Int -> Int -> Double -> Double -> CSTM Turtle
 newSprout w to x y = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -615,7 +615,7 @@ newSprout w to x y = do
        return w <*>
        newTVar "turtles" <*>
        newTVar rpc <*>          --  random primary color
-       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar (fromIntegral rih) <*> --  random integer heading
        newTVar x <*>
        newTVar y <*>
        newTVar "default" <*>
@@ -625,7 +625,7 @@ newSprout w to x y = do
        newTVar 1 <*>
        newTVar 1 <*>
        newTVar Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
+       (return . listArray (0, to-1) =<< replicateM to (newTVar 0)) <*>
        newTVar (mkStdGen w) <*>
        pure (round x) <*>
        pure (round y)
@@ -635,7 +635,7 @@ newSprout w to x y = do
 #endif
 
 -- | Internal
-newBSprout :: Integral a => Int -> a -> Double -> Double -> String -> CSTM Turtle
+newBSprout :: Int -> Int -> Double -> Double -> String -> CSTM Turtle
 newBSprout w to x y b = do
   rpc <- random_primary_color
   rih <- random_integer_heading
@@ -643,7 +643,7 @@ newBSprout w to x y b = do
        return w <*>
        newTVar b <*>
        newTVar rpc <*>          --  random primary color
-       newTVar (fromInteger rih) <*> --  random integer heading
+       newTVar (fromIntegral rih) <*> --  random integer heading
        newTVar x <*>
        newTVar y <*>
        newTVar "default" <*>
@@ -653,7 +653,7 @@ newBSprout w to x y b = do
        newTVar 1 <*>
        newTVar 1 <*>
        newTVar Up <*>
-       (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVar 0)) <*>
+       (return . listArray (0, to-1) =<< replicateM to (newTVar 0)) <*>
        newTVar (mkStdGen w) <*>
        pure (round x) <*>
        pure (round y)
@@ -684,7 +684,7 @@ newOrderedTurtle i o x to = do
              newTVarIO 1 <*>
              newTVarIO 1 <*>
              newTVarIO Up <*>
-             (return . listArray (0, fromIntegral to -1) =<< replicateM (fromIntegral to) (newTVarIO 0)) <*>
+             (return . listArray (0, to-1) =<< replicateM to (newTVarIO 0)) <*>
              newTVarIO (mkStdGen x) <*>
              pure 0 <*>
              pure 0
@@ -754,7 +754,7 @@ newLink f t ls = lift $ MkLink <$>
                   newTVar 0 <*>
                   newTVar "default" <*>
                   newTVar None <*>
-                  (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0))  <*>
+                  (return . listArray (0, ls-1) =<< replicateM ls (newTVar 0))  <*>
                   newTVar (mkStdGen (f+t*1000))
 #ifdef STATS_STM
                   <*> pure (unsafePerformIO (newIORef 0)) <*>
@@ -776,7 +776,7 @@ newLBreed f t d b ls = lift $ MkLink <$>
                   newTVar 0 <*>
                   newTVar "default" <*>
                   newTVar None <*>
-                  (return . listArray (0, fromIntegral ls -1) =<< replicateM (fromIntegral ls) (newTVar 0)) <*>
+                  (return . listArray (0, ls-1) =<< replicateM ls (newTVar 0)) <*>
                   newTVar (mkStdGen (f+t*1000))
 #ifdef STATS_STM
                   <*> pure (unsafePerformIO (newIORef 0)) <*>
