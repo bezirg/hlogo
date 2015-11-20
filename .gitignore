@@ -4,6 +4,6 @@ doc/*.pdf
 *.hi
 *.o
 .DS_Store
-*.~
+*~
 
 
