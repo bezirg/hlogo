@@ -627,12 +627,11 @@ random_pycor = do
   lift $ writeTVar g gen'
   return v
 
+{-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
 -- | If number is positive, reports a random integer greater than or equal to 0, but strictly less than number.
 -- If number is negative, reports a random integer less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0 as well. 
---random               :: (Random a , Eq a, Ord a, Num a) => a -> CSTM a
--- random :: (Num b, RealFrac t1) => t1 -> Reader.ReaderT (AgentRef, t) STM b
-random :: (Num b, Real a) => a -> Reader.ReaderT (AgentRef, t) STM b
+random :: (Num b, Real a) => a -> CSTM b
 random x = do
   (s,_) <- Reader.ask
   let ts = case s of
@@ -668,7 +667,7 @@ random_float x | x == 0     = return 0
             LinkRef _ l -> lgen l
             Nobody -> throw DevException
   gen <- lift $ readTVar ts
-  let (v, gen') = randomR (if x < 0 then (x, 0) else (0,x)) gen
+  let (v, gen') = randomR (if x > 0 then (0,x) else (x,0)) gen
   lift $ writeTVar ts gen'
   return v
 

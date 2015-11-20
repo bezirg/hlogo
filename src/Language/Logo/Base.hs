@@ -117,10 +117,10 @@ type Context = (AgentRef       -- self
 type C m a = ReaderT Context m a
 
 -- | The enhanced STM monad having a particular calling context
-type CSTM a = ReaderT Context STM a
+type CSTM a = C STM a
 
 -- | The enhanced IO monad having a particular calling context
-type CIO a = ReaderT Context IO a
+type CIO a = C IO a
 
 
 instance Ord Turtle where
