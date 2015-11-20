@@ -59,9 +59,8 @@ go = forever $ do
   when (t > 1000) (unsafe_sheep >>= count >>= print >> stop)
   ask (do
          move
-         e <- senergy
          when grassp $ do
-            atomic $ set_senergy (e -1)
+            atomic $ with_senergy (\ i -> i - 1)
             eat_grass
        ) =<< unsafe_sheep
   when grassp (askPatches grow_grass)
