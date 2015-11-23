@@ -14,10 +14,7 @@ import System.Console.CmdArgs
 
 {-# NOINLINE conf #-}
 conf :: Conf
-conf = unsafePerformIO getConf
-
-getConf :: IO Conf
-getConf = cmdArgs confOpt
+conf = unsafePerformIO (cmdArgs confOpt)
 
 data Conf = Conf {
       max_pxcor_ :: Int

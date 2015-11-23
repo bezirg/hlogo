@@ -29,9 +29,9 @@ import qualified  Data.IntMap as IM (empty)
 import Data.Array (listArray)
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
-import System.Random (mkStdGen)
+import System.Random (StdGen, mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
-import Data.IORef (IORef, newIORef, writeIORef)
+import Data.IORef (IORef, newIORef)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
@@ -42,12 +42,12 @@ import Control.Applicative
 --
 -- Double because NetLogo also allows different than 1-tick increments
 __tick :: IORef Double
-__tick = unsafePerformIO $ newIORef undefined
+__tick = unsafePerformIO $ newIORef (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# NOINLINE __who #-}
 -- | The global (atomically-modifiable) who-counter variable
 __who :: TVar Int
-__who = unsafePerformIO $ newTVarIO undefined
+__who = unsafePerformIO $ newTVarIO 0
 
 {-# NOINLINE __timer #-}
 -- | The global (atomically-modifiable) timer variable
@@ -77,22 +77,18 @@ __links = unsafePerformIO $ newTVarIO M.empty
 __printQueue :: TQueue String
 __printQueue = unsafePerformIO $ newTQueueIO
 
+
+
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> IO Context
+cInit :: Int -> IO ()
 cInit po = do
-  -- read dimensions from conf
-  t <- getCurrentTime
-  -- initialize globals
-  writeIORef __tick 0
-  atomically $ do
-                writeTVar __who 0
-                writeTVar __timer t
-  -- initialize
-  g <- newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
   forkIO $ printer
-  return (ObserverRef g, Nobody)
+
+  t <- getCurrentTime
+  atomically $ writeTVar __timer t
+
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
     printer :: IO ()
@@ -101,7 +97,7 @@ cInit po = do
 -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
 newPatch :: Int -> Int -> IO Patch
 newPatch x y = let po = 1       -- patches_own only one element for now
-               in MkPatch <$>
+               in MkPatch x y <$>
                newTVarIO 0 <*>
                newTVarIO "" <*>
                newTVarIO 9.9 <*>
