@@ -60,6 +60,7 @@ import Data.List
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Array
+import qualified Data.Vector as V
 import Control.Applicative
 import System.Random hiding (random, split)
 import Data.Function
@@ -72,7 +73,6 @@ import Data.Maybe (isJust)
 import System.CPUTime
 import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
 import Data.Ratio       ( numerator, denominator )
-
 
 -- For diagrams
 import qualified Diagrams.Prelude as Diag
@@ -123,21 +123,25 @@ other as = do
 {-# SPECIALIZE  patches :: C _s _s' IO [Patch] #-}
 -- | Reports the agentset consisting of all patches. 
 patches :: STMorIO m => C _s _s' m [Patch]
-patches = return (elems __patches)
+patches = return $ V.foldr' (\ v' acc -> V.toList v' ++ acc) [] __patches 
 
 {-# SPECIALIZE  patch :: Double -> Double -> C _s _s' STM [Patch] #-}
 {-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: STMorIO m => Double -> Double -> C _s _s' m [Patch]
-patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
+patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max || x' < mix)) || (not (vertical_wrap_ conf) && (y' > may || y' < miy))
                      then nobody
-                     else  [__patches ! (x'', y'')]
+                     else  [(__patches `V.unsafeIndex` (x''-mix)) `V.unsafeIndex` (y''-miy)]
            where
+             mix = min_pxcor_ conf
+             miy = min_pycor_ conf
+             max = max_pxcor_ conf
+             may = max_pycor_ conf
              x' = round x
              y' = round y
              (x'',y'') = (      -- normalize
-                          ((x' + max_pxcor_ conf) `mod` (max_pxcor_ conf*2+1)) - max_pxcor_ conf,
-                          ((y' + max_pycor_ conf) `mod` (max_pycor_ conf*2+1)) - max_pycor_ conf
+                          ((x' + max) `mod` (max*2+1)) - max,
+                          ((y' + may) `mod` (may*2+1)) - may
                          )
 
                            
@@ -898,13 +902,13 @@ clear_links = atomic $ lift $ writeTVar __links M.empty
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: C Observer () IO ()
-clear_patches = mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> do
-                              atomic $ lift $ writeTVar pc 0
-                              atomic $ lift $ writeTVar pl ""
-                              atomic $ lift $ writeTVar plc 9.9
-                              atomic $ lift $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
-                              atomic $ lift $ writeTVar pg $ mkStdGen 3
-                           ) __patches
+clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> do
+                            atomic $ lift $ writeTVar pc 0
+                            atomic $ lift $ writeTVar pl ""
+                            atomic $ lift $ writeTVar plc 9.9
+                            atomic $ lift $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
+                            atomic $ lift $ writeTVar pg $ mkStdGen 3
+                           )) __patches
 
 {-# INLINE cp #-}
 -- | alias for 'clear_patches'
@@ -1516,20 +1520,70 @@ instance Agent Link where
                       
  -- lift $ sequence_ ws 
 
+-- askTurtles :: C Turtle _s IO a -> C _s _s' IO ()
+-- askTurtles f = do
+--       (s,_) <- Reader.ask
+--       lift $ do
+--         ts <- readTVarIO __turtles
+--         mapM_ (\ (tslice,core) ->
+--                   ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s)) tslice
+--              ) (zip (IM.splitRoot ts) [1,2])
+--         ThreadG.wait __tg
+
+
+
 {-# WARNING askPatches "TODO: both splitting" #-}
 -- | The specified agent or agentset runs the given commands. 
 askPatches :: C Patch _s IO a -> C _s _s' IO ()
 askPatches f = do
     (s,_) <- Reader.ask
     lift $ do
-      mapM_ (\ (core, ycorSlice) -> 
-                 ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (__patches ! (x,y),s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
-            ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
+      -- mapM_ (\ (core, ycorSlice) -> 
+      --        -- this splits it in rows
+      --        ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (__patches ! (x,y), s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
+      --       ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
+      -- mapM_ (\ (core, ycorSlice) -> 
+      --            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (__patches ! (x,y),s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
+      --       ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
+      -- let (v1, v2) = V.splitAt (V.length __patches `div` 2) __patches
+      -- mapM (\ (vslice,core) -> 
+      --           ThreadG.forkOn core __tg $ V.mapM_ (\ row -> V.mapM_ (\ p -> Reader.runReaderT f (p,s)) row) vslice
+      --       )
+      --       (zip [v1,v2] [1,2])
+      mapM (\ (start,size,core) -> 
+                 ThreadG.forkOn core __tg $ V.mapM_ (\ row -> V.mapM_ (\ p -> Reader.runReaderT f (p,s)) row) (V.unsafeSlice start size __patches)
+             )
+             (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
+
       ThreadG.wait __tg                               
+          where
+            splitN :: Int -> Int -> [(Int,Int,Int)]
+            splitN width n = let (q,r) = width `quotRem` n
+                                 splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
+                                 splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
+                             in  case (foldl' splitN' (r,0,[]) [1..n]) of
+                                   (_,_,res) -> res
+
+
+    -- where
+    --   splitN :: Int -> Int -> [(Int,Int,Int)]
+    --   splitN width n = let (q,r) = width `quotRem` n
+    --                  splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
+    --                  splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
+    --              in  case (foldl' splitN' (r,0,[]) [1..n]) of
+    --                    (_,_,res) -> res
                                 -- this splits it in rows
                                 --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
                                 -- ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
                                 -- this splits it in columns, for some strange reason this works slightly faster. Maybe because data locality works better with smaller chunks than having largely-contiguous chunks
+
+-- splitN :: Int -> Int -> [(Int,Int,Int)]
+-- splitN width n = let (q,r) = width `quotRem` n
+--                      splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
+--                      splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
+--                  in  case (foldl' splitN' (r,0,[]) [1..n]) of
+--                        (_,_,res) -> res
+
 
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]

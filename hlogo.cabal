@@ -1,5 +1,5 @@
 name:                 hlogo
-version:              0.1.5
+version:              0.1.6
 synopsis:             HLogo, a simulation framework in Haskell
 description:          Input programs are written in a dialect of Logo, as an embedded DSL of Haskell.
 author:               Nikolaos Bezirgiannis <bezirgia@cwi.nl>, Wishnu Prasetya <s.w.b.prasetya@uu.nl>, Ilias Sakellariou <iliass@uom.gr>
@@ -29,6 +29,7 @@ library
                       containers>=0.5.0.0, 
                       -- for now: turtles-own, patches-own,links-own stored in a static (=fixed at compile-time) array
                       array, 
+                      vector,
                       -- for adding a context reader ontop of stm
                       transformers>=0.4, 
                       -- for random-related functions in stdlib

@@ -14,7 +14,8 @@ import Control.Concurrent.STM
 import Control.Monad.Trans.Reader
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
-import Data.Array
+import Data.Array (Array)
+import Data.Vector (Vector)
 import System.Random (StdGen, mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
 #ifdef STATS_STM
@@ -111,7 +112,7 @@ data Link = MkLink {
 data TieMode = None | Fixed
 
 -- | The 'Patches' ADT is an ordered map (dictionary) from coordinates (Int, Int) to 'Patch' data structures
-type Patches = Array (Int,Int) Patch
+type Patches = Vector (Vector Patch)
 
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle

@@ -24,9 +24,10 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
 import Language.Logo.Conf
 import Language.Logo.Base
-import qualified Data.Map as M (empty)
-import qualified  Data.IntMap as IM (empty)
+import qualified Data.Map.Strict as M (empty)
+import qualified  Data.IntMap.Strict as IM (empty)
 import Data.Array (listArray)
+import qualified Data.Vector as V
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random (StdGen, mkStdGen)
@@ -62,8 +63,9 @@ __tg = unsafePerformIO $ ThreadG.new
 {-# NOINLINE __patches #-}
 -- | The global turtles vector
 __patches :: Patches
-__patches = listArray ((min_pxcor_ conf, min_pycor_ conf), (max_pxcor_ conf, max_pycor_ conf))
-            (unsafePerformIO $ sequence [newPatch x y | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- [min_pycor_ conf..max_pycor_ conf]])
+__patches = V.fromList [V.fromList [unsafePerformIO (newPatch x y) 
+                                   | y <- [min_pycor_ conf..max_pycor_ conf]] 
+                       | x <- [min_pxcor_ conf..max_pxcor_ conf]]
 
 {-# NOINLINE __turtles #-}
 __turtles :: TVar Turtles
