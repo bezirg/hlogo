@@ -94,7 +94,7 @@ import qualified Data.Foldable as F (foldlM)
 {-# SPECIALIZE  self :: Agent s => C s _s' STM [s] #-}
 {-# SPECIALIZE  self :: Agent s => C s _s' IO [s] #-}
 -- |  Reports this turtle or patch. 
-self :: (Monad m, Agent s) => C s _s' m [s] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
+self :: (STMorIO m, Agent s) => C s _s' m [s] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (s,_) <- Reader.ask
   return [s]
@@ -104,7 +104,7 @@ self = do
 -- | "self" and "myself" are very different. "self" is simple; it means "me". "myself" means "the turtle or patch who asked me to do what I'm doing right now."
 -- When an agent has been asked to run some code, using myself in that code reports the agent (turtle or patch) that did the asking. 
 -- NB: Implemented for ask, of, with
-myself :: (Monad m, Agent s) => C s s' m [s']
+myself :: (STMorIO m, Agent s) => C s s' m [s']
 myself = do
   (_,m) <- Reader.ask
   return [m]
@@ -112,7 +112,7 @@ myself = do
 {-# SPECIALIZE  other :: Agent s => [s] -> C s _s' STM [s] #-}
 {-# SPECIALIZE  other :: Agent s => [s] -> C s _s' IO [s] #-}
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
-other :: (Monad m, Agent s) => [s] -> C s _s' m [s]
+other :: (STMorIO m, Agent s) => [s] -> C s _s' m [s]
 other as = do
   [s] <- self
   return $ delete s as
@@ -122,13 +122,13 @@ other as = do
 {-# SPECIALIZE  patches :: C _s _s' STM [Patch] #-}
 {-# SPECIALIZE  patches :: C _s _s' IO [Patch] #-}
 -- | Reports the agentset consisting of all patches. 
-patches :: Monad m => C _s _s' m [Patch]
+patches :: STMorIO m => C _s _s' m [Patch]
 patches = return (elems __patches)
 
 {-# SPECIALIZE  patch :: Double -> Double -> C _s _s' STM [Patch] #-}
 {-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
-patch :: Monad m => Double -> Double -> C _s _s' m [Patch]
+patch :: STMorIO m => Double -> Double -> C _s _s' m [Patch]
 patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
                      then nobody
                      else  [__patches ! (x'', y'')]
@@ -228,14 +228,14 @@ pink = 135
 {-# SPECIALIZE  count :: Agent a => [a] -> C _s _s' STM Int #-}
 {-# SPECIALIZE  count :: Agent a => [a] -> C _s _s' IO Int #-}
 -- | Reports the number of agents in the given agentset. 
-count :: (Monad m, Agent a) => [a] -> C _s _s' m Int
+count :: (STMorIO m, Agent a) => [a] -> C _s _s' m Int
 -- count [Nobody] = throw $ TypeException "agent" Nobody
 count as = return $ length as
 
 {-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' STM Bool #-}
 {-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' IO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
-anyp :: (Monad m, Agent a) => [a] -> C _s _s' m Bool
+anyp :: (STMorIO m, Agent a) => [a] -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
 anyp as = return $ not $ null as
 
@@ -366,7 +366,7 @@ instance TurtlePatch Turtle where
 {-# SPECIALIZE  turtle_set :: [C _s _s' IO [Turtle]] -> C _s _s' IO [Turtle] #-}
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
-turtle_set :: Monad m => [m [Turtle]] -> m [Turtle]
+turtle_set :: STMorIO m => [C _s _s' m [Turtle]] -> C _s _s' m [Turtle]
 turtle_set ts = liftM (foldr (\ x acc -> 
                                   -- if x == Nobody -- filter Nobody
                                   -- then acc
@@ -382,7 +382,7 @@ turtle_set ts = liftM (foldr (\ x acc ->
 {-# SPECIALIZE  patch_set :: [C _s _s' IO [Patch]] -> C _s _s' IO [Patch] #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 -- | NB: HLogo no support for nested patch_set concatenation/flattening
-patch_set :: Monad m => [m [Patch]] -> m [Patch]
+patch_set :: STMorIO m => [C _s _s' m [Patch]] -> C _s _s' m [Patch]
 patch_set ts = liftM (foldr (\ x acc -> 
                                  -- if x == Nobody -- filter Nobody
                                  -- then acc
@@ -398,7 +398,7 @@ patch_set ts = liftM (foldr (\ x acc ->
 {-# SPECIALIZE  link_set :: [C _s _s' IO [Link]] -> C _s _s' IO [Link] #-}
 -- | Reports an agentset containing all of the links anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
-link_set :: Monad m => [m [Link]] -> m [Link]
+link_set :: STMorIO m => [C _s _s' m [Link]] -> C _s _s' m [Link]
 link_set ts = liftM (foldr (\ x acc -> -- if x == Nobody -- filter Nobody
                                       -- then acc
                                       -- else case x of -- type check
@@ -517,7 +517,7 @@ set_ycor y' = do
 {-# SPECIALIZE  who :: C Turtle _s' STM Int #-}
 {-# SPECIALIZE  who :: C Turtle _s' IO Int #-}
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
-who :: Monad m => C Turtle _s' m Int
+who :: STMorIO m => C Turtle _s' m Int
 who = do
   (MkTurtle {who_=tw},_) <- Reader.ask
   return tw
@@ -599,7 +599,7 @@ random_pycor = do
   return v
 
 {-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
-{-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer _s' STM b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer () STM b #-}
 {-# SPECIALIZE random :: (Num b, Real a) => a -> C Turtle _s' STM b #-}
 {-# SPECIALIZE random :: (Num b, Real a) => a -> C Patch _s' STM b #-}
 {-# SPECIALIZE random :: (Num b, Real a) => a -> C Link _s' STM b #-}
@@ -795,19 +795,19 @@ in_cone = todo
 {-# SPECIALIZE  no_turtles :: C _s _s' STM [Turtle] #-}
 {-# SPECIALIZE  no_turtles :: C _s _s' IO [Turtle] #-}
 -- | Reports an empty turtle agentset. 
-no_turtles :: Monad m => m [Turtle]
+no_turtles :: STMorIO m => C _s _s' m [Turtle]
 no_turtles = return []
 
 {-# SPECIALIZE  no_patches :: C _s _s' STM [Patch] #-}
 {-# SPECIALIZE  no_patches :: C _s _s' IO [Patch] #-}
 -- | Reports an empty patch agentset. 
-no_patches :: Monad m => m [Patch]
+no_patches :: STMorIO m => C _s _s' m [Patch]
 no_patches = return []
 
 {-# SPECIALIZE  no_links :: C _s _s' STM [Link] #-}
 {-# SPECIALIZE  no_links :: C _s _s' IO [Link] #-}
 -- | Reports an empty link agentset. 
-no_links :: Monad m => m [Link]
+no_links :: STMorIO m => C _s _s' m [Link]
 no_links = return []
 
 
@@ -818,86 +818,86 @@ xor p q = (p || q) && not (p && q)
 
 {-# SPECIALIZE  patch_size :: C _s _s' STM Int #-}
 {-# SPECIALIZE  patch_size :: C _s _s' IO Int #-}
-patch_size :: Monad m => m Int
+patch_size :: STMorIO m => C _s _s' m Int
 patch_size = return $ patch_size_ conf
 
 {-# SPECIALIZE  max_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
-max_pxcor :: Monad m => m Int
+max_pxcor :: STMorIO m => C _s _s' m Int
 max_pxcor = return $ max_pxcor_ conf
 
 {-# SPECIALIZE  max_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
-max_pycor :: Monad m => m Int
+max_pycor :: STMorIO m => C _s _s' m Int
 max_pycor = return $ max_pycor_ conf
 
 {-# SPECIALIZE  min_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
-min_pxcor :: Monad m => m Int
+min_pxcor :: STMorIO m => C _s _s' m Int
 min_pxcor = return $ min_pxcor_ conf
 
 {-# SPECIALIZE  min_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
-min_pycor :: Monad m => m Int
+min_pycor :: STMorIO m => C _s _s' m Int
 min_pycor = return $ min_pycor_ conf
 
 {-# SPECIALIZE  world_width :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_width :: C _s _s' IO Int #-}
 -- | This reporter gives the total width of the NetLogo world. 
-world_width :: Monad m => m Int
+world_width :: STMorIO m => C _s _s' m Int
 world_width = return $ max_pxcor_ conf - min_pxcor_ conf + 1
 
 {-# SPECIALIZE  world_height :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_height :: C _s _s' IO Int #-}
 -- | This reporter gives the total height of the NetLogo world. 
-world_height :: Monad m => m Int
+world_height :: STMorIO m => C _s _s' m Int
 world_height = return $ max_pycor_ conf - min_pycor_ conf + 1
 
 
 {-# WARNING clear_all_plots "TODO" #-}
 -- | Clears every plot in the model.
-clear_all_plots :: C Observer _s' IO ()
+clear_all_plots :: C Observer () IO ()
 clear_all_plots = todo
 
 {-# WARNING clear_drawing "TODO" #-}
 -- | Clears all lines and stamps drawn by turtles. 
-clear_drawing :: C Observer _s' IO ()
+clear_drawing :: C Observer () IO ()
 clear_drawing = todo
 
 {-# INLINE cd #-}
 -- | alias for 'clear_drawing'
-cd :: C Observer _s' IO ()
+cd :: C Observer () IO ()
 cd = clear_drawing
 
 {-# WARNING clear_output "TODO" #-}
 -- | Clears all text from the model's output area, if it has one. Otherwise does nothing. 
-clear_output :: C Observer _s' IO ()
+clear_output :: C Observer () IO ()
 clear_output = todo
 
 
 -- | Kills all turtles.
 -- Also resets the who numbering, so the next turtle created will be turtle 0.
-clear_turtles :: C Observer _s' IO ()
+clear_turtles :: C Observer () IO ()
 clear_turtles = atomic $ lift $ do
                   writeTVar __turtles IM.empty
                   writeTVar __who 0
 
 {-# INLINE ct #-}
 -- | alias for 'clear_turtles'
-ct :: C Observer _s' IO ()
+ct :: C Observer () IO ()
 ct = clear_turtles
 
 {-# INLINE clear_links #-}
 -- | Kills all links.
-clear_links :: C Observer _s' IO ()
+clear_links :: C Observer () IO ()
 clear_links = atomic $ lift $ writeTVar __links M.empty
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
-clear_patches :: C Observer _s' IO ()
+clear_patches :: C Observer () IO ()
 clear_patches = mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> do
                               atomic $ lift $ writeTVar pc 0
                               atomic $ lift $ writeTVar pl ""
@@ -908,30 +908,30 @@ clear_patches = mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pv
 
 {-# INLINE cp #-}
 -- | alias for 'clear_patches'
-cp :: C Observer _s' IO ()
+cp :: C Observer () IO ()
 cp = clear_patches
 
 
 {-# INLINE clear_ticks #-}
 -- | Clears the tick counter.
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
-clear_ticks :: C Observer _s' IO ()
+clear_ticks :: C Observer () IO ()
 clear_ticks = lift $ writeIORef __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# INLINE reset_ticks #-}
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
-reset_ticks :: C Observer _s' IO ()
+reset_ticks :: C Observer () IO ()
 reset_ticks = lift $ writeIORef __tick 0
 
 {-# INLINE tick #-}
 -- | Advances the tick counter by one and updates all plots. 
-tick :: C Observer _s' IO ()
+tick :: C Observer () IO ()
 tick = tick_advance 1
 
 {-# WARNING tick_advance "TODO: dynamic typing, float" #-}
 {-# INLINE tick_advance #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
-tick_advance :: Double -> C Observer _s' IO ()
+tick_advance :: Double -> C Observer () IO ()
 tick_advance n = lift $ modifyIORef' __tick (+n)
 
 {-# INLINE butfirst #-}
@@ -956,7 +956,7 @@ first = head
 
 {-# INLINE foreach #-}
 -- | With a single list, runs the task for each item of list. 
-foreach :: Monad m => [a] -> (a -> m b) -> m ()
+foreach :: STMorIO m => [a] -> (a -> C _s _s' m b) -> C _s _s' m ()
 foreach = forM_
 
 {-# INLINE fput #-}
@@ -971,14 +971,14 @@ histogram :: t
 histogram = todo
 
 -- | Runs commands number times. 
-repeat_ :: Monad m => Int -> m a -> m ()
+repeat_ :: STMorIO m => Int -> C _s _s' m a -> C _s _s' m ()
 repeat_ 0 _ = return ()
 repeat_ n c = c >> repeat_ (n-1) c
 
 {-# INLINE report #-}
 -- | Immediately exits from the current to-report procedure and reports value as the result of that procedure. report and to-report are always used in conjunction with each other. 
 -- | NB: IN HLogo, It does not exit the procedure, but it will if the report primitive happens to be the last statement called from the procedure
-report :: Monad m => a -> m a
+report :: STMorIO m => a -> C _s _s' m a
 report = return
 
 
@@ -1004,7 +1004,7 @@ memberp = elem
 
 
 -- | Reports a list of length size containing values computed by repeatedly running the task. 
-n_values :: (Eq a, Monad m, Num a) => a -> (a -> m t) -> m [t]
+n_values :: (Eq a, STMorIO m, Num a) => a -> (a -> C _s _s' m t) -> C _s _s' m [t]
 n_values 0 _ = return []
 n_values s f = do
     h <- f s 
@@ -1091,7 +1091,7 @@ remove = todo
 
 {-# INLINE remove_duplicates #-}
 -- | Reports a copy of list with all duplicate items removed. The first of each item remains in place. 
-remove_duplicates :: (Monad m, Eq a) => [a] -> m [a]
+remove_duplicates :: (STMorIO m, Eq a) => [a] -> C _s _s' m [a]
 remove_duplicates = return . nub
 
 {-# WARNING remove_item "TODO" #-}
@@ -1122,13 +1122,13 @@ shuffle l = do
 
 {-# INLINE sort_ #-}
 -- | Reports a sorted list of numbers, strings, or agents. 
-sort_ :: (Monad m, Ord a) => [a] -> m [a]
+sort_ :: (STMorIO m, Ord a) => [a] -> C _s _s' m [a]
 sort_ = return . sort
 
 {-# WARNING sort_by "TODO: requires dynamic_typing" #-}
 {-# INLINE sort_by #-}
 -- | If the input is a list, reports a new list containing the same items as the input list, in a sorted order defined by the boolean reporter task. 
-sort_by :: Monad m => (a -> a -> Ordering) -> [a] -> m [a]
+sort_by :: STMorIO m => (a -> a -> Ordering) -> [a] -> C _s _s' m [a]
 sort_by c l = return $ sortBy c l
 
 -- | Reports a list of agents, sorted according to each agent's value for reporter. Ties are broken randomly. 
@@ -1161,7 +1161,7 @@ word = concatMap Prelude.show
 
 {-# INLINE abs_ #-}
 -- | Reports the absolute value of number. 
-abs_ :: (Monad m, Num a) => a -> m a
+abs_ :: (STMorIO m, Num a) => a -> C _s _s' m a
 abs_ = return . abs
 
 {-# INLINE e #-}
@@ -1269,7 +1269,7 @@ standard_deviation _l = todo
 
 {-# WARNING subtract_headings "TODO? maybe it is finished" #-}
 -- | Computes the difference between the given headings, that is, the number of degrees in the smallest angle by which heading2 could be rotated to produce heading1. 
-subtract_headings :: Monad m => Double -> Double -> m Double
+subtract_headings :: STMorIO m => Double -> Double -> C _s _s' m Double
 subtract_headings h1 h2 = let 
     h1' = if h1 < 0 || h1 >= 360
           then (h1 `mod_` 360 + 360) `mod_` 360
@@ -1658,10 +1658,10 @@ while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopExceptio
 is_listp :: t
 is_listp = todo
 
-is_stringp :: (Monad m, Typeable a) => a -> C _s _s' m Bool
+is_stringp :: (STMorIO m, Typeable a) => a -> C _s _s' m Bool
 is_stringp s = return $ isJust (cast s :: Maybe String)
 
-is_numberp :: (Monad m, Typeable a) => a -> C _s _s' m Bool
+is_numberp :: (STMorIO m, Typeable a) => a -> C _s _s' m Bool
 is_numberp n = return $ is_intp || is_doublep 
                where
                  is_intp = isJust (cast n :: Maybe Int)
@@ -1782,7 +1782,7 @@ unsafe_show a = do
 unsafe_print :: Show a => a -> C _s _s' IO ()
 unsafe_print a = lift $ Prelude.print a
 
-stats_stm :: C Observer _s' IO Double
+stats_stm :: C Observer () IO Double
 stats_stm = 
 #ifndef STATS_STM 
    error "library not compiled with stats-stm flag enabled"
@@ -1861,7 +1861,7 @@ with_plabel_color f = do
   (MkPatch {plabel_color_ = tb}) <- patch_on_ s
   lift $ modifyTVar' tb f
 
-snapshot :: C Observer _s' IO ()
+snapshot :: C Observer () IO ()
 snapshot = do
              ticksNow <- ticks
              ps <- patch_size
@@ -1962,7 +1962,7 @@ neighbors4 = do
 
 -- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects (IO effects allowed)
 --  or only depend on 'readTVar', belong here. The correct lifting (STM or IO) is left to type inference.
-class (Monad m) => STMorIO m where
+class Monad m => STMorIO m where
     -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
     turtles_here :: TurtlePatch s => C s _s' m [Turtle]
     -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
@@ -2379,7 +2379,7 @@ instance STMorIO IO where
 
 
 -- | Reports a shade of color proportional to the value of number. 
-scale_color :: Monad m => Double -> m Double -> Double -> Double -> m Double
+scale_color :: STMorIO m => Double -> C _s _s' m Double -> Double -> Double -> C _s _s' m Double
 scale_color c v minArg maxArg = do
   let c' = findCentralColorNumber c - 5.0
   var <- v
@@ -2420,7 +2420,7 @@ scale_color c v minArg maxArg = do
 
 -- | Tells each patch to give equal shares of (number * 100) percent of the value of patch-variable to its eight neighboring patches. number should be between 0 and 1. Regardless of topology the sum of patch-variable will be conserved across the world. (If a patch has fewer than eight neighbors, each neighbor still gets an eighth share; the patch keeps any leftover shares.) 
 -- can be done better, in a single sequential atomic
--- diffuse :: CSTM Double -> (Double -> CSTM ()) -> Double -> C Observer _s' IO ()
+-- diffuse :: CSTM Double -> (Double -> CSTM ()) -> Double -> C Observer () IO ()
 -- diffuse gettervar settervar perc = ask (do
 --                           ns <- neighbors
 --                           cns <- count ns

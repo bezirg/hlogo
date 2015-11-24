@@ -31,8 +31,6 @@ import Data.List (genericLength)
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
 import System.Environment (withArgs)
---import qualified Data.Vector.Mutable as MV (grow, write)
-import Data.Typeable (cast)
 import Control.Monad (liftM, filterM, replicateM)
 import System.Random (randomR, mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
@@ -49,7 +47,7 @@ globals :: [String] -> Q [Dec]
 globals vs  = do
     clear_globals <- valD (varP $ mkName "clear_globals") 
                 (normalB $ if null vs
-                           then [| return () :: C Observer _s' IO () |]
+                           then [| return () :: C Observer () IO () |]
                            else doE $ map (\ v -> noBindS [| atomic (lift (writeTVar $(varE (mkName ("__" ++ v))) 0)) |]) vs) []
     -- create 2 getters (1 prim and 1 unsafe) per global variable
     settersGetters <- liftM concat $ mapM (\ v -> do
@@ -344,7 +342,7 @@ run procs = do
   ll <- lookupValueName "links_length"
   let llength = maybe (litE $ integerL 0) varE ll
   gl <- lookupValueName "clear_globals"
-  clear_globals <- valD (varP $ mkName "clear_globals") (normalB [| return () :: C Observer _s' IO () |]) []
+  clear_globals <- valD (varP $ mkName "clear_globals") (normalB [| return () :: C Observer () IO () |]) []
   mArgs <- lookupValueName "args"
   y <- newName "y"
   cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
@@ -356,7 +354,7 @@ run procs = do
                                                                    atomic $ lift $ modifyTVar' __who ($(varE y) +) -- since create_turtles
                                                                    ns <- newTurtles oldWho $(varE y) -- operates only on observer
                                                                    atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
-                                                                   return $ IM.elems ns :: C Observer _s' IO [Turtle] -- todo: can be optimized
+                                                                   return $ IM.elems ns :: C Observer () IO [Turtle] -- todo: can be optimized
 
 
         -- (_, a, _, _) <- Reader.ask
@@ -405,14 +403,14 @@ run procs = do
                                                                            atomic $ lift $ modifyTVar' __who ($(varE y) +)
                                                                            ns <- lift $ newTurtles oldWho $(varE y)
                                                                            atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
-                                                                           return $ IM.elems ns :: C Observer _s' IO [Turtle]
+                                                                           return $ IM.elems ns :: C Observer () IO [Turtle]
                                                                         |]) []]
 
 
   crtInline <- pragInlD (mkName "crt") Inline FunLike AllPhases                 
   crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
   croInline <- pragInlD (mkName "cro") Inline FunLike AllPhases                 
-  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> C Observer _s' IO [Turtle] |]) []
+  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> C Observer () IO [Turtle] |]) []
 
   clsw <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(llength) |]) []]
   clst <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(llength) |]) []]
@@ -453,8 +451,8 @@ run procs = do
               _ -> id) (cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: clear_all ++ m)
                  
 -- | Internal, used only in Test code.
-runT :: C Observer _s' IO b -> IO b
-runT as = do c <- cInit 0
+runT :: C Observer () IO b -> IO b
+runT as = do cInit 0
              Reader.runReaderT as (undefined,undefined)
              
 
@@ -480,7 +478,7 @@ random_integer_heading = do
 
 {-# INLINE newBreed #-}
 -- | Internal
-newBreed :: String -> Int -> Int -> C Observer _s' IO Turtle
+newBreed :: String -> Int -> Int -> C Observer () IO Turtle
 newBreed b x to = do
   rpc <- atomic $ random_primary_color
   rih <- atomic $ random_integer_heading
@@ -539,7 +537,7 @@ newOrderedBreed i o b x to = do
 
 {-# INLINE newTurtle #-}
 -- | Internal
-newTurtle :: Int -> Int -> C Observer _s' IO Turtle
+newTurtle :: Int -> Int -> C Observer () IO Turtle
 newTurtle x to = do
   rpc <- atomic $ random_primary_color
   rih <- atomic $ random_integer_heading
@@ -655,7 +653,7 @@ newOrderedTurtle i o x to = do
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_breeds :: String -> Int -> Int -> C Observer _s' IO [Turtle] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_breeds :: String -> Int -> Int -> C Observer () IO [Turtle] -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_breeds b n to = do
   oldWho <- lift $ readTVarIO __who
   atomic $ lift $ modifyTVar' __who (n +)
@@ -669,7 +667,7 @@ create_breeds b n to = do
                                                                              | i <- [w..w+n-1]]
 
 -- | Internal, Utility function to make TemplateHaskell easier
-create_ordered_breeds :: String -> Int -> Int -> C Observer _s' IO [Turtle]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
+create_ordered_breeds :: String -> Int -> Int -> C Observer () IO [Turtle]  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_ordered_breeds b n to = do
   oldWho <- lift $ readTVarIO __who
   atomic $ lift $ modifyTVar' __who (n +)
