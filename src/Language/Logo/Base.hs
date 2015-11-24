@@ -27,8 +27,8 @@ class Show s => Player s where
 -- | NB: Eq needed for agentset operations (because it is list for now) 
 class (Eq s, Player s) => Agent s where      
     --type AgentSet s
-    ask :: Player p => C s p IO _b -> [s] -> C p p' IO ()
-    of_ :: Player p => C s p IO b -> [s] -> C p p' IO [b]
+    ask :: C s p IO _b -> [s] -> C p p' IO ()
+    of_ :: C s p IO b -> [s] -> C p p' IO [b]
 
     
 class Agent s => TurtleLink s where

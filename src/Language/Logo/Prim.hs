@@ -9,43 +9,40 @@
 --
 -- This module tries to provide an API to the standard library of NetLogo:
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
-module Language.Logo.Prim -- (
---                            -- * Agent related
---                            self, myself, other, count, distance, nobody, distancexy, towards, allp, at_points, towardsxy, in_radius, in_cone, every, wait, is_agentp, carefully, is_agentsetp, die, 
+module Language.Logo.Prim (
+                            -- * Agent related
+                            self, myself, other, count, distance, nobody, distancexy, towards, allp, at_points, towardsxy, in_radius, in_cone, every, wait, carefully, die, 
 
---                            -- * Turtle related
---                            turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, is_turtlep, is_turtle_setp, hatch, move_to, set_size, with_size, with_shape,
+                            -- * Turtle related
+                            turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, hatch, set_size, with_size, with_shape,
 
---                            -- * Patch related
---                            patch_at, patch_here, patch_ahead, patches, patch, patch_set, can_movep, no_patches, is_patchp, is_patch_setp, pxcor, pycor,pcolor,  neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color, diffuse,
+                            -- * Patch related
+                            patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches, pxcor, pycor,pcolor,  neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color, 
 
---                            -- * Link related
---                            hide_link, show_link, is_linkp, is_directed_linkp, is_undirected_linkp, is_link_setp, link_length, link, links, link_with, in_link_from, out_link_to, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
+                            -- * Link related
+                            hide_link, show_link, link_length, link, links, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
 
---                            -- * Random related
---                            random_xcor, unsafe_random_xcor, random_ycor, unsafe_random_ycor, random_pxcor, unsafe_random_pxcor, random_pycor, unsafe_random_pycor, random, unsafe_random, random_float, unsafe_random_float, new_seed, random_seed, unsafe_random_seed, random_exponential, random_gamma, random_normal, random_poisson,
+                            -- * Random related
+                            random_xcor, random_ycor, random_pxcor, random_pycor, random, random_float, new_seed, random_seed, random_exponential, random_gamma, random_normal, random_poisson,
 
---                            -- * Color
---                            black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color, extract_rgb, approximate_rgb,
+                            -- * Color
+                            black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color, extract_rgb, approximate_rgb,
 
---                            -- * List related
---                            sum, anyp, item, one_of, min_one_of, max_one_of, unsafe_one_of, unsafe_n_of, remove, remove_item, replace_item, shuffle, unsafe_shuffle, sublist, substring, n_of, butfirst, butlast, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
+                            -- * List related
+                            sum, anyp, item, one_of, min_one_of, max_one_of, remove, remove_item, replace_item, shuffle, sublist, substring, n_of, butfirst, butlast, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
 
---                            -- * Math
---                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
+                            -- * Math
+                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
 
---                            -- * Misc
---                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
+                            -- * Misc
+                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
 
---                            -- * Input/Output
---                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
+                            -- * Input/Output
+                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
 
---                            -- * IO Operations
---                            atomic, ask, askPatches, of_, with, snapshot
-
-
--- )
-    where
+                            -- * IO Operations
+                            atomic, ask, askPatches, of_, with, snapshot, TurtlePatch (..)
+ ) where
 
 import Prelude hiding (show,print)
 import qualified Prelude (show, print)
@@ -67,10 +64,9 @@ import Control.Applicative
 import System.Random hiding (random, split)
 import Data.Function
 import Data.Typeable
-import Control.Monad (forM_, liftM, liftM2, filterM, forever, when)
+import Control.Monad (forM_, liftM, filterM, forever, when)
 import Data.Word (Word8)
 import GHC.Conc (numCapabilities)
-import qualified Data.Traversable as T (mapM)
 import Data.Maybe (isJust)
 -- for rng
 import System.CPUTime
@@ -95,18 +91,16 @@ import qualified Data.Foldable as F (foldlM)
 
 #define todo assert False undefined
 
--- {-# DEPRECATED unsafe_random_xcor, unsafe_random_ycor, unsafe_random_pxcor, unsafe_random_pycor, unsafe_random, unsafe_random_float, unsafe_random_seed, unsafe_one_of, unsafe_n_of, unsafe_shuffle "Uses slower (but safe) global random generator" #-}
-
--- {-# SPECIALIZE self :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE self :: CIO [AgentRef] #-}
+{-# SPECIALIZE  self :: Agent s => C s _s' STM [s] #-}
+{-# SPECIALIZE  self :: Agent s => C s _s' IO [s] #-}
 -- |  Reports this turtle or patch. 
 self :: (Monad m, Agent s) => C s _s' m [s] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (s,_) <- Reader.ask
   return [s]
 
--- {-# SPECIALIZE myself :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE myself :: CIO [AgentRef] #-}
+{-# SPECIALIZE  myself :: Agent s => C s s' STM [s'] #-}
+{-# SPECIALIZE  myself :: Agent s => C s s' IO [s'] #-}
 -- | "self" and "myself" are very different. "self" is simple; it means "me". "myself" means "the turtle or patch who asked me to do what I'm doing right now."
 -- When an agent has been asked to run some code, using myself in that code reports the agent (turtle or patch) that did the asking. 
 -- NB: Implemented for ask, of, with
@@ -115,8 +109,8 @@ myself = do
   (_,m) <- Reader.ask
   return [m]
 
--- {-# SPECIALIZE other :: [AgentRef] -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE other :: [AgentRef] -> CIO [AgentRef] #-}
+{-# SPECIALIZE  other :: Agent s => [s] -> C s _s' STM [s] #-}
+{-# SPECIALIZE  other :: Agent s => [s] -> C s _s' IO [s] #-}
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
 other :: (Monad m, Agent s) => [s] -> C s _s' m [s]
 other as = do
@@ -125,10 +119,14 @@ other as = do
 
 
 
+{-# SPECIALIZE  patches :: C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  patches :: C _s _s' IO [Patch] #-}
 -- | Reports the agentset consisting of all patches. 
 patches :: Monad m => C _s _s' m [Patch]
 patches = return (elems __patches)
 
+{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: Monad m => Double -> Double -> C _s _s' m [Patch]
 patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf || x' < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (y' > max_pycor_ conf || y' < min_pycor_ conf))
@@ -149,8 +147,8 @@ patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max_pxcor_ conf ||
 carefully :: C _s _s' STM a -> C _s _s' STM a -> C _s _s' STM a
 carefully c c' = catch c (\ ex -> let _ = (ex :: SomeException) in c')
 
--- {-# SPECIALIZE patch_at :: Double -> Double -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE patch_at :: Double -> Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE  patch_at :: TurtlePatch s => Double -> Double -> C s _s' STM [Patch] #-}
+{-# SPECIALIZE  patch_at :: TurtlePatch s => Double -> Double -> C s _s' IO [Patch] #-}
 -- | Reports the patch at (dx, dy) from the caller, that is, the patch containing the point dx east and dy patches north of this agent. 
 patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m [Patch]
 patch_at x y = do
@@ -158,8 +156,8 @@ patch_at x y = do
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
   patch (fromIntegral px + x) (fromIntegral py +y)
 
--- {-# SPECIALIZE patch_ahead :: Double -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE patch_ahead :: Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' STM [Patch] #-}
+{-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' IO [Patch] #-}
 -- | Reports the single patch that is the given distance "ahead" of this turtle, that is, along the turtle's current heading. 
 patch_ahead :: STMorIO m => Double -> C Turtle _s' m [Patch]
 patch_ahead n = do
@@ -227,22 +225,21 @@ magenta = 125
 pink :: Double
 pink = 135
 
--- {-# SPECIALIZE count :: [AgentRef] -> CSTM Int #-}
--- {-# SPECIALIZE count :: [AgentRef] -> CIO Int #-}
---count :: (Monad m, Num a) => [AgentRef] -> C m a
+{-# SPECIALIZE  count :: Agent a => [a] -> C _s _s' STM Int #-}
+{-# SPECIALIZE  count :: Agent a => [a] -> C _s _s' IO Int #-}
 -- | Reports the number of agents in the given agentset. 
 count :: (Monad m, Agent a) => [a] -> C _s _s' m Int
 -- count [Nobody] = throw $ TypeException "agent" Nobody
 count as = return $ length as
 
--- {-# SPECIALIZE anyp :: [AgentRef] -> CSTM Bool #-}
--- {-# SPECIALIZE anyp :: [AgentRef] -> CIO Bool #-}
+{-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' STM Bool #-}
+{-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' IO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
 anyp :: (Monad m, Agent a) => [a] -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
 anyp as = return $ not $ null as
 
---allp :: Agent a => CIO Bool -> [AgentRef] -> CIO Bool
+allp :: (Agent a) => C a p IO Bool -> [a] -> C p p' IO Bool
 allp _ [] = return True
 allp r as = do
   res <- with r as
@@ -362,9 +359,11 @@ instance TurtlePatch Patch where
 instance TurtlePatch Turtle where
     patch_on_ x = liftM head $ Reader.local (\ _ -> (x,undefined)) patch_here -- TODO: better code
 
+{-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' IO Patch #-}
+{-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' STM Patch #-}
 
--- {-# SPECIALIZE turtle_set :: [CSTM [AgentRef]] -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE turtle_set :: [CIO [AgentRef]] -> CIO [AgentRef] #-}
+{-# SPECIALIZE  turtle_set :: [C _s _s' STM [Turtle]] -> C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtle_set :: [C _s _s' IO [Turtle]] -> C _s _s' IO [Turtle] #-}
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: Monad m => [m [Turtle]] -> m [Turtle]
@@ -379,8 +378,8 @@ turtle_set ts = liftM (foldr (\ x acc ->
                                          -- _ -> throw $ TypeException "turtle" x
                              ) [] . concat) (sequence ts)
 
--- {-# SPECIALIZE patch_set :: [CSTM [AgentRef]] -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE patch_set :: [CIO [AgentRef]] -> CIO [AgentRef] #-}
+{-# SPECIALIZE  patch_set :: [C _s _s' STM [Patch]] -> C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  patch_set :: [C _s _s' IO [Patch]] -> C _s _s' IO [Patch] #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 -- | NB: HLogo no support for nested patch_set concatenation/flattening
 patch_set :: Monad m => [m [Patch]] -> m [Patch]
@@ -395,6 +394,8 @@ patch_set ts = liftM (foldr (\ x acc ->
                                         -- _ -> throw $ TypeException "patch" x
                             ) [] . concat) (sequence ts)
 
+{-# SPECIALIZE  link_set :: [C _s _s' STM [Link]] -> C _s _s' STM [Link] #-}
+{-# SPECIALIZE  link_set :: [C _s _s' IO [Link]] -> C _s _s' IO [Link] #-}
 -- | Reports an agentset containing all of the links anywhere in any of the inputs.
 -- | NB: HLogo no support for nested turtle_set concatenation/flattening
 link_set :: Monad m => [m [Link]] -> m [Link]
@@ -422,48 +423,56 @@ set_heading v = do
   (t,_) <- Reader.ask
   lift $ writeTVar (heading_ t) v
 
--- {-# SPECIALIZE pxcor :: CSTM Int #-}
--- {-# SPECIALIZE pxcor :: CIO Int #-}
--- pxcor :: (Monad m, Num a) => C m a
--- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
+{-# SPECIALIZE  pxcor :: TurtlePatch s => C s _s' STM Int #-}
+{-# SPECIALIZE  pxcor :: TurtlePatch s => C s _s' IO Int #-}
+-- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move 
 pxcor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pxcor = do
   (s,_) <- Reader.ask
   (MkPatch {pxcor_ = x}) <- patch_on_ s
   return x
 
--- {-# SPECIALIZE pycor :: CSTM Int #-}
--- {-# SPECIALIZE pycor :: CIO Int #-}
--- pycor :: (Monad m, Num a) => C m a
--- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move. 
+{-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' STM Int #-}
+{-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' IO Int #-}
+-- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't mov 
 pycor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pycor = do
   (s,_) <- Reader.ask
   (MkPatch {pycor_ = y}) <- patch_on_ s
   return y
 
+{-# SPECIALIZE  set_plabel :: String -> C Turtle _s' STM () #-}
+{-# SPECIALIZE  set_plabel :: String -> C Patch _s' STM () #-}
 set_plabel :: TurtlePatch s => String -> C s _s' STM ()
 set_plabel l = do
   (s,_) <- Reader.ask
   (MkPatch {plabel_ = tl}) <- patch_on_ s
   lift $ writeTVar tl l
 
+{-# SPECIALIZE  set_pcolor :: Double -> C Turtle _s' STM () #-}
+{-# SPECIALIZE  set_pcolor :: Double -> C Patch _s' STM () #-}
 set_pcolor :: TurtlePatch s => Double -> C s _s' STM ()
 set_pcolor c = do
   (s,_) <- Reader.ask
   (MkPatch {pcolor_ = tc}) <- patch_on_ s
   lift $ writeTVar tc c
 
+{-# SPECIALIZE  set_breed :: String -> C Turtle _s' STM () #-}
+{-# SPECIALIZE  set_breed :: String -> C Link _s' STM () #-}
 set_breed :: TurtleLink s => String -> C s _s' STM ()
 set_breed v = do
   (s,_) <- Reader.ask
   lift $ writeTVar (breed_ s) v
 
+{-# SPECIALIZE  set_color :: Double -> C Turtle _s' STM () #-}
+{-# SPECIALIZE  set_color :: Double -> C Link _s' STM () #-}
 set_color :: TurtleLink s => Double -> C s _s' STM ()
 set_color v = do
   (s,_) <- Reader.ask
   lift $ writeTVar (color_ s) v
 
+{-# SPECIALIZE  set_label_color :: Double -> C Turtle _s' STM () #-}
+{-# SPECIALIZE   set_label_color :: Double -> C Link _s' STM () #-}
 set_label_color :: TurtleLink s => Double -> C s _s' STM ()
 set_label_color v = do
   (s,_) <- Reader.ask
@@ -505,8 +514,8 @@ set_ycor y' = do
          then lift $ writeTVar ty y'
          else error "wrap"
  
--- {-# SPECIALIZE who :: CSTM Int #-}
--- {-# SPECIALIZE who :: CIO Int #-}
+{-# SPECIALIZE  who :: C Turtle _s' STM Int #-}
+{-# SPECIALIZE  who :: C Turtle _s' IO Int #-}
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: Monad m => C Turtle _s' m Int
 who = do
@@ -514,14 +523,14 @@ who = do
   return tw
 
 
--- {-# SPECIALIZE dx :: CSTM Double #-}
--- {-# SPECIALIZE dx :: CIO Double #-}
+{-# SPECIALIZE  dx :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  dx :: C Turtle _s' IO Double #-}
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: STMorIO m => C Turtle _s' m Double
 dx = liftM sin_ heading
 
--- {-# SPECIALIZE dy :: CSTM Double #-}
--- {-# SPECIALIZE dy :: CIO Double #-}
+{-# SPECIALIZE  dy :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  dy :: C Turtle _s' IO Double #-}
 -- | Reports the y-increment (the amount by which the turtle's ycor would change) if the turtle were to take one step forward in its current heading. 
 dy :: STMorIO m => C Turtle _s' m Double
 dy = liftM cos_ heading
@@ -590,6 +599,10 @@ random_pycor = do
   return v
 
 {-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer _s' STM b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Turtle _s' STM b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Patch _s' STM b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Link _s' STM b #-}
 -- | If number is positive, reports a random integer greater than or equal to 0, but strictly less than number.
 -- If number is negative, reports a random integer less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0 as well. 
@@ -675,8 +688,6 @@ delta a1 a2 _aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
 
--- {-# SPECIALIZE nobody :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE nobody :: CIO [AgentRef] #-}
 -- | This is a special value which some primitives such as turtle, one-of, max-one-of, etc. report to indicate that no agent was found. Also, when a turtle dies, it becomes equal to nobody. 
 --
 -- It can be returned from all primitives that normally return 1 agent. It can also be returned from a turtle reference that got died or the 'turtle' primitive to a dead agent,, like implicitly nullifying the agent.
@@ -702,6 +713,7 @@ downhill4 :: t
 downhill4 = todo
 
 -- | Set the caller's heading towards agent. 
+{-# INLINE face #-}
 face :: TurtlePatch a => [a] -> C Turtle _s' STM ()
 face a = set_heading =<< towards a
 
@@ -780,18 +792,20 @@ in_cone = todo
 
 
 
--- {-# SPECIALIZE no_turtles :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE no_turtles :: CIO [AgentRef] #-}
+{-# SPECIALIZE  no_turtles :: C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  no_turtles :: C _s _s' IO [Turtle] #-}
 -- | Reports an empty turtle agentset. 
 no_turtles :: Monad m => m [Turtle]
 no_turtles = return []
 
--- {-# SPECIALIZE no_patches :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE no_patches :: CIO [AgentRef] #-}
+{-# SPECIALIZE  no_patches :: C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  no_patches :: C _s _s' IO [Patch] #-}
 -- | Reports an empty patch agentset. 
 no_patches :: Monad m => m [Patch]
 no_patches = return []
 
+{-# SPECIALIZE  no_links :: C _s _s' STM [Link] #-}
+{-# SPECIALIZE  no_links :: C _s _s' IO [Link] #-}
 -- | Reports an empty link agentset. 
 no_links :: Monad m => m [Link]
 no_links = return []
@@ -802,43 +816,43 @@ xor :: Bool -> Bool -> Bool
 xor p q = (p || q) && not (p && q)
 
 
--- {-# SPECIALIZE patch_size :: CSTM Int #-}
--- {-# SPECIALIZE patch_size :: CIO Int #-}
+{-# SPECIALIZE  patch_size :: C _s _s' STM Int #-}
+{-# SPECIALIZE  patch_size :: C _s _s' IO Int #-}
 patch_size :: Monad m => m Int
 patch_size = return $ patch_size_ conf
 
--- {-# SPECIALIZE max_pxcor :: CSTM Int #-}
--- {-# SPECIALIZE max_pxcor :: CIO Int #-}
+{-# SPECIALIZE  max_pxcor :: C _s _s' STM Int #-}
+{-# SPECIALIZE  max_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
 max_pxcor :: Monad m => m Int
 max_pxcor = return $ max_pxcor_ conf
 
--- {-# SPECIALIZE max_pycor :: CSTM Int #-}
--- {-# SPECIALIZE max_pycor :: CIO Int #-}
+{-# SPECIALIZE  max_pycor :: C _s _s' STM Int #-}
+{-# SPECIALIZE  max_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 max_pycor :: Monad m => m Int
 max_pycor = return $ max_pycor_ conf
 
--- {-# SPECIALIZE min_pxcor :: CSTM Int #-}
--- {-# SPECIALIZE min_pxcor :: CIO Int #-}
+{-# SPECIALIZE  min_pxcor :: C _s _s' STM Int #-}
+{-# SPECIALIZE  min_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
 min_pxcor :: Monad m => m Int
 min_pxcor = return $ min_pxcor_ conf
 
--- {-# SPECIALIZE min_pycor :: CSTM Int #-}
--- {-# SPECIALIZE min_pycor :: CIO Int #-}
+{-# SPECIALIZE  min_pycor :: C _s _s' STM Int #-}
+{-# SPECIALIZE  min_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 min_pycor :: Monad m => m Int
 min_pycor = return $ min_pycor_ conf
 
--- {-# SPECIALIZE world_width :: CSTM Int #-}
--- {-# SPECIALIZE world_width :: CIO Int #-}
+{-# SPECIALIZE  world_width :: C _s _s' STM Int #-}
+{-# SPECIALIZE  world_width :: C _s _s' IO Int #-}
 -- | This reporter gives the total width of the NetLogo world. 
 world_width :: Monad m => m Int
 world_width = return $ max_pxcor_ conf - min_pxcor_ conf + 1
 
--- {-# SPECIALIZE world_height :: CSTM Int #-}
--- {-# SPECIALIZE world_height :: CIO Int #-}
+{-# SPECIALIZE  world_height :: C _s _s' STM Int #-}
+{-# SPECIALIZE  world_height :: C _s _s' IO Int #-}
 -- | This reporter gives the total height of the NetLogo world. 
 world_height :: Monad m => m Int
 world_height = return $ max_pycor_ conf - min_pycor_ conf + 1
@@ -877,6 +891,7 @@ clear_turtles = atomic $ lift $ do
 ct :: C Observer _s' IO ()
 ct = clear_turtles
 
+{-# INLINE clear_links #-}
 -- | Kills all links.
 clear_links :: C Observer _s' IO ()
 clear_links = atomic $ lift $ writeTVar __links M.empty
@@ -897,21 +912,24 @@ cp :: C Observer _s' IO ()
 cp = clear_patches
 
 
+{-# INLINE clear_ticks #-}
 -- | Clears the tick counter.
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: C Observer _s' IO ()
 clear_ticks = lift $ writeIORef __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
+{-# INLINE reset_ticks #-}
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: C Observer _s' IO ()
 reset_ticks = lift $ writeIORef __tick 0
 
--- | Advances the tick counter by one and updates all plots. 
 {-# INLINE tick #-}
+-- | Advances the tick counter by one and updates all plots. 
 tick :: C Observer _s' IO ()
 tick = tick_advance 1
 
 {-# WARNING tick_advance "TODO: dynamic typing, float" #-}
+{-# INLINE tick_advance #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 tick_advance :: Double -> C Observer _s' IO ()
 tick_advance n = lift $ modifyIORef' __tick (+n)
@@ -1434,7 +1452,7 @@ instance Agent Turtle where
                    ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
               ) (split numCapabilities as)
         ThreadG.wait __tg
-      
+
     of_ f as = do
       (s,_) <- Reader.ask
       lift $ do
@@ -1473,6 +1491,8 @@ instance Agent Link where
              ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
              rs <- sequence [Thread.result =<< w | w <- ws]
              return $ concat rs -- lists traversals can be optimized
+
+
 
 
 
@@ -1551,9 +1571,14 @@ split n l = let (d,m) = length l `quotRem` n
   
 -- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
 -- in other words, the agents satisfying the given condition. 
+with :: Agent a => C a _s IO Bool -> [a] -> C _s _s' IO [a]
 with f as = do
   res <- f `of_` as
   return $ foldr (\ (a, r) l -> if r then a:l else l) [] (zip as res)
+
+{-# SPECIALIZE  with :: C Turtle p IO Bool -> [Turtle] -> C p p' IO [Turtle] #-}
+{-# SPECIALIZE  with :: C Patch p IO Bool -> [Patch] -> C p p' IO [Patch] #-}
+{-# SPECIALIZE  with :: C Link p IO Bool -> [Link] -> C p p' IO [Link] #-}
 
 {-# WARNING loop  "TODO: use MaybeT or ErrorT" #-}
 -- |  Runs the list of commands forever, or until the current procedure exits through use of the stop command or the report command. 
@@ -1564,6 +1589,7 @@ with f as = do
 loop :: C _s _s' IO a -> C _s _s' IO ()
 loop c = forever c `catchIO` \ StopException -> return ()
 
+{-# INLINE stop #-}
 -- | This agent exits immediately from the enclosing to-procedure that was called from 'ask', or ask-like construct (e.g. crt, hatch, sprout). Only the current procedure stops, not all execution for the agent. Also can exit from a top-level (observer) procedure.
 stop :: a
 stop = throw StopException
@@ -1712,6 +1738,7 @@ hatch n = do
 --   lift $ writeTVar tx (fromIntegral px) >> writeTVar ty (fromIntegral py)
 -- move_to _ = throw $ TypeException "single turtle or patch"
 
+{-# INLINE turtles_on #-}
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
 turtles_on :: (Player s, TurtlePatch a) => [a] -> C s _s' IO [Turtle]
 turtles_on as = liftM concat $ turtles_here `of_` as
@@ -1737,9 +1764,10 @@ at_points (_a:_as) _ds = todo
 every :: Double -> C _s _s' IO a -> C _s _s' IO ()
 every n a = a >> wait n
 
+{-# INLINE wait #-}
 -- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
 -- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
-wait :: (RealFrac r) => r -> C _s _s' IO ()
+wait :: Double -> C _s _s' IO ()
 wait n = lift $ threadDelay (round $ n * 1000000)
 
 {-# DEPRECATED unsafe_show "it is slightly faster than show since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
@@ -2407,60 +2435,62 @@ scale_color c v minArg maxArg = do
 -- Specialization trick to reduce the cost of using a class (STMorIO)
 -- The downside is executable with bigger code
 
--- {-# SPECIALIZE turtles_here :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE turtles_here :: CIO [AgentRef] #-}
--- {-# SPECIALIZE turtles_at :: Double -> Double -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE turtles_at :: Double -> Double -> CIO [AgentRef] #-}
--- {-# SPECIALIZE patch_here :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE patch_here :: CIO [AgentRef] #-}
--- {-# SPECIALIZE patches :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE patches :: CIO [AgentRef] #-}
--- {-# SPECIALIZE patch :: Double -> Double -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE patch :: Double -> Double -> CIO [AgentRef] #-}
--- {-# SPECIALIZE turtles :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE turtles :: CIO [AgentRef] #-}
--- {-# SPECIALIZE turtle :: Int -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE turtle :: Int -> CIO [AgentRef] #-}
--- {-# SPECIALIZE heading :: CSTM Double #-}
--- {-# SPECIALIZE heading :: CIO Double #-}
--- {-# SPECIALIZE xcor :: CSTM Double #-}
--- {-# SPECIALIZE xcor :: CIO Double #-}
--- {-# SPECIALIZE pcolor :: CSTM Double #-}
--- {-# SPECIALIZE pcolor :: CIO Double #-}
--- {-# SPECIALIZE ycor :: CSTM Double #-}
--- {-# SPECIALIZE ycor :: CIO Double #-}
--- {-# SPECIALIZE color :: CSTM Double #-}
--- {-# SPECIALIZE color :: CIO Double #-}
--- {-# SPECIALIZE breed :: CSTM String #-}
--- {-# SPECIALIZE breed :: CIO String #-}
--- {-# SPECIALIZE distance :: [AgentRef] -> CSTM Double #-}
--- {-# SPECIALIZE distance :: [AgentRef] -> CIO Double #-}
--- {-# SPECIALIZE distancexy :: Double -> Double -> CSTM Double #-}
--- {-# SPECIALIZE distancexy :: Double -> Double -> CIO Double #-}
--- {-# SPECIALIZE towards :: [AgentRef] -> CSTM Double #-}
--- {-# SPECIALIZE towards :: [AgentRef] -> CIO Double #-}
--- {-# SPECIALIZE in_radius :: [AgentRef] -> Double -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE in_radius :: [AgentRef] -> Double -> CIO [AgentRef] #-}
--- {-# SPECIALIZE  link :: Int -> Int -> CSTM [AgentRef] #-}
--- {-# SPECIALIZE  link :: Int -> Int -> CIO [AgentRef] #-}
--- {-# SPECIALIZE links :: CSTM [AgentRef] #-}
--- {-# SPECIALIZE links :: CIO [AgentRef] #-}
--- {-# SPECIALIZE readTurtle :: Int -> CSTM Double #-}
--- {-# SPECIALIZE readTurtle :: Int -> CIO Double #-}
--- {-# SPECIALIZE readPatch :: Int -> CSTM Double #-}
--- {-# SPECIALIZE readPatch :: Int -> CIO Double #-}
--- {-# SPECIALIZE readLink :: Int -> CSTM Double #-}
--- {-# SPECIALIZE readLink :: Int -> CIO Double #-}
--- {-# SPECIALIZE timer :: CSTM Double #-}
--- {-# SPECIALIZE timer :: CIO Double #-}
--- {-# SPECIALIZE reset_timer :: CSTM () #-}
--- {-# SPECIALIZE reset_timer :: CIO () #-}
--- {-# SPECIALIZE show :: Show a => a -> CSTM () #-}
--- {-# SPECIALIZE show :: Show a => a -> CIO () #-}
--- {-# SPECIALIZE print :: Show a => a -> CSTM () #-}
--- {-# SPECIALIZE print :: Show a => a -> CIO () #-}
--- {-# SPECIALIZE ticks :: CSTM Double #-}
--- {-# SPECIALIZE ticks :: CIO Double #-}
+{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' IO [Turtle] #-}
+{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' IO [Turtle] #-}
+{-# SPECIALIZE  patch_here :: C Turtle _s' STM [Patch] #-}
+{-# SPECIALIZE  patch_here :: C Turtle _s' IO [Patch] #-}
+{-# SPECIALIZE  patches :: C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  patches :: C _s _s' IO [Patch] #-}
+{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' STM [Patch] #-}
+{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
+{-# SPECIALIZE  turtles :: C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles :: C _s _s' IO [Turtle] #-}
+{-# SPECIALIZE  turtle :: Int -> C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtle :: Int -> C _s _s' IO [Turtle] #-}
+{-# SPECIALIZE  heading :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  heading :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE  xcor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  xcor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  ycor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  pcolor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE  pcolor :: C Patch _s' STM Double #-}
+{-# SPECIALIZE  pcolor :: C Patch _s' IO Double #-}
+{-# SPECIALIZE  color :: TurtleLink s => C s _s' STM Double #-}
+{-# SPECIALIZE  color :: TurtleLink s => C s _s' IO Double #-}
+{-# SPECIALIZE  breed :: TurtleLink s => C s _s' STM String #-}
+{-# SPECIALIZE  breed :: TurtleLink s => C s _s' IO String #-}
+-- {-# SPECIALIZE  distance :: [AgentRef] -> CSTM Double #-}
+-- {-# SPECIALIZE  distance :: [AgentRef] -> CIO Double #-}
+-- {-# SPECIALIZE  distancexy :: Double -> Double -> CSTM Double #-}
+-- {-# SPECIALIZE  distancexy :: Double -> Double -> CIO Double #-}
+-- {-# SPECIALIZE  towards :: [AgentRef] -> CSTM Double #-}
+-- {-# SPECIALIZE  towards :: [AgentRef] -> CIO Double #-}
+-- {-# SPECIALIZE  in_radius :: [AgentRef] -> Double -> CSTM [AgentRef] #-}
+-- {-# SPECIALIZE  in_radius :: [AgentRef] -> Double -> CIO [AgentRef] #-}
+{-# SPECIALIZE   link :: Int -> Int -> C _s _s' STM [Link] #-}
+{-# SPECIALIZE   link :: Int -> Int -> C _s _s' IO [Link] #-}
+{-# SPECIALIZE  links :: C _s _s' STM [Link] #-}
+{-# SPECIALIZE  links :: C _s _s' IO [Link] #-}
+{-# SPECIALIZE  readTurtle :: Int -> C Turtle _s' STM Double #-}
+{-# SPECIALIZE  readTurtle :: Int -> C Turtle _s' IO Double #-}
+{-# SPECIALIZE  readPatch :: TurtlePatch s => Int -> C s _s' STM Double #-}
+{-# SPECIALIZE  readPatch :: TurtlePatch s => Int -> C s _s' IO Double #-}
+{-# SPECIALIZE  readLink :: Int -> C Link _s' STM Double #-}
+{-# SPECIALIZE  readLink :: Int -> C Link _s' IO Double #-}
+{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
+{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
+{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
+{-# SPECIALIZE  reset_timer :: C _s _s' IO () #-}
+{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' STM () #-}
+{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' IO () #-}
+{-# SPECIALIZE  print :: Show a => a -> C _s _s' STM () #-}
+{-# SPECIALIZE  print :: Show a => a -> C _s _s' IO () #-}
+{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
+{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
 
 
 
