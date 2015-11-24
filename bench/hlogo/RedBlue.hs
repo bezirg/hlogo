@@ -14,16 +14,16 @@ args = ["--max-pxcor=100"
 run ["setup", "go"]
 
 setup = do
-  ask (atomic $ do
-         [c] <- one_of [black, black, black, black, black, black, black, black, red, blue]
-         set_pcolor c) =<< patches
+  askPatches (atomic $ do
+                [c] <- one_of [black, black, black, black, black, black, black, black, red, blue]
+                set_pcolor c)
   create_turtles NR_TURTLES
   reset_ticks
 
 go = forever $ do
   t <- ticks
   when (t==1000) stop
-  ask behave =<< turtles
+  askTurtles behave
   tick
 
 behave = do

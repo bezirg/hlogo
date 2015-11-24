@@ -41,7 +41,7 @@ module Language.Logo.Prim (
                             show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
 
                             -- * IO Operations
-                            atomic, ask, askPatches, of_, with, snapshot, TurtlePatch (..)
+                            atomic, ask, askPatches, askTurtles, of_, with, snapshot, TurtlePatch (..)
  ) where
 
 import Prelude hiding (show,print)
@@ -1520,15 +1520,15 @@ instance Agent Link where
                       
  -- lift $ sequence_ ws 
 
--- askTurtles :: C Turtle _s IO a -> C _s _s' IO ()
--- askTurtles f = do
---       (s,_) <- Reader.ask
---       lift $ do
---         ts <- readTVarIO __turtles
---         mapM_ (\ (tslice,core) ->
---                   ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s)) tslice
---              ) (zip (IM.splitRoot ts) [1,2])
---         ThreadG.wait __tg
+askTurtles :: C Turtle _s IO a -> C _s _s' IO ()
+askTurtles f = do
+      (s,_) <- Reader.ask
+      lift $ do
+        ts <- readTVarIO __turtles
+        mapM_ (\ (tslice,core) ->
+                  ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s)) tslice
+             ) (zip (concatMap IM.splitRoot (IM.splitRoot ts)) [1..4])
+        ThreadG.wait __tg
 
 
 
