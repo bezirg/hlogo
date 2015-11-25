@@ -917,12 +917,12 @@ clear_links = lift $ atomically $ writeTVar __links M.empty
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: C Observer () IO ()
-clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> lift $ do
+clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pxcor_=px,pycor_=py,pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> lift $ do
                             atomically $ writeTVar pc 0
                             atomically $ writeTVar pl ""
                             atomically $ writeTVar plc 9.9
                             atomically $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
-                            atomically $ writeTVar pg $ mkStdGen 3
+                            atomically $ writeTVar pg $ mkStdGen (px + py * 1000)
                            )) __patches
 
 {-# INLINE cp #-}
