@@ -1454,19 +1454,19 @@ increaseTotalSTM s = case s of
 instance Agent Turtle where
     ask f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
-        _ -> lift $ do
-                 mapM_ (\ (core, asSection) -> 
-                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-                       ) (split numCapabilities as)
-                 ThreadG.wait __tg
+      -- case numCapabilities of
+      --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do 
+        mapM_ (\ (core, asSection) -> 
+                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+              ) (split numCapabilities as)
+        ThreadG.wait __tg
 
     of_ f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
-        _ ->  lift $ do
+      -- case numCapabilities of
+      --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do
                  ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
                  rs <- sequence [Thread.result =<< w | w <- ws]
                  return $ concat rs -- lists traversals can be optimized
@@ -1474,19 +1474,19 @@ instance Agent Turtle where
 instance Agent Patch where
     ask f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
-        _ -> lift $ do
-                 mapM_ (\ (core, asSection) -> 
-                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-                       ) (split numCapabilities as)
-                 ThreadG.wait __tg
+      -- case numCapabilities of
+      --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do 
+        mapM_ (\ (core, asSection) -> 
+                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+              ) (split numCapabilities as)
+        ThreadG.wait __tg
 
     of_ f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
-        _ ->  lift $ do
+      -- case numCapabilities of
+      --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do
                  ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
                  rs <- sequence [Thread.result =<< w | w <- ws]
                  return $ concat rs -- lists traversals can be optimized
@@ -1494,42 +1494,24 @@ instance Agent Patch where
 instance Agent Link where
     ask f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
-        _ -> lift $ do
-                 mapM_ (\ (core, asSection) -> 
-                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-                       ) (split numCapabilities as)
-                 ThreadG.wait __tg
-      
+      -- case numCapabilities of
+      --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do 
+        mapM_ (\ (core, asSection) -> 
+                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+              ) (split numCapabilities as)
+        ThreadG.wait __tg
+
     of_ f as = do
       (s,_) <- Reader.ask
-      case numCapabilities of
-        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
-        _ ->  lift $ do
+      -- case numCapabilities of
+      --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+      lift $ do
                  ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
                  rs <- sequence [Thread.result =<< w | w <- ws]
                  return $ concat rs -- lists traversals can be optimized
 
-        -- do
-        -- ws <- case split_ conf of
-        -- "none" -> 
-        -- "horizontal" -> lift $ mapM (\ (processor_i, asi) -> 
-        --                            liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
-        --                                        then ThreadG.forkIO __tg (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
-        --                                        else if null asi
-        --                                             then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
-        --                                             else ThreadG.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (hsplit numCapabilities as)
-        -- "vertical" -> lift $ mapM (\ (processor_i, asi) -> 
-        --                            liftM snd $ if processor_i == numCapabilities -- not belonging to our scheduler
-        --                                        then ThreadG.forkIO __tg (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])
-        --                                        else if null asi
-        --                                             then return undefined -- optimization, so not to spawn a thread if there is nothing to execute
-        --                                             else ThreadG.forkOn processor_i (sequence_ [Reader.runReaderT f (tw, a, p, s) | a <- asi])) (vsplit numCapabilities as)
-        -- "both" -> error "the both splitting is not ready yet. TODO"
-        -- _ -> error "not valid splitting option"
-                      
- -- lift $ sequence_ ws 
+
 
 askTurtles :: C Turtle _s IO a -> C _s _s' IO ()
 askTurtles f = do
@@ -1548,11 +1530,11 @@ askTurtles f = do
 askPatches :: C Patch _s IO a -> C _s _s' IO ()
 askPatches f = do
     (s,_) <- Reader.ask
-    case numCapabilities of
-      1 -> lift $ V.mapM_ 
-                     (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) 
-                 __patches
-      _ -> lift $ do
+    -- case numCapabilities of
+    --   1 -> lift $ V.mapM_ 
+    --                  (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) 
+    --              __patches
+    lift $ do
                  mapM (\ (start,size,core) -> 
                            ThreadG.forkOn core __tg $ V.mapM_ (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) (V.unsafeSlice start size __patches)
                       ) (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
@@ -1567,6 +1549,7 @@ askPatches f = do
 
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]
+split 1 l = [(1,l)]
 split n l = let (d,m) = length l `quotRem` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
