@@ -56,7 +56,7 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t > 1000) (unsafe_sheep >>= count >>= atomic . print >> stop)
+  when (t > 1000) (unsafe_sheep >>= count >>= print >> stop)
   ask (do
          move
          when grassp $ do

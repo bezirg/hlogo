@@ -14,10 +14,10 @@ module Language.Logo.Prim (
                             self, myself, other, count, nobody, towards, allp, at_points, towardsxy, in_cone, every, wait, carefully, die, 
 
                             -- * Turtle related
-                            turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, hatch, set_size, with_size, with_shape,
+                            turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, hatch, set_size, with_size, with_shape, can_movep,
 
                             -- * Patch related
-                            patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches, pxcor, pycor,pcolor,  neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color, 
+                            patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches, pxcor, pycor, pcolor, plabel, neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color, 
 
                             -- * Link related
                             hide_link, show_link, link_length, link, links, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
@@ -29,19 +29,22 @@ module Language.Logo.Prim (
                             black, white, gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink, scale_color, extract_rgb, approximate_rgb,
 
                             -- * List related
-                            sum, anyp, item, one_of, min_one_of, max_one_of, remove, remove_item, replace_item, shuffle, sublist, substring, n_of, butfirst, butlast, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, is_listp, is_stringp, word,
+                            sum, anyp, item, one_of, min_one_of, max_one_of, remove, remove_item, replace_item, shuffle, sublist, substring, n_of, butfirst, butlast, emptyp, first, foreach, fput, last, length, list, lput, map, memberp, position, reduce, remove_duplicates, reverse, sentence, sort_, sort_by, sort_on, max_, min_,n_values, word,
 
                             -- * Math
-                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
+                            xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,
 
                             -- * Misc
-                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, readTurtle, readPatch, readLink, stats_stm,
+                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, stats_stm,
 
                             -- * Input/Output
-                            show, unsafe_show, print, unsafe_print, read_from_string, --, timer, reset_timer,
+                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
 
                             -- * IO Operations
-                            atomic, ask, askPatches, askTurtles, of_, with, snapshot, TurtlePatch (..), STMorIO (..)
+                            atomic, ask, askPatches, askTurtles, of_, with, snapshot, 
+
+                            -- * Internal (needed for Keyword module)
+                            TurtlePatch (..), STMorIO, readTVarSI,
  ) where
 
 import Prelude hiding (show,print)
@@ -64,11 +67,9 @@ import qualified Data.Vector as V
 import Control.Applicative
 import System.Random hiding (random, split)
 import Data.Function
-import Data.Typeable
 import Control.Monad (forM_, liftM, filterM, forever, when)
 import Data.Word (Word8)
 import GHC.Conc (numCapabilities)
-import Data.Maybe (isJust)
 -- for rng
 import System.CPUTime
 import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
@@ -81,9 +82,9 @@ import Data.Colour.SRGB (sRGB24)
 
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Data.Functor.Identity (runIdentity)
-import Data.IORef
 
 #ifdef STATS_STM
+import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Foldable as F (foldlM)
 #endif
@@ -116,7 +117,6 @@ other :: (STMorIO m, Agent s) => [s] -> C s _s' m [s]
 other as = do
   [s] <- self
   return $ delete s as
-
 
 
 {-# SPECIALIZE  patches :: C _s _s' STM [Patch] #-}
@@ -373,7 +373,7 @@ instance TurtlePatch Turtle where
 {-# SPECIALIZE  turtle_set :: [C _s _s' STM [Turtle]] -> C _s _s' STM [Turtle] #-}
 {-# SPECIALIZE  turtle_set :: [C _s _s' IO [Turtle]] -> C _s _s' IO [Turtle] #-}
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
--- | NB: HLogo no support for nested turtle_set concatenation/flattening
+--  NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: STMorIO m => [C _s _s' m [Turtle]] -> C _s _s' m [Turtle]
 turtle_set ts = liftM (foldr (\ x acc -> 
                                   -- if x == Nobody -- filter Nobody
@@ -389,7 +389,7 @@ turtle_set ts = liftM (foldr (\ x acc ->
 {-# SPECIALIZE  patch_set :: [C _s _s' STM [Patch]] -> C _s _s' STM [Patch] #-}
 {-# SPECIALIZE  patch_set :: [C _s _s' IO [Patch]] -> C _s _s' IO [Patch] #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
--- | NB: HLogo no support for nested patch_set concatenation/flattening
+--  NB: HLogo no support for nested patch_set concatenation/flattening
 patch_set :: STMorIO m => [C _s _s' m [Patch]] -> C _s _s' m [Patch]
 patch_set ts = liftM (foldr (\ x acc -> 
                                  -- if x == Nobody -- filter Nobody
@@ -405,7 +405,7 @@ patch_set ts = liftM (foldr (\ x acc ->
 {-# SPECIALIZE  link_set :: [C _s _s' STM [Link]] -> C _s _s' STM [Link] #-}
 {-# SPECIALIZE  link_set :: [C _s _s' IO [Link]] -> C _s _s' IO [Link] #-}
 -- | Reports an agentset containing all of the links anywhere in any of the inputs.
--- | NB: HLogo no support for nested turtle_set concatenation/flattening
+--  NB: HLogo no support for nested turtle_set concatenation/flattening
 link_set :: STMorIO m => [C _s _s' m [Link]] -> C _s _s' m [Link]
 link_set ts = liftM (foldr (\ x acc -> -- if x == Nobody -- filter Nobody
                                       -- then acc
@@ -418,13 +418,25 @@ link_set ts = liftM (foldr (\ x acc -> -- if x == Nobody -- filter Nobody
                            ) [] . concat) (sequence ts)
 
 
--- {-# SPECIALIZE can_movep :: Double -> CSTM Bool #-}
--- {-# SPECIALIZE can_movep :: Double -> CIO Bool #-}
+{-# WARNING can_movep "TODO: test it" #-}
+{-# SPECIALIZE can_movep :: Double -> C Turtle _s' STM Bool #-}
+{-# SPECIALIZE can_movep :: Double -> C Turtle _s' IO Bool #-}
 -- | Reports true if this turtle can move distance in the direction it is facing without violating the topology; reports false otherwise. 
-
--- can_movep :: STMorIO m => Double -> C Turtle _s' m Bool
--- can_movep n = liftM ( /= [Nobody]) $ patch_ahead n
-
+can_movep :: STMorIO m => Double -> C Turtle _s' m Bool
+can_movep n = do
+  x <- xcor 
+  y <- ycor
+  dx_ <- dx
+  dy_ <- dy
+  let mx = max_pxcor_ conf
+  let my = max_pycor_ conf
+  let px_new = round $ x + if horizontal_wrap_ conf
+                           then (dx_*n + fromIntegral mx) `mod_` (mx * 2 + 1) - fromIntegral mx
+                           else dx_*n
+  let py_new = round $ y + if vertical_wrap_ conf
+                           then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
+                           else  dy_*n
+  return (not (not (horizontal_wrap_ conf) && (px_new > mx || px_new < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (py_new > my || py_new < min_pycor_ conf)))
 
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
@@ -889,7 +901,7 @@ clear_output = todo
 -- | Kills all turtles.
 -- Also resets the who numbering, so the next turtle created will be turtle 0.
 clear_turtles :: C Observer () IO ()
-clear_turtles = atomic $ lift $ do
+clear_turtles = lift $ atomically $ do
                   writeTVar __turtles IM.empty
                   writeTVar __who 0
 
@@ -901,16 +913,16 @@ ct = clear_turtles
 {-# INLINE clear_links #-}
 -- | Kills all links.
 clear_links :: C Observer () IO ()
-clear_links = atomic $ lift $ writeTVar __links M.empty
+clear_links = lift $ atomically $ writeTVar __links M.empty
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: C Observer () IO ()
-clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> do
-                            atomic $ lift $ writeTVar pc 0
-                            atomic $ lift $ writeTVar pl ""
-                            atomic $ lift $ writeTVar plc 9.9
-                            atomic $ lift $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
-                            atomic $ lift $ writeTVar pg $ mkStdGen 3
+clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> lift $ do
+                            atomically $ writeTVar pc 0
+                            atomically $ writeTVar pl ""
+                            atomically $ writeTVar plc 9.9
+                            atomically $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
+                            atomically $ writeTVar pg $ mkStdGen 3
                            )) __patches
 
 {-# INLINE cp #-}
@@ -1558,29 +1570,6 @@ split n l = let (d,m) = length l `quotRem` n
                                  in (x,t) : split' (x-1) (m'-1) rem_list
             in split' n m l
 
--- | Internal
--- vsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
--- vsplit n as = IM.toAscList $ foldl' (\ im a -> case a of
---                                             PatchRef (x1, _) _ -> IM.insertWith (++) ((x1 + max_x) `div` sector) [a] im
---                                             TurtleRef _ (MkTurtle {init_xcor_ = ix}) -> IM.insertWith (++) ((ix + max_x) `div` sector) [a] im
---                                             _ -> IM.insertWith (++) n [a] im -- it is not a patch or a turtle, so it is a link, it should be scheduled by GHC and not by us, put it at the extra n
---                                 ) IM.empty as
---               where max_x = max_pxcor_ conf
---                     min_x = min_pxcor_ conf
---                     sector = (max_x - min_x) `div` n
-
--- -- | Internal
--- hsplit :: Int -> [AgentRef] -> [(Int, [AgentRef])]
--- hsplit n as = IM.toAscList $ foldl' (\ im a -> case a of
---                                             PatchRef (_, y1) _ -> IM.insertWith (++) ((y1 + max_y) `div` sector) [a] im
---                                             TurtleRef _ (MkTurtle {init_ycor_ = iy}) -> IM.insertWith (++) ((iy + max_y) `div` sector) [a] im
---                                             _ -> IM.insertWith (++) n [a] im -- it is not a patch, so it should be scheduled by GHC and not by us, put it at the extra n
---                                 ) IM.empty as
---               where max_y = max_pycor_ conf
---                     min_y = min_pycor_ conf
---                     sector = (max_y - min_y) `div` n
-
-
 -- | For an agent, reports the value of the reporter for that agent (turtle or patch). 
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
                  
@@ -1618,76 +1607,6 @@ stop = throw StopException
 while :: C _s _s' IO Bool -> C _s _s' IO a -> C _s _s' IO ()
 while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopException -> return ())
 
--- Type-safe Casts
-
--- is_turtlep :: (Monad m, Typeable a) => a -> C m Bool
--- is_turtlep a = return $ maybe False (\case [TurtleRef _ _] -> True
---                                            _ -> False
---                                     )
---                                          (cast a :: Maybe [AgentRef])
-
--- is_patchp :: (Monad m, Typeable a) => a -> C m Bool
--- is_patchp a = return $ maybe False (\case [PatchRef _ _] -> True
---                                           _ -> False)
---                                          (cast a :: Maybe [AgentRef])
-
--- is_agentp :: (Monad m, Typeable a) => a -> C m Bool
--- is_agentp a = return $ maybe False (\case [Nobody] -> False                                       
---                                           [_] -> True -- check for a single agent
---                                           _ -> False
---                                    ) (cast a :: Maybe [AgentRef])
-
--- -- alternative but slower implementation is_agentp a = is_turtlep a || is_patchp a
-
-
--- -- | Reports true if value is of the given type, false otherwise. 
--- is_patch_setp :: (Monad m, Typeable a) => [a] -> C m Bool
--- is_patch_setp ps = do
---   res <- mapM is_patchp ps
---   return $ and res
-
-
--- -- | Reports true if value is of the given type, false otherwise. 
--- is_turtle_setp :: (Monad m, Typeable a) => [a] -> C m Bool
--- is_turtle_setp ps = do
---   res <- mapM is_turtlep ps
---   return $ and res
-
--- -- | Reports true if value is of the given type, false otherwise.  
--- is_agentsetp :: (Monad m, Typeable a) => [a] -> C m Bool
--- is_agentsetp ps = do 
---   res <- mapM (\ a -> do
---                 ip <- is_patchp a
---                 it <- is_turtlep a 
---                 il <- is_linkp a
---                 return $ ip || it || il) ps
---   return $ and res
-
--- Not used, because EDSL, using internal lambda abstractions
--- is_command_taskp
--- is_reporter_taskp
-
-{-# WARNING is_listp "TODO" #-}
---is_listp :: (Monad m, Typeable a) => a -> C m Bool
---is_listp :: (Typeable a, Typeable t) => t -> [a]
---is_listp l =  (cast l :: Typeable a => Maybe [a])
-is_listp :: t
-is_listp = todo
-
-is_stringp :: (STMorIO m, Typeable a) => a -> C _s _s' m Bool
-is_stringp s = return $ isJust (cast s :: Maybe String)
-
-is_numberp :: (STMorIO m, Typeable a) => a -> C _s _s' m Bool
-is_numberp n = return $ is_intp || is_doublep 
-               where
-                 is_intp = isJust (cast n :: Maybe Int)
-                 is_doublep = isJust (cast n :: Maybe Double)
-
--- is_linkp :: (Monad m, Typeable a) => a -> C m Bool
--- is_linkp l = return $ maybe False (\case [LinkRef _ _] -> True
---                                          _ -> False)
---                                          (cast l :: Maybe [AgentRef])
-
 -- is_directed_linkp :: (Monad m, Typeable a) => a -> C m Bool
 -- is_directed_linkp l = return $ maybe False (\case [LinkRef _ (MkLink {directed_ = d})] -> d
 --                                                   _ -> False)
@@ -1695,14 +1614,6 @@ is_numberp n = return $ is_intp || is_doublep
 
 -- is_undirected_linkp :: (Monad m, Typeable a) => a -> C m Bool
 -- is_undirected_linkp = liftM not . is_directed_linkp
-
-
-
--- {-# WARNING is_link_setp "TODO: would require a datatype distinction between agentrefs" #-}
--- | Checks only the 1st element
--- is_link_setp :: (Monad m, Typeable a) => [a] -> C m Bool
--- is_link_setp (l:_) = is_linkp l
--- is_link_setp _ = throw DevException
 
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> C Turtle _s' STM [Turtle]
@@ -1788,7 +1699,7 @@ wait n = lift $ threadDelay (round $ n * 1000000)
 
 {-# DEPRECATED unsafe_show "it is slightly faster than show since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_show :: (Player s, Show a) => a -> C s _s' IO ()
+unsafe_show :: (Show s, Show a) => a -> C s _s' IO ()
 unsafe_show a = do
   (r,_) <- Reader.ask
   lift $ putStrLn $ Prelude.show r ++ ": " ++ Prelude.show a
@@ -1976,10 +1887,9 @@ neighbors4 = do
 
 
 
--- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects (IO effects allowed)
---  or only depend on 'readTVar', belong here. The correct lifting (STM or IO) is left to type inference.
--- class Monad m => STMorIO m where
 
+{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' IO [Turtle] #-}
 -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
 turtles_here :: (TurtlePatch s, STMorIO m) => C s _s' m [Turtle]
 turtles_here = do
@@ -1992,6 +1902,8 @@ turtles_here = do
                       return $ round x' == px && round y' == py
                    ) ts
 
+{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' IO [Turtle] #-}
 -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
 turtles_at :: (TurtlePatch s, STMorIO m) => Double -> Double -> C s _s' m [Turtle] -- ^ dx -> dy -> CSTM (Set AgentRef)
 turtles_at x y = do
@@ -2003,6 +1915,8 @@ turtles_at x y = do
                       return $ round x' == px && round y' == py
                    ) ts
 
+{-# SPECIALIZE  patch_here :: C Turtle _s' STM [Patch] #-}
+{-# SPECIALIZE  patch_here :: C Turtle _s' IO [Patch] #-}
 -- | patch-here reports the patch under the turtle. 
 patch_here :: STMorIO m => C Turtle _s' m [Patch]
 patch_here = do
@@ -2012,6 +1926,8 @@ patch_here = do
     patch x' y'
 
 
+{-# SPECIALIZE  turtles :: C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtles :: C _s _s' IO [Turtle] #-}
 -- | Reports the agentset consisting of all turtles. 
 turtles :: STMorIO m => C _s _s' m [Turtle]
 turtles = lift $ do
@@ -2019,6 +1935,8 @@ turtles = lift $ do
     return $ IM.elems ts
 
 
+{-# SPECIALIZE  turtle :: Int -> C _s _s' STM [Turtle] #-}
+{-# SPECIALIZE  turtle :: Int -> C _s _s' IO [Turtle] #-}
 -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
 turtle :: STMorIO m => Int -> C _s _s' m [Turtle]
 turtle n = lift $ do
@@ -2026,6 +1944,8 @@ turtle n = lift $ do
     return $ maybe nobody return $ IM.lookup n ts
 
 
+{-# SPECIALIZE  heading :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  heading :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
 heading :: STMorIO m => C Turtle _s' m Double
 heading = do
@@ -2033,18 +1953,26 @@ heading = do
     lift $ readTVarSI h
 
 
+{-# SPECIALIZE  xcor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  xcor :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
 xcor :: STMorIO m => C Turtle _s' m Double
 xcor = do
     (MkTurtle {xcor_ = x},_) <- Reader.ask
     lift $ readTVarSI x
 
+{-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  ycor :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: STMorIO m => C Turtle _s' m Double
 ycor = do
     (MkTurtle {ycor_ = y},_) <- Reader.ask
     lift $ readTVarSI y
 
+{-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE  pcolor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE  pcolor :: C Patch _s' STM Double #-}
+{-# SPECIALIZE  pcolor :: C Patch _s' IO Double #-}
 pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
 pcolor = do
     (s,_) <- Reader.ask
@@ -2060,6 +1988,8 @@ plabel = do
 
 
 
+{-# SPECIALIZE  color :: TurtleLink s => C s _s' STM Double #-}
+{-# SPECIALIZE  color :: TurtleLink s => C s _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 color :: STMorIO m => TurtleLink s => C s _s' m Double
 color = do
@@ -2067,13 +1997,13 @@ color = do
     lift $ readTVarSI (color_ s)
 
 
+{-# SPECIALIZE  breed :: TurtleLink s => C s _s' STM String #-}
+{-# SPECIALIZE  breed :: TurtleLink s => C s _s' IO String #-}
 breed :: STMorIO m => TurtleLink s => C s _s' m String
 breed = do
     (s,_) <- Reader.ask
     lift $ readTVarSI (breed_ s)
 
-
-towards = undefined
 
 -- -- | Reports the distance from this agent to the given turtle or patch. 
 -- distance :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
@@ -2081,12 +2011,15 @@ towards = undefined
 -- -- | Reports the distance from this agent to the point (xcor, ycor). 
 -- distancexy :: TurtlePatch s => Double -> Double -> C s _s' m Double
 
--- -- | Reports the heading from this agent to the given agent. 
--- towards :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
+-- | Reports the heading from this agent to the given agent. 
+towards :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
+towards = undefined
 
 -- -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. This can include the agent itself.
 -- in_radius :: (TurtlePatch a, TurtlePatch s) => [a] -> Double -> C s _s' m [a]
 
+{-# SPECIALIZE   link :: Int -> Int -> C _s _s' STM [Link] #-}
+{-# SPECIALIZE   link :: Int -> Int -> C _s _s' IO [Link] #-}
 -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
 link :: STMorIO m => Int -> Int -> C _s _s' m [Link]
 link f t = do
@@ -2094,6 +2027,8 @@ link f t = do
     return $ maybe nobody return $ M.lookup (f,t) ls
 
 
+{-# SPECIALIZE  links :: C _s _s' STM [Link] #-}
+{-# SPECIALIZE  links :: C _s _s' IO [Link] #-}
 -- | Reports the agentset consisting of all links. 
 links :: STMorIO m => C _s _s' m [Link]
 links = lift $ do
@@ -2103,48 +2038,13 @@ links = lift $ do
           checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = e1 == e2' && e1' == e2
           checkForUndirected _ _ = False
 
-readTurtle :: STMorIO m => Int -> C Turtle _s' m Double
-readTurtle i = do
-    (MkTurtle {tvars_ = pv},_) <- Reader.ask
-    lift $ readTVarSI (pv ! i)
-
-
-readPatch :: STMorIO m => TurtlePatch s => Int -> C s _s' m Double
-readPatch i = do 
-    (s,_) <- Reader.ask
-    (MkPatch {pvars_ = pv}) <- patch_on_ s
-    lift $ readTVarSI $ pv ! i
-
-readLink :: STMorIO m => Int -> C Link _s' m Double
-readLink i = do
-    (MkLink {lvars_ = pv},_) <- Reader.ask
-    lift $ readTVarSI (pv ! i)
-
-
--- timer :: C _s _s' m Double
-
--- reset_timer :: C _s _s' m ()
-
--- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
---
--- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of show inside an 'atomic' transaction, no 'show' will be repeated if the transaction is retried. Compared to 'unsafe_show', the output is not mangled.
--- show :: (Player s, Show a) => a -> C s _s' m ()
-
--- | Prints value in the Command Center, followed by a carriage return. 
---
--- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
 -- print :: Show a => a -> C _s _s' m ()
 
--- | Reports the current value of the tick counter. The result is always a number and never negative. 
--- ticks :: C _s _s' m Double
 
 
 
 
 --{-# WARNING towards "TODO: wrapping" #-}
---{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
---{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
---{-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
 --   distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
@@ -2216,24 +2116,9 @@ readLink i = do
 --                            delta y y' (fromIntegral (max_pycor_ conf) :: Int) ^ (2::Int)) <= n) as
 
 
-  -- timer = lift $ do
-  --     t <- readTVar __timer
-  --     t' <- unsafeIOToSTM getCurrentTime
-  --     return $ realToFrac (t' `diffUTCTime` t)              
-
-  -- reset_timer = do
-  --     t <- lift $ unsafeIOToSTM getCurrentTime
-  --     lift $ writeTVar __timer t
-
-show a = do
-    -- ObserverRef _ -> lift $ unsafeIOToSTM $ putStrLn ("observer: " ++ Prelude.show a)
-    (s,_) <- Reader.ask
-    lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
-
-print a = do
-    -- ObserverRef _ -> lift $ unsafeIOToSTM $ Prelude.print a
-    lift $ writeTQueue __printQueue $ Prelude.show a
-
+{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
+{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
+-- | Reports the current value of the tick counter. The result is always a number and never negative. 
 ticks :: STMorIO m => C _s _s' m Double
 ticks = lift $ readTVarSI __tick
 
@@ -2305,27 +2190,6 @@ ticks = lift $ readTVarSI __tick
 --     with (distancexy x y >>= \ d -> return $ d <= n) as
 
 
-  -- timer = lift $ do
-  --     t <- readTVarIO __timer
-  --     t' <- getCurrentTime
-  --     return $ realToFrac (t' `diffUTCTime` t)              
-
-  -- reset_timer = do
-  --     t <- lift $ getCurrentTime
-  --     atomic $ lift $ writeTVar __timer t
-
-  -- show a = do
-  --   -- ObserverRef _ -> lift $ putStrLn ("observer: " ++ Prelude.show a)
-  --   (s,_) <- Reader.ask
-  --   atomic $ lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
-
-  -- print a = do
-  --   -- ObserverRef _ -> lift $ Prelude.print a
-  --   atomic $ lift $ writeTQueue __printQueue $ Prelude.show a
-
-  -- ticks = lift $ readIORef __tick
-
-
 -- | Reports a shade of color proportional to the value of number. 
 scale_color :: STMorIO m => Double -> C _s _s' m Double -> Double -> Double -> C _s _s' m Double
 scale_color c v minArg maxArg = do
@@ -2383,34 +2247,6 @@ scale_color c v minArg maxArg = do
 -- Specialization trick to reduce the cost of using a class (STMorIO)
 -- The downside is executable with bigger code
 
-{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' STM [Turtle] #-}
-{-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' IO [Turtle] #-}
-{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' STM [Turtle] #-}
-{-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' IO [Turtle] #-}
-{-# SPECIALIZE  patch_here :: C Turtle _s' STM [Patch] #-}
-{-# SPECIALIZE  patch_here :: C Turtle _s' IO [Patch] #-}
-{-# SPECIALIZE  patches :: C _s _s' STM [Patch] #-}
-{-# SPECIALIZE  patches :: C _s _s' IO [Patch] #-}
-{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' STM [Patch] #-}
-{-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
-{-# SPECIALIZE  turtles :: C _s _s' STM [Turtle] #-}
-{-# SPECIALIZE  turtles :: C _s _s' IO [Turtle] #-}
-{-# SPECIALIZE  turtle :: Int -> C _s _s' STM [Turtle] #-}
-{-# SPECIALIZE  turtle :: Int -> C _s _s' IO [Turtle] #-}
-{-# SPECIALIZE  heading :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  heading :: C Turtle _s' IO Double #-}
-{-# SPECIALIZE  xcor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  xcor :: C Turtle _s' IO Double #-}
-{-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  ycor :: C Turtle _s' IO Double #-}
-{-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  pcolor :: C Turtle _s' IO Double #-}
-{-# SPECIALIZE  pcolor :: C Patch _s' STM Double #-}
-{-# SPECIALIZE  pcolor :: C Patch _s' IO Double #-}
-{-# SPECIALIZE  color :: TurtleLink s => C s _s' STM Double #-}
-{-# SPECIALIZE  color :: TurtleLink s => C s _s' IO Double #-}
-{-# SPECIALIZE  breed :: TurtleLink s => C s _s' STM String #-}
-{-# SPECIALIZE  breed :: TurtleLink s => C s _s' IO String #-}
 -- {-# SPECIALIZE  distance :: [AgentRef] -> CSTM Double #-}
 -- {-# SPECIALIZE  distance :: [AgentRef] -> CIO Double #-}
 -- {-# SPECIALIZE  distancexy :: Double -> Double -> CSTM Double #-}
@@ -2419,35 +2255,66 @@ scale_color c v minArg maxArg = do
 -- {-# SPECIALIZE  towards :: [AgentRef] -> CIO Double #-}
 -- {-# SPECIALIZE  in_radius :: [AgentRef] -> Double -> CSTM [AgentRef] #-}
 -- {-# SPECIALIZE  in_radius :: [AgentRef] -> Double -> CIO [AgentRef] #-}
-{-# SPECIALIZE   link :: Int -> Int -> C _s _s' STM [Link] #-}
-{-# SPECIALIZE   link :: Int -> Int -> C _s _s' IO [Link] #-}
-{-# SPECIALIZE  links :: C _s _s' STM [Link] #-}
-{-# SPECIALIZE  links :: C _s _s' IO [Link] #-}
-{-# SPECIALIZE  readTurtle :: Int -> C Turtle _s' STM Double #-}
-{-# SPECIALIZE  readTurtle :: Int -> C Turtle _s' IO Double #-}
-{-# SPECIALIZE  readPatch :: TurtlePatch s => Int -> C s _s' STM Double #-}
-{-# SPECIALIZE  readPatch :: TurtlePatch s => Int -> C s _s' IO Double #-}
-{-# SPECIALIZE  readLink :: Int -> C Link _s' STM Double #-}
-{-# SPECIALIZE  readLink :: Int -> C Link _s' IO Double #-}
+
+
+
+
+-- | A class to allow certain NetLogo builtin primitives to be used
+-- both 'atomic'-wrapped as well without atomic, since their semantics are preserved. 
+--
+-- Mostly applies to Observer and IO-related commands. Also the implementation takes advantage of the faster 'readTVarIO'. 
+-- The correct lifting (STM or IO) is left to type inference.
+class Monad m => STMorIO m where
+    readTVarSI :: TVar a -> m a
+    timer ::  C _s _s' m Double
+    reset_timer :: C _s _s' m ()
+    -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
+    --
+    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of show inside an 'atomic' transaction, no 'show' will be repeated if the transaction is retried. Compared to 'unsafe_show', the output is not mangled.
+    show :: (Show s, Show a) => a -> C s _s' m ()
+    -- | Prints value in the Command Center, followed by a carriage return. 
+    --
+    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
+    print :: Show a => a -> C _s _s' m ()
+
+
+{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
+{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
+
+
+instance STMorIO STM where
+    readTVarSI = readTVar
+    timer = lift $ do
+      t <- readTVar __timer
+      t' <- unsafeIOToSTM getCurrentTime
+      return $ realToFrac (t' `diffUTCTime` t)              
+    reset_timer = lift $ do
+       t <- unsafeIOToSTM getCurrentTime
+       writeTVar __timer t
+    show a = do
+      (s,_) <- Reader.ask
+      lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
+    print a = lift $ writeTQueue __printQueue $ Prelude.show a
+
+instance STMorIO IO where
+    readTVarSI = readTVarIO
+    timer = lift $ do
+       t <- readTVarIO __timer
+       t' <- getCurrentTime
+       return $ realToFrac (t' `diffUTCTime` t)              
+    reset_timer = lift $ do
+      t <- getCurrentTime
+      atomically $ writeTVar __timer t
+    show a = do
+      (s,_) <- Reader.ask
+      lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
+    print a = lift $ atomically $ writeTQueue __printQueue $ Prelude.show a
+
 --{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
 --{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
 --{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
 --{-# SPECIALIZE  reset_timer :: C _s _s' IO () #-}
---{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' STM () #-}
---{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' IO () #-}
+--{-# SPECIALIZE  show :: (Show s, Show a) => a -> C s _s' STM () #-}
+--{-# SPECIALIZE  show :: (Show s, Show a) => a -> C s _s' IO () #-}
 --{-# SPECIALIZE  print :: Show a => a -> C _s _s' STM () #-}
 --{-# SPECIALIZE  print :: Show a => a -> C _s _s' IO () #-}
-{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
-{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
-
-
-
-
-class Monad m => STMorIO m where
-    readTVarSI :: TVar a -> m a
-
-instance STMorIO STM where
-    readTVarSI = readTVar
-
-instance STMorIO IO where
-    readTVarSI = readTVarIO

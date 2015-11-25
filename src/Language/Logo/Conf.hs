@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Conf

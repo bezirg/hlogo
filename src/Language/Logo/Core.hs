@@ -67,6 +67,21 @@ __patches = V.fromList [V.fromList [unsafePerformIO (newPatch x y)
                                    | y <- [min_pycor_ conf..max_pycor_ conf]] 
                        | x <- [min_pxcor_ conf..max_pxcor_ conf]]
 
+{-# INLINE newPatch #-}
+-- | Returns a 'Patch' structure with default arguments (based on NetLogo)
+newPatch :: Int -> Int -> IO Patch
+newPatch x y = let po = 1       -- patches_own only one element for now
+               in MkPatch x y <$>
+               newTVarIO 0 <*>
+               newTVarIO "" <*>
+               newTVarIO 9.9 <*>
+               -- init the patches-own variables to 0
+               (return . listArray (0, po -1) =<< replicateM po (newTVarIO 0)) <*>
+               newTVarIO (mkStdGen (x + y * 1000))
+#ifdef STATS_STM
+               <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
+#endif
+
 {-# NOINLINE __turtles #-}
 __turtles :: TVar Turtles
 __turtles = unsafePerformIO $ newTVarIO IM.empty
@@ -96,19 +111,6 @@ cInit po = do
     printer :: IO ()
     printer = forever $ putStrLn =<< atomically (readTQueue __printQueue)
 
--- | Returns a 'Patch' structure with default arguments (based on NetLogo)
-newPatch :: Int -> Int -> IO Patch
-newPatch x y = let po = 1       -- patches_own only one element for now
-               in MkPatch x y <$>
-               newTVarIO 0 <*>
-               newTVarIO "" <*>
-               newTVarIO 9.9 <*>
-               -- init the patches-own variables to 0
-               (return . listArray (0, po -1) =<< replicateM po (newTVarIO 0)) <*>
-               newTVarIO (mkStdGen (x + y * 1000))
-#ifdef STATS_STM
-               <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
-#endif
 
 
 

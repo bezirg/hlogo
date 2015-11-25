@@ -8,7 +8,11 @@
 -- Stability   :  experimental
 --
 -- The module contains the Base datatypes of the Language.
-module Language.Logo.Base where
+module Language.Logo.Base (
+                           Player (..), Agent (..), TurtleLink (..)
+                          ,Observer, Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
+                          ,Patches,Turtles,Links,C
+                          ) where
 
 import Control.Concurrent.STM
 import Control.Monad.Trans.Reader
@@ -22,7 +26,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef
 #endif
 
-class Show s => Player s where
+class Player s where
     gen_ :: s -> TVar StdGen
 
 -- | NB: Eq needed for agentset operations (because it is list for now) 

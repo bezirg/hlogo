@@ -79,7 +79,10 @@ turtles_own vs = do
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Turtle _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
+          p <- valD (varP (mkName v)) (normalB [| do
+                                                 (MkTurtle {tvars_ = pv},_) <- Reader.ask
+                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                              |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
                                                                        (MkTurtle {tvars_ = pv},_) <- Reader.ask
@@ -104,7 +107,11 @@ patches_own vs = do
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (TurtlePatch s, STMorIO m) => C s _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readPatch $(litE (integerL i)) |]) []
+          p <- valD (varP (mkName v)) (normalB [| do
+                                                 (s,_) <- Reader.ask
+                                                 (MkPatch {pvars_ = pv}) <- patch_on_ s
+                                                 lift $ readTVarSI $ pv ! $(litE (integerL i))
+                                                 |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                  (s,_) <- Reader.ask
@@ -132,7 +139,10 @@ links_own vs = do
 
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Link _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i))|]) []
+          p <- valD (varP (mkName v)) (normalB [| do
+                                                 (MkLink {lvars_ = pv},_) <- Reader.ask
+                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                              |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_) <- Reader.ask
@@ -180,7 +190,10 @@ breeds_own p vs = do
 
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Turtle _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readTurtle $(litE (integerL i)) |]) []
+          p <- valD (varP (mkName v)) (normalB [| do
+                                                 (MkTurtle {tvars_ = pv},_) <- Reader.ask
+                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                              |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkTurtle {tvars_ = pv},_) <- Reader.ask
@@ -204,7 +217,11 @@ link_breeds_own p vs = do
   cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
-          p <- valD (varP (mkName v)) (normalB [| readLink $(litE (integerL i)) |]) []
+          p <- valD (varP (mkName v)) (normalB [| do
+                                                 (MkLink {lvars_ = pv},_) <- Reader.ask
+                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+
+                                              |]) []
 
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
@@ -833,4 +850,3 @@ create_breeded_links_with b as nls =  do
 {-# INLINE primary_colors #-}
 primary_colors :: [Double]
 primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
-
