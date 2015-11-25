@@ -11,7 +11,7 @@
 -- <http://ccl.northwestern.edu/netlogo/docs/dictionary.html>
 module Language.Logo.Prim (
                             -- * Agent related
-                            self, myself, other, count, distance, nobody, distancexy, towards, allp, at_points, towardsxy, in_radius, in_cone, every, wait, carefully, die, 
+                            self, myself, other, count, nobody, towards, allp, at_points, towardsxy, in_cone, every, wait, carefully, die, 
 
                             -- * Turtle related
                             turtles_here, turtles_at, turtles_on, jump, setxy, forward, fd, back, bk, turtles, turtle, turtle_set, face, xcor, set_breed, with_breed, set_color, with_color, set_label_color, with_label_color, with_label, set_xcor, heading, set_heading, with_heading,  ycor, set_ycor, who, color, breed, dx, dy, home, right, rt, left, lt, downhill, downhill4, hide_turtle, ht, show_turtle, st, pen_down, pd, pen_up, pu, pen_erase, pe, no_turtles, hatch, set_size, with_size, with_shape,
@@ -35,13 +35,13 @@ module Language.Logo.Prim (
                             xor, e, exp, pi, cos_, sin_, tan_, mod_, acos_, asin_, atan_, int, log_, ln, mean, median, modes, variance, standard_deviation, subtract_headings, abs_, floor, ceiling, remainder, round, sqrt,  is_numberp,
 
                             -- * Misc
-                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, STMorIO, readGlobal, readTurtle, readPatch, readLink, stats_stm,
+                            patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, readTurtle, readPatch, readLink, stats_stm,
 
                             -- * Input/Output
-                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
+                            show, unsafe_show, print, unsafe_print, read_from_string, --, timer, reset_timer,
 
                             -- * IO Operations
-                            atomic, ask, askPatches, askTurtles, of_, with, snapshot, TurtlePatch (..)
+                            atomic, ask, askPatches, askTurtles, of_, with, snapshot, TurtlePatch (..), STMorIO (..)
  ) where
 
 import Prelude hiding (show,print)
@@ -361,7 +361,11 @@ instance TurtlePatch Patch where
     patch_on_ = return
 
 instance TurtlePatch Turtle where
-    patch_on_ x = liftM head $ Reader.local (\ _ -> (x,undefined)) patch_here -- TODO: better code
+    patch_on_ (MkTurtle {xcor_=tx,ycor_=ty}) = do
+                 x <- lift $ readTVarSI tx
+                 y <- lift $ readTVarSI ty
+                 [p] <- patch x y
+                 return p
 
 {-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' IO Patch #-}
 {-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' STM Patch #-}
@@ -721,7 +725,6 @@ downhill4 = todo
 face :: TurtlePatch a => [a] -> C Turtle _s' STM ()
 face a = set_heading =<< towards a
 
-
 {-# WARNING towardsxy "TODO" #-}
 -- | Reports the heading from the turtle or patch towards the point (x,y). 
 towardsxy :: t
@@ -920,12 +923,12 @@ cp = clear_patches
 -- | Clears the tick counter.
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: C Observer () IO ()
-clear_ticks = lift $ writeIORef __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
+clear_ticks = lift $ atomically $ writeTVar __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# INLINE reset_ticks #-}
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: C Observer () IO ()
-reset_ticks = lift $ writeIORef __tick 0
+reset_ticks = lift $ atomically $ writeTVar __tick 0
 
 {-# INLINE tick #-}
 -- | Advances the tick counter by one and updates all plots. 
@@ -936,7 +939,7 @@ tick = tick_advance 1
 {-# INLINE tick_advance #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 tick_advance :: Double -> C Observer () IO ()
-tick_advance n = lift $ modifyIORef' __tick (+n)
+tick_advance n = lift $ atomically $ modifyTVar' __tick (+n)
 
 {-# INLINE butfirst #-}
 -- | When used on a list, but-first reports all of the list items of list except the first
@@ -2016,56 +2019,165 @@ neighbors4 = do
 
 -- | A class to take advantage of faster 'readTVarIO'. Any commands that do not do STM side-effects (IO effects allowed)
 --  or only depend on 'readTVar', belong here. The correct lifting (STM or IO) is left to type inference.
-class Monad m => STMorIO m where
-    -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
-    turtles_here :: TurtlePatch s => C s _s' m [Turtle]
-    -- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
-    turtles_at :: TurtlePatch s => Double -> Double -> C s _s' m [Turtle] -- ^ dx -> dy -> CSTM (Set AgentRef)
-    -- | patch-here reports the patch under the turtle. 
-    patch_here :: C Turtle _s' m [Patch]
-    -- | Reports the agentset consisting of all turtles. 
-    turtles :: C _s _s' m [Turtle]
-    -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
-    turtle :: Int -> C _s _s' m [Turtle]
-    -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
-    heading :: C Turtle _s' m Double
-    -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
-    xcor :: C Turtle _s' m Double
-    pcolor :: TurtlePatch s => C s _s' m Double
-    plabel :: TurtlePatch s => C s _s' m String
-    -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
-    ycor :: C Turtle _s' m Double
-    -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
-    color :: TurtleLink s => C s _s' m Double
-    breed :: TurtleLink s => C s _s' m String
-    -- | Reports the distance from this agent to the given turtle or patch. 
-    distance :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
-    -- | Reports the distance from this agent to the point (xcor, ycor). 
-    distancexy :: TurtlePatch s => Double -> Double -> C s _s' m Double
-    -- | Reports the heading from this agent to the given agent. 
-    towards :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
-    -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. (This can include the agent itself.) 
-    in_radius :: (TurtlePatch a, TurtlePatch s) => [a] -> Double -> C s _s' m [a]
-    -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
-    link :: Int -> Int -> C _s _s' m [Link]
-    -- | Reports the agentset consisting of all links. 
-    links :: C _s _s' m [Link]
-    readGlobal :: TVar Double -> C _s _s' m Double
-    readTurtle :: Int -> C Turtle _s' m Double
-    readPatch :: TurtlePatch s => Int -> C s _s' m Double
-    readLink :: Int -> C Link _s' m Double
-    timer :: C _s _s' m Double
-    reset_timer :: C _s _s' m ()
-    -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
-    --
-    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of show inside an 'atomic' transaction, no 'show' will be repeated if the transaction is retried. Compared to 'unsafe_show', the output is not mangled.
-    show :: (Player s, Show a) => a -> C s _s' m ()
-    -- | Prints value in the Command Center, followed by a carriage return. 
-    --
-    -- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
-    print :: Show a => a -> C _s _s' m ()
-    -- | Reports the current value of the tick counter. The result is always a number and never negative. 
-    ticks :: C _s _s' m Double
+-- class Monad m => STMorIO m where
+
+-- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
+turtles_here :: (TurtlePatch s, STMorIO m) => C s _s' m [Turtle]
+turtles_here = do
+    (s,_) <- Reader.ask
+    (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
+    ts <- turtles
+    lift $ filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
+                      x' <- readTVarSI x
+                      y' <- readTVarSI y
+                      return $ round x' == px && round y' == py
+                   ) ts
+
+-- |  Reports an agentset containing the turtles on the patch (dx, dy) from the caller. (The result may include the caller itself if the caller is a turtle.) 
+turtles_at :: (TurtlePatch s, STMorIO m) => Double -> Double -> C s _s' m [Turtle] -- ^ dx -> dy -> CSTM (Set AgentRef)
+turtles_at x y = do
+    [MkPatch {pxcor_=px, pycor_=py}] <- patch_at x y
+    ts <- turtles
+    lift $ filterM (\ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
+                      x' <- readTVarSI tx
+                      y' <- readTVarSI ty
+                      return $ round x' == px && round y' == py
+                   ) ts
+
+-- | patch-here reports the patch under the turtle. 
+patch_here :: STMorIO m => C Turtle _s' m [Patch]
+patch_here = do
+    (MkTurtle {xcor_ = x, ycor_ = y},_) <- Reader.ask
+    x' <- lift $ readTVarSI x
+    y' <- lift $ readTVarSI y
+    patch x' y'
+
+
+-- | Reports the agentset consisting of all turtles. 
+turtles :: STMorIO m => C _s _s' m [Turtle]
+turtles = lift $ do
+    ts <- readTVarSI __turtles
+    return $ IM.elems ts
+
+
+-- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
+turtle :: STMorIO m => Int -> C _s _s' m [Turtle]
+turtle n = lift $ do
+    ts <- readTVarSI __turtles
+    return $ maybe nobody return $ IM.lookup n ts
+
+
+-- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
+heading :: STMorIO m => C Turtle _s' m Double
+heading = do
+    (MkTurtle {heading_ = h},_) <- Reader.ask
+    lift $ readTVarSI h
+
+
+-- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
+xcor :: STMorIO m => C Turtle _s' m Double
+xcor = do
+    (MkTurtle {xcor_ = x},_) <- Reader.ask
+    lift $ readTVarSI x
+
+-- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
+ycor :: STMorIO m => C Turtle _s' m Double
+ycor = do
+    (MkTurtle {ycor_ = y},_) <- Reader.ask
+    lift $ readTVarSI y
+
+pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
+pcolor = do
+    (s,_) <- Reader.ask
+    (MkPatch {pcolor_ = tc}) <- patch_on_ s
+    lift $ readTVarSI tc
+
+
+plabel :: STMorIO m => TurtlePatch s => C s _s' m String
+plabel = do
+    (s,_) <- Reader.ask
+    (MkPatch {plabel_ = tl}) <- patch_on_ s
+    lift $ readTVarSI tl
+
+
+
+-- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
+color :: STMorIO m => TurtleLink s => C s _s' m Double
+color = do
+    (s,_) <- Reader.ask
+    lift $ readTVarSI (color_ s)
+
+
+breed :: STMorIO m => TurtleLink s => C s _s' m String
+breed = do
+    (s,_) <- Reader.ask
+    lift $ readTVarSI (breed_ s)
+
+
+towards = undefined
+
+-- -- | Reports the distance from this agent to the given turtle or patch. 
+-- distance :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
+
+-- -- | Reports the distance from this agent to the point (xcor, ycor). 
+-- distancexy :: TurtlePatch s => Double -> Double -> C s _s' m Double
+
+-- -- | Reports the heading from this agent to the given agent. 
+-- towards :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
+
+-- -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. This can include the agent itself.
+-- in_radius :: (TurtlePatch a, TurtlePatch s) => [a] -> Double -> C s _s' m [a]
+
+-- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
+link :: STMorIO m => Int -> Int -> C _s _s' m [Link]
+link f t = do
+    ls <- lift $ readTVarSI __links
+    return $ maybe nobody return $ M.lookup (f,t) ls
+
+
+-- | Reports the agentset consisting of all links. 
+links :: STMorIO m => C _s _s' m [Link]
+links = lift $ do
+    ls <- readTVarSI __links
+    return $ nubBy checkForUndirected $ M.elems ls
+        where
+          checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = e1 == e2' && e1' == e2
+          checkForUndirected _ _ = False
+
+readTurtle :: STMorIO m => Int -> C Turtle _s' m Double
+readTurtle i = do
+    (MkTurtle {tvars_ = pv},_) <- Reader.ask
+    lift $ readTVarSI (pv ! i)
+
+
+readPatch :: STMorIO m => TurtlePatch s => Int -> C s _s' m Double
+readPatch i = do 
+    (s,_) <- Reader.ask
+    (MkPatch {pvars_ = pv}) <- patch_on_ s
+    lift $ readTVarSI $ pv ! i
+
+readLink :: STMorIO m => Int -> C Link _s' m Double
+readLink i = do
+    (MkLink {lvars_ = pv},_) <- Reader.ask
+    lift $ readTVarSI (pv ! i)
+
+
+-- timer :: C _s _s' m Double
+
+-- reset_timer :: C _s _s' m ()
+
+-- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
+--
+-- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of show inside an 'atomic' transaction, no 'show' will be repeated if the transaction is retried. Compared to 'unsafe_show', the output is not mangled.
+-- show :: (Player s, Show a) => a -> C s _s' m ()
+
+-- | Prints value in the Command Center, followed by a carriage return. 
+--
+-- HLogo-specific: There are no guarantees on which agent will be prioritized to write on the stdout. The only guarantee is that in case of print inside an 'atomic' transaction, no 'print' will be repeated if the transaction is retried. Compared to 'unsafe_print', the output is not mangled.
+-- print :: Show a => a -> C _s _s' m ()
+
+-- | Reports the current value of the tick counter. The result is always a number and never negative. 
+-- ticks :: C _s _s' m Double
 
 
 
@@ -2074,68 +2186,6 @@ class Monad m => STMorIO m where
 --{-# WARNING timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
 --{-# WARNING reset_timer "safe, but some might considered it unsafe with respect to STM, since it may poll the clock multiple times. The IO version of it is totally safe" #-}
 --{-# WARNING ticks "TODO: dynamic typing, integer or float" #-}
-
-instance STMorIO STM where
-  turtles_here = do
-    (s,_) <- Reader.ask
-    (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
-    ts <- turtles
-    filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
-               x' <- lift $ readTVar x
-               y' <- lift $ readTVar y
-               return $ round x' == px && round y' == py
-            ) ts
-  turtles_at x y = do
-    [MkPatch {pxcor_=px, pycor_=py}] <- patch_at x y
-    ts <- turtles
-    filterM (\ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
-               x' <- lift $ readTVar tx
-               y' <- lift $ readTVar ty
-               return $ round x' == px && round y' == py
-            ) ts
-  patch_here = do
-    (MkTurtle {xcor_ = x, ycor_ = y},_) <- Reader.ask
-    x' <- lift $ readTVar x
-    y' <- lift $ readTVar y
-    patch x' y'
-
-  turtles = do
-    ts <- lift $ readTVar __turtles
-    return $ IM.elems ts
-
-  turtle n = do
-    ts <- lift $ readTVar __turtles
-    return $ maybe nobody return $ IM.lookup n ts
-
-  heading = do
-    (MkTurtle {heading_ = h},_) <- Reader.ask
-    lift $ readTVar h
-
-  xcor = do
-    (MkTurtle {xcor_ = x},_) <- Reader.ask
-    lift $ readTVar x
-
-  ycor = do
-    (MkTurtle {ycor_ = y},_) <- Reader.ask
-    lift $ readTVar y
-
-  pcolor = do
-    (s,_) <- Reader.ask
-    (MkPatch {pcolor_ = tc}) <- patch_on_ s
-    lift $ readTVar tc
-
-  plabel = do
-    (s,_) <- Reader.ask
-    (MkPatch {plabel_ = tl}) <- patch_on_ s
-    lift $ readTVar tl
-
-  color = do
-    (s,_) <- Reader.ask
-    lift $ readTVar (color_ s)
-
-  breed = do
-    (s,_) <- Reader.ask
-    lift $ readTVar (breed_ s)
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
 --   distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
@@ -2207,116 +2257,27 @@ instance STMorIO STM where
 --                            delta y y' (fromIntegral (max_pycor_ conf) :: Int) ^ (2::Int)) <= n) as
 
 
-  link f t = do
-    ls <- lift $ readTVar __links
-    return $ maybe nobody return $ M.lookup (f,t) ls
+  -- timer = lift $ do
+  --     t <- readTVar __timer
+  --     t' <- unsafeIOToSTM getCurrentTime
+  --     return $ realToFrac (t' `diffUTCTime` t)              
 
+  -- reset_timer = do
+  --     t <- lift $ unsafeIOToSTM getCurrentTime
+  --     lift $ writeTVar __timer t
 
-  links = do
-    ls <- lift $ readTVar __links
-    return $ nubBy checkForUndirected $ M.elems ls
-        where
-          checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = e1 == e2' && e1' == e2
-          checkForUndirected _ _ = False
-
-  readGlobal = lift . readTVar
-
-  readTurtle i = do
-    (MkTurtle {tvars_ = pv},_) <- Reader.ask
-    lift $ readTVar (pv ! i)
-
-  readPatch i = do 
-    (s,_) <- Reader.ask
-    (MkPatch {pvars_ = pv}) <- patch_on_ s
-    lift $ readTVar $ pv ! i
-
-  readLink i = do
-    (MkLink {lvars_ = pv},_) <- Reader.ask
-    lift $ readTVar (pv ! i)
-
-  timer = lift $ do
-      t <- readTVar __timer
-      t' <- unsafeIOToSTM getCurrentTime
-      return $ realToFrac (t' `diffUTCTime` t)              
-
-  reset_timer = do
-      t <- lift $ unsafeIOToSTM getCurrentTime
-      lift $ writeTVar __timer t
-
-  show a = do
+show a = do
     -- ObserverRef _ -> lift $ unsafeIOToSTM $ putStrLn ("observer: " ++ Prelude.show a)
     (s,_) <- Reader.ask
     lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
 
-  print a = do
+print a = do
     -- ObserverRef _ -> lift $ unsafeIOToSTM $ Prelude.print a
     lift $ writeTQueue __printQueue $ Prelude.show a
 
-  ticks = lift $ unsafeIOToSTM $ readIORef __tick
+ticks :: STMorIO m => C _s _s' m Double
+ticks = lift $ readTVarSI __tick
 
-
-
-instance STMorIO IO where
-  turtles_here = do
-    (s,_) <- Reader.ask
-    (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
-    ts <- turtles
-    filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
-               x' <- lift $ readTVarIO x
-               y' <- lift $ readTVarIO y
-               return $ round x' == px && round y' == py
-            ) ts
-  turtles_at x y = do
-    [MkPatch {pxcor_=px, pycor_=py}] <- patch_at x y
-    ts <- turtles
-    filterM (\ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
-               x' <- lift $ readTVarIO tx
-               y' <- lift $ readTVarIO ty
-               return $ round x' == px && round y' == py
-            ) ts
-  patch_here = do
-    (MkTurtle {xcor_ = x, ycor_ = y},_) <- Reader.ask
-    x' <- lift $ readTVarIO x
-    y' <- lift $ readTVarIO y
-    patch x' y'
-
-  turtles = do
-    ts <- lift $ readTVarIO __turtles
-    return $ IM.elems ts
-
-  turtle n = do
-    ts <- lift $ readTVarIO __turtles
-    return $ maybe nobody return $ IM.lookup n ts
-
-  heading = do
-    (MkTurtle {heading_ = h},_) <- Reader.ask
-    lift $ readTVarIO h
-
-  xcor = do
-    (MkTurtle {xcor_ = x},_) <- Reader.ask
-    lift $ readTVarIO x
-
-  ycor = do
-    (MkTurtle {ycor_ = y},_) <- Reader.ask
-    lift $ readTVarIO y
-
-  pcolor = do
-    (s,_) <- Reader.ask
-    (MkPatch {pcolor_ = tc}) <- patch_on_ s
-    lift $ readTVarIO tc
-
-  plabel = do
-    (s,_) <- Reader.ask
-    (MkPatch {plabel_ = tl}) <- patch_on_ s
-    lift $ readTVarIO tl
-
-  color = do
-    (s,_) <- Reader.ask
-    lift $ readTVarIO (color_ s)
-
-  breed = do
-    (s,_) <- Reader.ask
-    lift $ readTVarIO (breed_ s)
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
 --   distance [TurtleRef _ (MkTurtle {xcor_ = tx, ycor_ = ty})] = do
@@ -2385,51 +2346,25 @@ instance STMorIO IO where
 --     with (distancexy x y >>= \ d -> return $ d <= n) as
 
 
-  link x y = do
-    ls <- lift $ readTVarIO __links
-    return $ maybe nobody return $ M.lookup (x,y) ls
+  -- timer = lift $ do
+  --     t <- readTVarIO __timer
+  --     t' <- getCurrentTime
+  --     return $ realToFrac (t' `diffUTCTime` t)              
 
-  links = do
-    ls <- lift $ readTVarIO __links
-    return $ nubBy checkForUndirected $ M.elems ls
-        where
-          checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = e1 == e2' && e1' == e2
-          checkForUndirected _ _ = False
+  -- reset_timer = do
+  --     t <- lift $ getCurrentTime
+  --     atomic $ lift $ writeTVar __timer t
 
-  readGlobal = lift . readTVarIO
+  -- show a = do
+  --   -- ObserverRef _ -> lift $ putStrLn ("observer: " ++ Prelude.show a)
+  --   (s,_) <- Reader.ask
+  --   atomic $ lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
 
-  readTurtle i = do
-    (MkTurtle {tvars_ = pv},_) <- Reader.ask
-    lift $ readTVarIO (pv ! i)
+  -- print a = do
+  --   -- ObserverRef _ -> lift $ Prelude.print a
+  --   atomic $ lift $ writeTQueue __printQueue $ Prelude.show a
 
-  readPatch i = do 
-    (s,_) <- Reader.ask
-    (MkPatch {pvars_ = pv}) <- patch_on_ s
-    lift $ readTVarIO $ pv ! i
-
-  readLink i = do
-    (MkLink {lvars_ = pv},_) <- Reader.ask
-    lift $ readTVarIO (pv ! i)
-
-  timer = lift $ do
-      t <- readTVarIO __timer
-      t' <- getCurrentTime
-      return $ realToFrac (t' `diffUTCTime` t)              
-
-  reset_timer = do
-      t <- lift $ getCurrentTime
-      atomic $ lift $ writeTVar __timer t
-
-  show a = do
-    -- ObserverRef _ -> lift $ putStrLn ("observer: " ++ Prelude.show a)
-    (s,_) <- Reader.ask
-    atomic $ lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
-
-  print a = do
-    -- ObserverRef _ -> lift $ Prelude.print a
-    atomic $ lift $ writeTQueue __printQueue $ Prelude.show a
-
-  ticks = lift $ readIORef __tick
+  -- ticks = lift $ readIORef __tick
 
 
 -- | Reports a shade of color proportional to the value of number. 
@@ -2535,36 +2470,25 @@ scale_color c v minArg maxArg = do
 {-# SPECIALIZE  readPatch :: TurtlePatch s => Int -> C s _s' IO Double #-}
 {-# SPECIALIZE  readLink :: Int -> C Link _s' STM Double #-}
 {-# SPECIALIZE  readLink :: Int -> C Link _s' IO Double #-}
-{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
-{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
-{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
-{-# SPECIALIZE  reset_timer :: C _s _s' IO () #-}
-{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' STM () #-}
-{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' IO () #-}
-{-# SPECIALIZE  print :: Show a => a -> C _s _s' STM () #-}
-{-# SPECIALIZE  print :: Show a => a -> C _s _s' IO () #-}
+--{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
+--{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
+--{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
+--{-# SPECIALIZE  reset_timer :: C _s _s' IO () #-}
+--{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' STM () #-}
+--{-# SPECIALIZE  show :: (Player s, Show a) => a -> C s _s' IO () #-}
+--{-# SPECIALIZE  print :: Show a => a -> C _s _s' STM () #-}
+--{-# SPECIALIZE  print :: Show a => a -> C _s _s' IO () #-}
 {-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
 {-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
 
 
 
 
+class Monad m => STMorIO m where
+    readTVarSI :: TVar a -> m a
 
+instance STMorIO STM where
+    readTVarSI = readTVar
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+instance STMorIO IO where
+    readTVarSI = readTVarIO

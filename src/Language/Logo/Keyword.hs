@@ -56,7 +56,7 @@ globals vs  = do
                                                    (normalB [| unsafePerformIO $ newTVarIO 0 :: TVar Double |]) []
                       getVarSig <- sigD (mkName v) [t| (STMorIO m) => C _s _s' m Double|] -- cannot infer the STMOrIO otherwise
                       getVar <- valD (varP (mkName v)) 
-                               (normalB [| readGlobal $(varE (mkName ("__" ++v))) |]) []
+                               (normalB [| readTVarSI $(varE (mkName ("__" ++v))) |]) []
 
                       y <- newName "y"
                       setVar <- funD (mkName ("set_" ++ v)) [clause [varP y] 

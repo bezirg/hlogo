@@ -23,7 +23,7 @@ setup = do
 go = forever $ do
   t <- ticks
   when (t==1000) stop
-  askTurtles behave
+  ask behave =<< turtles
   tick
 
 behave = do

@@ -42,8 +42,8 @@ import Control.Applicative
 -- | The global (atomically-modifiable) tick variable
 --
 -- Double because NetLogo also allows different than 1-tick increments
-__tick :: IORef Double
-__tick = unsafePerformIO $ newIORef (error "The tick counter has not been started yet. Use RESET-TICKS.")
+__tick :: TVar Double
+__tick = unsafePerformIO $ newTVarIO (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# NOINLINE __who #-}
 -- | The global (atomically-modifiable) who-counter variable
