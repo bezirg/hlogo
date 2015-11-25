@@ -1454,54 +1454,62 @@ increaseTotalSTM s = case s of
 instance Agent Turtle where
     ask f as = do
       (s,_) <- Reader.ask
-      lift $ do
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-              ) (split numCapabilities as)
-        ThreadG.wait __tg
+      case numCapabilities of
+        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+        _ -> lift $ do
+                 mapM_ (\ (core, asSection) -> 
+                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+                       ) (split numCapabilities as)
+                 ThreadG.wait __tg
 
     of_ f as = do
       (s,_) <- Reader.ask
-      lift $ do
-             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-             rs <- sequence [Thread.result =<< w | w <- ws]
-             return $ concat rs -- lists traversals can be optimized
+      case numCapabilities of
+        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+        _ ->  lift $ do
+                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
+                 rs <- sequence [Thread.result =<< w | w <- ws]
+                 return $ concat rs -- lists traversals can be optimized
 
 instance Agent Patch where
     ask f as = do
       (s,_) <- Reader.ask
-      lift $ do
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-              ) (split numCapabilities as)
-        ThreadG.wait __tg
-      
+      case numCapabilities of
+        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+        _ -> lift $ do
+                 mapM_ (\ (core, asSection) -> 
+                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+                       ) (split numCapabilities as)
+                 ThreadG.wait __tg
+
     of_ f as = do
       (s,_) <- Reader.ask
-      lift $ do
-             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-             rs <- sequence [Thread.result =<< w | w <- ws]
-             return $ concat rs -- lists traversals can be optimized
+      case numCapabilities of
+        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+        _ ->  lift $ do
+                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
+                 rs <- sequence [Thread.result =<< w | w <- ws]
+                 return $ concat rs -- lists traversals can be optimized
 
 instance Agent Link where
     ask f as = do
       (s,_) <- Reader.ask
-      lift $ do
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
-              ) (split numCapabilities as)
-        ThreadG.wait __tg
+      case numCapabilities of
+        1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
+        _ -> lift $ do
+                 mapM_ (\ (core, asSection) -> 
+                            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+                       ) (split numCapabilities as)
+                 ThreadG.wait __tg
       
     of_ f as = do
       (s,_) <- Reader.ask
-      lift $ do
-             ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-             rs <- sequence [Thread.result =<< w | w <- ws]
-             return $ concat rs -- lists traversals can be optimized
-
-
-
-
+      case numCapabilities of
+        1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
+        _ ->  lift $ do
+                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
+                 rs <- sequence [Thread.result =<< w | w <- ws]
+                 return $ concat rs -- lists traversals can be optimized
 
         -- do
         -- ws <- case split_ conf of
@@ -1540,57 +1548,25 @@ askTurtles f = do
 askPatches :: C Patch _s IO a -> C _s _s' IO ()
 askPatches f = do
     (s,_) <- Reader.ask
-    lift $ do
-      -- mapM_ (\ (core, ycorSlice) -> 
-      --        -- this splits it in rows
-      --        ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (__patches ! (x,y), s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
-      --       ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
-      -- mapM_ (\ (core, ycorSlice) -> 
-      --            ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (__patches ! (x,y),s) | x <- ycorSlice, y <- [min_pycor_ conf..max_pycor_ conf]]
-      --       ) (split numCapabilities [min_pxcor_ conf .. max_pxcor_ conf])
-      -- let (v1, v2) = V.splitAt (V.length __patches `div` 2) __patches
-      -- mapM (\ (vslice,core) -> 
-      --           ThreadG.forkOn core __tg $ V.mapM_ (\ row -> V.mapM_ (\ p -> Reader.runReaderT f (p,s)) row) vslice
-      --       )
-      --       (zip [v1,v2] [1,2])
-      mapM (\ (start,size,core) -> 
-                 ThreadG.forkOn core __tg $ V.mapM_ (\ row -> V.mapM_ (\ p -> Reader.runReaderT f (p,s)) row) (V.unsafeSlice start size __patches)
-             )
-             (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
-
-      ThreadG.wait __tg                               
-          where
-            splitN :: Int -> Int -> [(Int,Int,Int)]
-            splitN width n = let (q,r) = width `quotRem` n
-                                 splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
-                                 splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
-                             in  case (foldl' splitN' (r,0,[]) [1..n]) of
-                                   (_,_,res) -> res
-
-
-    -- where
-    --   splitN :: Int -> Int -> [(Int,Int,Int)]
-    --   splitN width n = let (q,r) = width `quotRem` n
-    --                  splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
-    --                  splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
-    --              in  case (foldl' splitN' (r,0,[]) [1..n]) of
-    --                    (_,_,res) -> res
-                                -- this splits it in rows
-                                --      ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (PatchRef (x,y) (__patches ! (x,y)), p, s) | x <- [min_pxcor_ conf..max_pxcor_ conf], y <- ycorSlice]
-                                -- ) (split numCapabilities [min_pycor_ conf .. max_pycor_ conf])
-                                -- this splits it in columns, for some strange reason this works slightly faster. Maybe because data locality works better with smaller chunks than having largely-contiguous chunks
-
--- splitN :: Int -> Int -> [(Int,Int,Int)]
--- splitN width n = let (q,r) = width `quotRem` n
---                      splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
---                      splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
---                  in  case (foldl' splitN' (r,0,[]) [1..n]) of
---                        (_,_,res) -> res
-
+    case numCapabilities of
+      1 -> lift $ V.mapM_ 
+                     (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) 
+                 __patches
+      _ -> lift $ do
+                 mapM (\ (start,size,core) -> 
+                           ThreadG.forkOn core __tg $ V.mapM_ (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) (V.unsafeSlice start size __patches)
+                      ) (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
+                 ThreadG.wait __tg                               
+                     where
+                       splitN :: Int -> Int -> [(Int,Int,Int)]
+                       splitN width n = let (q,r) = width `quotRem` n
+                                            splitN' (0,s,l) c = (0, q+s, (s,q,c):l)
+                                            splitN' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
+                                        in  case (foldl' splitN' (r,0,[]) [1..n]) of
+                                                (_,_,res) -> res
 
 -- | Internal
 split :: Int -> [a] -> [(Int, [a])]
-split 1 l = [(1,l)]
 split n l = let (d,m) = length l `quotRem` n
                 split' 0 _ _ = []
                 split' x 0 l' = let (t, rem_list) = splitAt d l'
