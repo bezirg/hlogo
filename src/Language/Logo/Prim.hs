@@ -1530,8 +1530,14 @@ askTurtles f = do
         ts <- readTVarIO __turtles
         mapM_ (\ (tslice,core) ->
                   ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s)) tslice
-             ) (zip (concatMap IM.splitRoot (IM.splitRoot ts)) [1..4])
+             ) (zip (splitTurtles numCapabilities [ts]) [1..numCapabilities])
         ThreadG.wait __tg
+
+    where
+      splitTurtles :: Int -> [IM.IntMap Turtle] -> [IM.IntMap Turtle]
+      splitTurtles 1 acc = acc
+      splitTurtles n acc = splitTurtles (n `quot` 2) $ concatMap IM.splitRoot acc 
+
 
 
 
