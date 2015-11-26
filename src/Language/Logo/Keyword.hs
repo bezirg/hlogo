@@ -514,9 +514,7 @@ newBreed b x to = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
-       newTVarIO (mkStdGen x) <*>
-       pure 0 <*>
-       pure 0
+       newTVarIO (mkStdGen x)
 #ifdef STATS_STM
        <*> newIORef 0 <*>
        newIORef 0
@@ -543,9 +541,7 @@ newOrderedBreed i o b x to = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
-       newTVarIO (mkStdGen x) <*>
-       pure 0 <*>
-       pure 0
+       newTVarIO (mkStdGen x)
 #ifdef STATS_STM
        <*> newIORef 0 <*>
        newIORef 0
@@ -573,9 +569,7 @@ newTurtle x to = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)) <*>
-       newTVarIO (mkStdGen x) <*>
-       pure 0 <*>
-       pure 0
+       newTVarIO (mkStdGen x)
 #ifdef STATS_STM
        <*> newIORef 0 <*>
        newIORef 0
@@ -601,9 +595,7 @@ newSprout w to x y = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, to-1) =<< replicateM to (newTVar 0)) <*>
-       newTVar (mkStdGen w) <*>
-       pure (round x) <*>
-       pure (round y)
+       newTVar (mkStdGen w)
 #ifdef STATS_STM
        <*> pure (unsafePerformIO (newIORef 0)) <*>
        pure (unsafePerformIO (newIORef 0))
@@ -629,9 +621,7 @@ newBSprout w to x y b = do
        newTVar 1 <*>
        newTVar Up <*>
        (return . listArray (0, to-1) =<< replicateM to (newTVar 0)) <*>
-       newTVar (mkStdGen w) <*>
-       pure (round x) <*>
-       pure (round y)
+       newTVar (mkStdGen w)
 #ifdef STATS_STM
        <*> pure (unsafePerformIO (newIORef 0)) <*>
        pure (unsafePerformIO (newIORef 0))
@@ -660,9 +650,7 @@ newOrderedTurtle i o x to = do
              newTVarIO 1 <*>
              newTVarIO Up <*>
              (return . listArray (0, to-1) =<< replicateM to (newTVarIO 0)) <*>
-             newTVarIO (mkStdGen x) <*>
-             pure 0 <*>
-             pure 0
+             newTVarIO (mkStdGen x)
 #ifdef STATS_STM
              <*> newIORef 0 <*>
              newIORef 0

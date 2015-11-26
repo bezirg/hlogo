@@ -68,8 +68,6 @@ data Turtle = MkTurtle {
     , pen_mode_ :: TVar PenMode
     , tvars_ :: Array Int (TVar Double)
     , tgen_ :: TVar StdGen
-    , init_xcor_ :: !Int
-    , init_ycor_ :: !Int
 #ifdef STATS_STM
     , ttotalstm :: IORef Int
     , tsuccstm :: IORef Int

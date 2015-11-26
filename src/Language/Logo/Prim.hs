@@ -1623,9 +1623,9 @@ while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopExceptio
 hatch :: Int -> C Turtle _s' STM [Turtle]
 hatch n = do
 #ifdef STATS_STM
-    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _ix _iy _tt _ts, _) <- Reader.ask
+    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _tt _ts, _) <- Reader.ask
 #else
-    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _ix _iy, _) <- Reader.ask
+    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _, _) <- Reader.ask
 #endif
     let b = bounds tarr
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
@@ -1646,9 +1646,7 @@ hatch n = do
                                                                             (newTVar =<< readTVar ps) <*>
                                                                             (newTVar =<< readTVar pm) <*>
                                                                             newArray <*>
-                                                                            newTVar (mkStdGen i) <*> 
-                                                                            liftA round (readTVar x) <*> 
-                                                                            liftA round (readTVar y)
+                                                                            newTVar (mkStdGen i)
 #ifdef STATS_STM                                                                            
                                                                             <*> pure (unsafePerformIO (newIORef 0)) <*> 
                                                                             pure (unsafePerformIO (newIORef 0))
