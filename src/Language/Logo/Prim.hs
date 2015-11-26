@@ -253,29 +253,28 @@ allp r as = do
 jump :: Double -> C Turtle _s' STM ()
 jump n = do
    (MkTurtle {xcor_ = tx, ycor_ = ty, heading_ = th}, _) <- Reader.ask
-   x <- lift $ readTVar tx
-   y <- lift $ readTVar ty
-   h <- lift $ readTVar th
-   let x' = x + sin_ h * n
-   let y' = y + cos_ h * n
-   let max_x = max_pxcor_ conf
-   let dmax_x = fromIntegral max_x
-   let min_x = min_pxcor_ conf
-   let dmin_x = fromIntegral min_x
-   let max_y = max_pycor_ conf
-   let dmax_y = fromIntegral max_y
-   let min_y = min_pycor_ conf
-   let dmin_y = fromIntegral min_y
-   if horizontal_wrap_ conf
-     then
-       lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
-     else
-       when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ lift $ writeTVar tx x'
-   if vertical_wrap_ conf
-     then
-         lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
-     else
-       when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ lift $ writeTVar ty y'
+   lift $ do
+       h <- readTVar th
+       x' <- liftM ((sin_ h * n) +) $ readTVar tx
+       y' <- liftM ((cos_ h * n) +) $ readTVar ty
+       let max_x = max_pxcor_ conf
+       let dmax_x = fromIntegral max_x
+       let min_x = min_pxcor_ conf
+       let dmin_x = fromIntegral min_x
+       let max_y = max_pycor_ conf
+       let dmax_y = fromIntegral max_y
+       let min_y = min_pycor_ conf
+       let dmin_y = fromIntegral min_y
+       if horizontal_wrap_ conf
+         then
+           writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+         else
+           when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx x'
+       if vertical_wrap_ conf
+         then
+             writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+         else
+           when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ writeTVar ty y'
 
 
 -- | The turtle sets its x-coordinate to x and its y-coordinate to y. 
@@ -308,7 +307,6 @@ setxy x' y' = do
 
 -- | The turtle moves forward by number steps, one step at a time. (If number is negative, the turtle moves backward.) 
 forward :: Double -> C Turtle _s' STM ()
-forward 0 = return ()
 forward n | n > 1 = jump 1 >> forward (n-1)
           | n < -1 = jump (-1) >> forward (n+1)
           | otherwise = jump n
@@ -684,8 +682,8 @@ home = setxy 0 0
 -- | The turtle turns right by number degrees. (If number is negative, it turns left.) 
 right :: Double -> C Turtle _s' STM ()
 right n = do
-  (t,_) <- Reader.ask
-  lift $ modifyTVar' (heading_ t) (\ h -> mod_ (h+n) 360)
+  (MkTurtle {heading_=th},_) <- Reader.ask
+  lift $ modifyTVar' th (\ h -> mod_ (h+n) 360)
 {-# INLINE rt #-}
 -- | alias for 'right'
 rt :: Double -> C Turtle _s' STM ()
@@ -2228,7 +2226,7 @@ scale_color c v minArg maxArg = do
                else return c''
             else return c'
         else return c
-             where maxColor = 140.0
+             where maxColor = 140 :: Double
 
 -- | Tells each patch to give equal shares of (number * 100) percent of the value of patch-variable to its eight neighboring patches. number should be between 0 and 1. Regardless of topology the sum of patch-variable will be conserved across the world. (If a patch has fewer than eight neighbors, each neighbor still gets an eighth share; the patch keeps any leftover shares.) 
 -- can be done better, in a single sequential atomic
