@@ -20,7 +20,7 @@ module Language.Logo.Prim (
                             patch_at, patch_here, patch_ahead, patches, patch, patch_set, no_patches, pxcor, pycor, pcolor, plabel, neighbors, neighbors4, set_plabel, with_plabel, set_pcolor, with_pcolor, with_plabel_color, 
 
                             -- * Link related
-                            hide_link, show_link, link_length, link, links, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, 
+                            hide_link, show_link, link_length, link, links, my_links, my_out_links, my_in_links, no_links, tie, untie, link_set, end1, end2, is_directed_linkp, is_undirected_linkp,
 
                             -- * Random related
                             random_xcor, random_ycor, random_pxcor, random_pycor, random, random_float, new_seed, random_seed, random_exponential, random_gamma, random_normal, random_poisson,
@@ -64,7 +64,6 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Array
 import qualified Data.Vector as V
-import Control.Applicative
 import System.Random hiding (random, split)
 import Data.Function
 import Control.Monad (forM_, liftM, filterM, forever, when)
@@ -129,9 +128,9 @@ patches = return $ V.foldr' (\ v' acc -> V.toList v' ++ acc) [] __patches
 {-# SPECIALIZE  patch :: Double -> Double -> C _s _s' IO [Patch] #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: STMorIO m => Double -> Double -> C _s _s' m [Patch]
-patch x y = return $ if (not (horizontal_wrap_ conf) && (x' > max || x' < mix)) || (not (vertical_wrap_ conf) && (y' > may || y' < miy))
-                     then nobody
-                     else  [(__patches `V.unsafeIndex` (x''-mix)) `V.unsafeIndex` (y''-miy)]
+patch x y = if (not (horizontal_wrap_ conf) && (x' > max || x' < mix)) || (not (vertical_wrap_ conf) && (y' > may || y' < miy))
+            then nobody
+            else return [(__patches `V.unsafeIndex` (x''-mix)) `V.unsafeIndex` (y''-miy)]
            where
              mix = min_pxcor_ conf
              miy = min_pycor_ conf
@@ -234,14 +233,14 @@ pink = 135
 -- | Reports the number of agents in the given agentset. 
 count :: (STMorIO m, Agent a) => [a] -> C _s _s' m Int
 -- count [Nobody] = throw $ TypeException "agent" Nobody
-count as = return $ length as
+count = return . length
 
 {-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' STM Bool #-}
 {-# SPECIALIZE  anyp :: Agent a => [a] -> C _s _s' IO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
 anyp :: (STMorIO m, Agent a) => [a] -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
-anyp as = return $ not $ null as
+anyp = return . not . null 
 
 allp :: (Agent a) => C a p IO Bool -> [a] -> C p p' IO Bool
 allp _ [] = return True
@@ -360,8 +359,8 @@ instance TurtlePatch Patch where
 
 instance TurtlePatch Turtle where
     patch_on_ (MkTurtle {xcor_=tx,ycor_=ty}) = do
-                 x <- lift $ readTVarSI tx
-                 y <- lift $ readTVarSI ty
+                 x <- readTVarSI tx
+                 y <- readTVarSI ty
                  [p] <- patch x y
                  return p
 
@@ -706,10 +705,11 @@ delta a1 a2 _aboundary =
     min (abs (a2 - a1)) (abs (a2 + a1) + 1)
 
 
+{-# INLINE nobody #-}
 -- | This is a special value which some primitives such as turtle, one-of, max-one-of, etc. report to indicate that no agent was found. Also, when a turtle dies, it becomes equal to nobody. 
 --
 -- It can be returned from all primitives that normally return 1 agent. It can also be returned from a turtle reference that got died or the 'turtle' primitive to a dead agent,, like implicitly nullifying the agent.
-nobody :: Agent a => [a]
+nobody :: (STMorIO m, Agent a) => C _s _s' m [a]
 nobody = error "nobody"
 
 {-# WARNING downhill "TODO" #-}
@@ -1049,7 +1049,7 @@ one_of l = do
 -- Uses instead agent_one_of when types match
 -- {-# RULES "one_of/AgentRef" one_of = agent_one_of #-}
 agent_one_of :: (Player s, Agent a) => [a] -> C s _s' STM [a]
-agent_one_of [] = return nobody
+agent_one_of [] = nobody
 agent_one_of l = do
   (s,_) <- Reader.ask
   let ts = gen_ s
@@ -1611,13 +1611,11 @@ stop = throw StopException
 while :: C _s _s' IO Bool -> C _s _s' IO a -> C _s _s' IO ()
 while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopException -> return ())
 
--- is_directed_linkp :: (Monad m, Typeable a) => a -> C m Bool
--- is_directed_linkp l = return $ maybe False (\case [LinkRef _ (MkLink {directed_ = d})] -> d
---                                                   _ -> False)
---                                          (cast l :: Maybe [AgentRef])
+is_directed_linkp :: STMorIO m => [Link] -> C _s _s' m Bool
+is_directed_linkp [MkLink {directed_ = d}] = return d
 
--- is_undirected_linkp :: (Monad m, Typeable a) => a -> C m Bool
--- is_undirected_linkp = liftM not . is_directed_linkp
+is_undirected_linkp :: STMorIO m => [Link] -> C _s _s' m Bool
+is_undirected_linkp [MkLink {directed_ = d}] = return $ not d
 
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> C Turtle _s' STM [Turtle]
@@ -1898,11 +1896,11 @@ turtles_here = do
     (s,_) <- Reader.ask
     (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
     ts <- turtles
-    lift $ filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
-                      x' <- readTVarSI x
-                      y' <- readTVarSI y
-                      return $ round x' == px && round y' == py
-                   ) ts
+    filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
+               x' <- readTVarSI x
+               y' <- readTVarSI y
+               return $ round x' == px && round y' == py
+            ) ts
 
 {-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' STM [Turtle] #-}
 {-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' IO [Turtle] #-}
@@ -1911,11 +1909,11 @@ turtles_at :: (TurtlePatch s, STMorIO m) => Double -> Double -> C s _s' m [Turtl
 turtles_at x y = do
     [MkPatch {pxcor_=px, pycor_=py}] <- patch_at x y
     ts <- turtles
-    lift $ filterM (\ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
-                      x' <- readTVarSI tx
-                      y' <- readTVarSI ty
-                      return $ round x' == px && round y' == py
-                   ) ts
+    filterM (\ (MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
+               x' <- readTVarSI tx
+               y' <- readTVarSI ty
+               return $ round x' == px && round y' == py
+            ) ts
 
 {-# SPECIALIZE  patch_here :: C Turtle _s' STM [Patch] #-}
 {-# SPECIALIZE  patch_here :: C Turtle _s' IO [Patch] #-}
@@ -1923,8 +1921,8 @@ turtles_at x y = do
 patch_here :: STMorIO m => C Turtle _s' m [Patch]
 patch_here = do
     (MkTurtle {xcor_ = x, ycor_ = y},_) <- Reader.ask
-    x' <- lift $ readTVarSI x
-    y' <- lift $ readTVarSI y
+    x' <- readTVarSI x
+    y' <- readTVarSI y
     patch x' y'
 
 
@@ -1932,7 +1930,7 @@ patch_here = do
 {-# SPECIALIZE  turtles :: C _s _s' IO [Turtle] #-}
 -- | Reports the agentset consisting of all turtles. 
 turtles :: STMorIO m => C _s _s' m [Turtle]
-turtles = lift $ do
+turtles = do
     ts <- readTVarSI __turtles
     return $ IM.elems ts
 
@@ -1941,9 +1939,9 @@ turtles = lift $ do
 {-# SPECIALIZE  turtle :: Int -> C _s _s' IO [Turtle] #-}
 -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
 turtle :: STMorIO m => Int -> C _s _s' m [Turtle]
-turtle n = lift $ do
+turtle n = do
     ts <- readTVarSI __turtles
-    return $ maybe nobody return $ IM.lookup n ts
+    maybe nobody (return . return) $ IM.lookup n ts
 
 
 {-# SPECIALIZE  heading :: C Turtle _s' STM Double #-}
@@ -1952,7 +1950,7 @@ turtle n = lift $ do
 heading :: STMorIO m => C Turtle _s' m Double
 heading = do
     (MkTurtle {heading_ = h},_) <- Reader.ask
-    lift $ readTVarSI h
+    readTVarSI h
 
 
 {-# SPECIALIZE  xcor :: C Turtle _s' STM Double #-}
@@ -1961,7 +1959,7 @@ heading = do
 xcor :: STMorIO m => C Turtle _s' m Double
 xcor = do
     (MkTurtle {xcor_ = x},_) <- Reader.ask
-    lift $ readTVarSI x
+    readTVarSI x
 
 {-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
 {-# SPECIALIZE  ycor :: C Turtle _s' IO Double #-}
@@ -1969,7 +1967,7 @@ xcor = do
 ycor :: STMorIO m => C Turtle _s' m Double
 ycor = do
     (MkTurtle {ycor_ = y},_) <- Reader.ask
-    lift $ readTVarSI y
+    readTVarSI y
 
 {-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
 {-# SPECIALIZE  pcolor :: C Turtle _s' IO Double #-}
@@ -1979,14 +1977,14 @@ pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
 pcolor = do
     (s,_) <- Reader.ask
     (MkPatch {pcolor_ = tc}) <- patch_on_ s
-    lift $ readTVarSI tc
+    readTVarSI tc
 
 
 plabel :: STMorIO m => TurtlePatch s => C s _s' m String
 plabel = do
     (s,_) <- Reader.ask
     (MkPatch {plabel_ = tl}) <- patch_on_ s
-    lift $ readTVarSI tl
+    readTVarSI tl
 
 
 
@@ -1996,7 +1994,7 @@ plabel = do
 color :: STMorIO m => TurtleLink s => C s _s' m Double
 color = do
     (s,_) <- Reader.ask
-    lift $ readTVarSI (color_ s)
+    readTVarSI (color_ s)
 
 
 {-# SPECIALIZE  breed :: TurtleLink s => C s _s' STM String #-}
@@ -2004,7 +2002,7 @@ color = do
 breed :: STMorIO m => TurtleLink s => C s _s' m String
 breed = do
     (s,_) <- Reader.ask
-    lift $ readTVarSI (breed_ s)
+    readTVarSI (breed_ s)
 
 
 -- -- | Reports the distance from this agent to the given turtle or patch. 
@@ -2025,15 +2023,15 @@ towards = undefined
 -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
 link :: STMorIO m => Int -> Int -> C _s _s' m [Link]
 link f t = do
-    ls <- lift $ readTVarSI __links
-    return $ maybe nobody return $ M.lookup (f,t) ls
+    ls <- readTVarSI __links
+    maybe nobody (return . return) $ M.lookup (f,t) ls
 
 
 {-# SPECIALIZE  links :: C _s _s' STM [Link] #-}
 {-# SPECIALIZE  links :: C _s _s' IO [Link] #-}
 -- | Reports the agentset consisting of all links. 
 links :: STMorIO m => C _s _s' m [Link]
-links = lift $ do
+links = do
     ls <- readTVarSI __links
     return $ nubBy checkForUndirected $ M.elems ls
         where
@@ -2122,7 +2120,7 @@ links = lift $ do
 {-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
 -- | Reports the current value of the tick counter. The result is always a number and never negative. 
 ticks :: STMorIO m => C _s _s' m Double
-ticks = lift $ readTVarSI __tick
+ticks = readTVarSI __tick
 
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
@@ -2267,7 +2265,7 @@ scale_color c v minArg maxArg = do
 -- Mostly applies to Observer and IO-related commands. Also the implementation takes advantage of the faster 'readTVarIO'. 
 -- The correct lifting (STM or IO) is left to type inference.
 class Monad m => STMorIO m where
-    readTVarSI :: TVar a -> m a
+    readTVarSI :: TVar a -> C s _s' m a
     timer ::  C _s _s' m Double
     reset_timer :: C _s _s' m ()
     -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
@@ -2285,7 +2283,7 @@ class Monad m => STMorIO m where
 
 
 instance STMorIO STM where
-    readTVarSI = readTVar
+    readTVarSI = lift . readTVar
     timer = lift $ do
       t <- readTVar __timer
       t' <- unsafeIOToSTM getCurrentTime
@@ -2299,7 +2297,7 @@ instance STMorIO STM where
     print a = lift $ writeTQueue __printQueue $ Prelude.show a
 
 instance STMorIO IO where
-    readTVarSI = readTVarIO
+    readTVarSI = lift . readTVarIO
     timer = lift $ do
        t <- readTVarIO __timer
        t' <- getCurrentTime

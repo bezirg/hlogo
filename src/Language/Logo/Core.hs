@@ -30,10 +30,12 @@ import Data.Array (listArray)
 import qualified Data.Vector as V
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
-import System.Random (StdGen, mkStdGen)
+import System.Random (mkStdGen)
 import System.IO.Unsafe (unsafePerformIO)
-import Data.IORef (IORef, newIORef)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
+#ifdef STATS_STM
+import Data.IORef (newIORef)
+#endif
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif

@@ -59,7 +59,6 @@ caseIfElse = runT $ do
   lift $ e1 @=? a1
 
 case_RecursiveReporter1 = let
-    fact :: Int -> CIO Int
     fact n = if n == 0
              then return 1
              else liftM (n *) $ fact (n-1)

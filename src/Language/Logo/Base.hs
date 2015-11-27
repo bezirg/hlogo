@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TypeFamilies, EmptyDataDecls #-}
+{-# LANGUAGE CPP, EmptyDataDecls #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Base
@@ -132,6 +132,13 @@ instance Ord Turtle where
 instance Ord Link where
     compare (MkLink {end1_ = xe1, end2_ = xe2}) (MkLink {end1_ = ye1, end2_ = ye2}) = compare (xe1,xe2) (ye1,ye2)
     
+instance Ord Patch where
+    -- NB: patches are compared "top-to bottom,left-ro-right" ascending
+    MkPatch {pxcor_=x1,pycor_=y1} `compare` MkPatch {pxcor_=x2,pycor_=y2} = let c1 = compare y2 y1
+                                                                            in if c1 == EQ
+                                                                               then compare x1 x2
+                                                                               else c1
+
 instance Show Turtle where
     show (MkTurtle {who_ = tw}) = "(turtle " ++ show tw ++ ")"
 

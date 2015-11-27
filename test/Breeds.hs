@@ -59,9 +59,6 @@ case_TestIsBreed = runT $ do
   let e7 = False
   lift $ e7@=? a7
 
-  a8 <- atomic $ is_frogp (55 :: Int)
-  let e8 = False
-  lift $ e8 @=? a8
 
 case_IsLinkBreed = runT $ do
   a1 <- atomic $ is_directed_linkp =<< nobody

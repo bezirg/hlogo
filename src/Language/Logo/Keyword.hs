@@ -81,7 +81,7 @@ turtles_own vs = do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Turtle _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkTurtle {tvars_ = pv},_) <- Reader.ask
-                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv ! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
@@ -110,7 +110,7 @@ patches_own vs = do
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (s,_) <- Reader.ask
                                                  (MkPatch {pvars_ = pv}) <- patch_on_ s
-                                                 lift $ readTVarSI $ pv ! $(litE (integerL i))
+                                                 readTVarSI $ pv ! $(litE (integerL i))
                                                  |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
@@ -141,7 +141,7 @@ links_own vs = do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Link _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkLink {lvars_ = pv},_) <- Reader.ask
-                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv ! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
@@ -192,7 +192,7 @@ breeds_own p vs = do
           p' <- sigD (mkName v) [t| (STMorIO m) => C Turtle _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkTurtle {tvars_ = pv},_) <- Reader.ask
-                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv ! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
@@ -219,7 +219,7 @@ link_breeds_own p vs = do
           p' <- sigD (mkName v) [t| (STMorIO m) => C m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkLink {lvars_ = pv},_) <- Reader.ask
-                                                 lift $ readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv ! $(litE (integerL i)))
 
                                               |]) []
 
@@ -305,13 +305,12 @@ breeds [p,s] = do
   --                                                               (a:_) -> throw $ ContextException (s ++ "or patch agentset") a
   --                                                           |]) []]
 
-  -- ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
-  --                                         (normalB [| maybe (return False) (\ t -> case t of 
-  --                                                                                   [TurtleRef _ (MkTurtle {breed_ = tb})] -> do
-  --                                                                                     b <- lift $ readTVar tb
-  --                                                                                     return $ b == $(litE (stringL p))
-  --                                                                                   _ -> return False) (cast $(varE y) :: Maybe [AgentRef]) |]) []]
-  return [sp,up,us,ss,th',th,ta]
+  ib <- funD (mkName ("is_" ++ s ++ "p")) [clause [varP y] 
+                                          (normalB [| case $(varE y) of
+                                                        [MkTurtle {tbreed_ = tb}] -> do
+                                                         liftM ($(litE (stringL p)) ==) (readTVarSI tb)
+                                                    |]) []]
+  return [sp,up,us,ss,th',th,ta,ib]
 breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wolves\", \"wolf\"]"
 
 
@@ -325,7 +324,7 @@ directed_link_breed [p,s] = do
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do ls <- lift $ readTVar __links
-                                       return $ maybe nobody return $ M.lookup ($(varE x),$(varE y)) ls |]) []]
+                                       maybe nobody (return . return) $ M.lookup ($(varE x),$(varE y)) ls |]) []]
   return [sp, ss]
 directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
@@ -339,7 +338,7 @@ undirected_link_breed [p,s] = do
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do ls <- lift $ readTVar __links
-                                       return $ maybe nobody return $ M.lookup ($(varE x),$(varE y)) ls |]) []]
+                                       maybe nobody (return . return) $ M.lookup ($(varE x),$(varE y)) ls |]) []]
   return [sp, ss]
 undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
