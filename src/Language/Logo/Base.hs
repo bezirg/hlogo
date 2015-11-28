@@ -12,6 +12,7 @@ module Language.Logo.Base (
                            Player (..), Agent (..), TurtleLink (..)
                           ,Observer, Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
                           ,Patches,Turtles,Links,C
+                          ,ogen_
                           ) where
 
 import Control.Concurrent.STM

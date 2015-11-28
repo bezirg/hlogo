@@ -266,14 +266,14 @@ jump n = do
        let dmin_y = fromIntegral min_y
        if horizontal_wrap_ conf
          then
-           writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+           writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
          else
            when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx x'
        if vertical_wrap_ conf
          then
-             writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+             writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
          else
-           when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ writeTVar ty y'
+           when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ writeTVar ty $! y'
 
 
 -- | The turtle sets its x-coordinate to x and its y-coordinate to y. 
@@ -290,17 +290,17 @@ setxy x' y' = do
     let dmin_y = fromIntegral min_y
     if horizontal_wrap_ conf
       then
-        lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+        lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
       else
           if dmin_x -0.5 < x' && x' < dmax_x + 0.5
-          then lift $ writeTVar tx x'
+          then lift $ writeTVar tx $! x'
           else error "wrap"
     if vertical_wrap_ conf
       then
-          lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+          lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
       else
           if dmin_y -0.5  < y' && y' < dmax_y + 0.5
-          then lift $ writeTVar ty y'
+          then lift $ writeTVar ty $! y'
           else error "wrap"
 
 
@@ -438,7 +438,7 @@ can_movep n = do
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
   (t,_) <- Reader.ask
-  lift $ writeTVar (heading_ t) v
+  lift $ writeTVar (heading_ t) $! v
 
 {-# SPECIALIZE  pxcor :: TurtlePatch s => C s _s' STM Int #-}
 {-# SPECIALIZE  pxcor :: TurtlePatch s => C s _s' IO Int #-}
@@ -464,7 +464,7 @@ set_plabel :: TurtlePatch s => String -> C s _s' STM ()
 set_plabel l = do
   (s,_) <- Reader.ask
   (MkPatch {plabel_ = tl}) <- patch_on_ s
-  lift $ writeTVar tl l
+  lift $ writeTVar tl $! l
 
 {-# SPECIALIZE  set_pcolor :: Double -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_pcolor :: Double -> C Patch _s' STM () #-}
@@ -472,28 +472,28 @@ set_pcolor :: TurtlePatch s => Double -> C s _s' STM ()
 set_pcolor c = do
   (s,_) <- Reader.ask
   (MkPatch {pcolor_ = tc}) <- patch_on_ s
-  lift $ writeTVar tc c
+  lift $ writeTVar tc $! c
 
 {-# SPECIALIZE  set_breed :: String -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_breed :: String -> C Link _s' STM () #-}
 set_breed :: TurtleLink s => String -> C s _s' STM ()
 set_breed v = do
   (s,_) <- Reader.ask
-  lift $ writeTVar (breed_ s) v
+  lift $ writeTVar (breed_ s) $! v
 
 {-# SPECIALIZE  set_color :: Double -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_color :: Double -> C Link _s' STM () #-}
 set_color :: TurtleLink s => Double -> C s _s' STM ()
 set_color v = do
   (s,_) <- Reader.ask
-  lift $ writeTVar (color_ s) v
+  lift $ writeTVar (color_ s) $! v
 
 {-# SPECIALIZE  set_label_color :: Double -> C Turtle _s' STM () #-}
 {-# SPECIALIZE   set_label_color :: Double -> C Link _s' STM () #-}
 set_label_color :: TurtleLink s => Double -> C s _s' STM ()
 set_label_color v = do
   (s,_) <- Reader.ask
-  lift $ writeTVar (label_color_ s) v
+  lift $ writeTVar (label_color_ s) $! v
 
 set_xcor :: Double -> C Turtle _s' STM ()
 set_xcor x' = do
@@ -504,17 +504,17 @@ set_xcor x' = do
     let dmin_x = fromIntegral min_x
     if horizontal_wrap_ conf
      then
-         lift $ writeTVar tx $ ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+         lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
      else
          if dmin_x -0.5 < x' && x' < dmax_x + 0.5
-         then lift $ writeTVar tx x'
+         then lift $ writeTVar tx $! x'
          else error "wrap"
 
 
 set_size :: Double -> C Turtle _s' STM ()
 set_size v = do
   (t,_) <- Reader.ask
-  lift $ writeTVar (size_ t) v
+  lift $ writeTVar (size_ t) $! v
 
 set_ycor :: Double -> C Turtle _s' STM ()
 set_ycor y' = do
@@ -525,10 +525,10 @@ set_ycor y' = do
    let dmin_y = fromIntegral min_y
    if vertical_wrap_ conf
      then
-         lift $ writeTVar ty $ ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+         lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
      else
          if dmin_y -0.5 < y' && y' < dmax_y + 0.5
-         then lift $ writeTVar ty y'
+         then lift $ writeTVar ty $! y'
          else error "wrap"
  
 {-# SPECIALIZE  who :: C Turtle _s' STM Int #-}
@@ -573,7 +573,7 @@ random_seed :: Player s => Int -> C s _s' STM ()
 random_seed i = do
   (s,_) <- Reader.ask
   let g = gen_ s
-  lift $ writeTVar g (mkStdGen i)
+  lift $ writeTVar g $! (mkStdGen i)
                 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
 random_xcor :: Player s => C s _s' STM Double
@@ -582,7 +582,7 @@ random_xcor = do
   let g = gen_ s
   gen <- lift $ readTVar g
   let (v, gen') = randomR (fromIntegral (min_pxcor_ conf) :: Double, fromIntegral $ max_pxcor_ conf) gen
-  lift $ writeTVar g gen'
+  lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, y. 
@@ -592,7 +592,7 @@ random_ycor = do
   let g = gen_ s
   gen <- lift $ readTVar g
   let (v, gen') = randomR (fromIntegral (min_pycor_ conf) :: Double, fromIntegral $ max_pycor_ conf) gen
-  lift $ writeTVar g gen'
+  lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random integer ranging from min-pxcor to max-pxcor inclusive. 
@@ -602,7 +602,7 @@ random_pxcor = do
   let g = gen_ s
   gen <- lift $ readTVar g
   let (v, gen') = randomR (min_pxcor_ conf, max_pxcor_ conf) gen
-  lift $ writeTVar g gen'
+  lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random integer ranging from min-pycor to max-pycor inclusive. 
@@ -612,7 +612,7 @@ random_pycor = do
   let g = gen_ s
   gen <- lift $ readTVar g
   let (v, gen') = randomR (min_pycor_ conf, max_pycor_ conf) gen
-  lift $ writeTVar g gen'
+  lift $ writeTVar g $! gen'
   return v
 
 {-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
@@ -637,7 +637,7 @@ random x = do
                         then n+1
                         else n, 0)
   let (v, gen') = randomR randRange gen :: (Int, StdGen)
-  lift $ writeTVar ts gen'
+  lift $ writeTVar ts $! gen'
   return (fromIntegral v)
 
 -- |  If number is positive, reports a random floating point number greater than or equal to 0 but strictly less than number.
@@ -649,7 +649,7 @@ random_float x = do
   let ts = gen_ s
   gen <- lift $ readTVar ts
   let (v, gen') = randomR (if x > 0 then (0,x) else (x,0)) gen
-  lift $ writeTVar ts gen'
+  lift $ writeTVar ts $! gen'
   return v
 
 {-# WARNING random_exponential "TODO" #-}
@@ -1043,7 +1043,7 @@ one_of l = do
   let ts = gen_ s
   gen <- lift $ readTVar ts
   let (v,gen') = randomR (0, length l -1) gen
-  lift $ writeTVar ts gen'
+  lift $ writeTVar ts $! gen'
   return [l !! v]
 
 -- Uses instead agent_one_of when types match
@@ -1055,7 +1055,7 @@ agent_one_of l = do
   let ts = gen_ s
   gen <- lift $ readTVar ts
   let (v,gen') = randomR (0, length l -1) gen
-  lift $ writeTVar ts gen'
+  lift $ writeTVar ts $! gen'
   return [l !! v]
 
 -- |  From an agentset, reports an agentset of size size randomly chosen from the input set, with no repeats.
@@ -1431,6 +1431,7 @@ end2 = do
   turtle e2
 
 
+{-# INLINE atomic #-}
 -- | lifting STM to IO, a wrapper to 'atomically' that optionally (based on a CPP flag) can capture STM statistics 
 atomic :: C _s _s' STM a -> C _s _s' IO a
 atomic comms = 
@@ -2290,7 +2291,7 @@ instance STMorIO STM where
       return $ realToFrac (t' `diffUTCTime` t)              
     reset_timer = lift $ do
        t <- unsafeIOToSTM getCurrentTime
-       writeTVar __timer t
+       writeTVar __timer $! t
     show a = do
       (s,_) <- Reader.ask
       lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
@@ -2304,7 +2305,7 @@ instance STMorIO IO where
        return $ realToFrac (t' `diffUTCTime` t)              
     reset_timer = lift $ do
       t <- getCurrentTime
-      atomically $ writeTVar __timer t
+      atomically $ writeTVar __timer $! t
     show a = do
       (s,_) <- Reader.ask
       lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
