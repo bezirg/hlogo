@@ -9,10 +9,14 @@
 --
 -- The module contains the Base datatypes of the Language.
 module Language.Logo.Base (
-                           Player (..), Agent (..), TurtleLink (..)
-                          ,Observer, Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
-                          ,Patches,Turtles,Links,C
-                          ,ogen_
+                          -- * The typeclasses (interfaces) of each participant in a simulation
+                          Player (..), Agent (..), TurtleLink (..), C,
+                          -- * The Observer datastructure
+                          Observer,ogen_
+                          -- * The agents' datastructures holding the attributes of the agents 
+                          ,Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
+                          -- * The containers storing multiple agents
+                          ,Patches,Turtles,Links
                           ) where
 
 import Control.Concurrent.STM
@@ -27,16 +31,28 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef
 #endif
 
+-- | A player can be any type that includes a random generator.
+--
+-- In other words, a player can roll the dice. 
+-- Implementations for the observer and agents (turtle/patch/link).
 class Player s where
     gen_ :: s -> TVar StdGen
 
--- | NB: Eq needed for agentset operations (because it is list for now) 
+-- | An agent (subtype of 'Player') can be 'ask'ed to do some work or return a value `of_` his. 
+--
+-- Agents (of the same type, since we are typed) can be checked for 'Eq'uality (= in NetLogo, == in HLogo), 'Ord'ered (>,<,>=...)
+-- and 'Show'ed their identiy to screen.
+-- NB: 'Eq' context needed for agentset-operations (because an agentset is a list for now).
 class (Eq s, Player s) => Agent s where      
     --type AgentSet s
     ask :: C s p IO _b -> [s] -> C p p' IO ()
     of_ :: C s p IO b -> [s] -> C p p' IO [b]
 
     
+-- | A subtype of Agent is a TurtleLink, i.e. either a Turtle or a Link.
+-- 
+-- This class is needed since turtle/links have some common attribute names
+-- and share certain primitives.
 class Agent s => TurtleLink s where
     breed_ :: s -> TVar String
     shape_ :: s -> TVar String
@@ -45,17 +61,15 @@ class Agent s => TurtleLink s where
     color_ :: s -> TVar Double
     die :: C s _s' STM ()
 
+-- | The observer is an empty datatype. It cannot be constructed (inhabited by any value),
+-- and is only there to restrict the 'self'&'myself' reader 'C'ontext.
 data Observer
 
--- | Following the NetLogo convention, PenMode is an Algebraic Data Type (ADT)
-data PenMode = Down | Up | Erase
-
 -- | The 'Turtle' datatype is a record with each field being a transactional variable (TVar) holding
--- an attribute value of 'Turtle'.
--- For now only the default turtle attributes are supported.
+-- an attribute value of 'Turtle', except the 'who_' attribute which is fixed upon turtle creation.
 data Turtle = MkTurtle {
-      who_ :: !Int               -- on creation
-    , tbreed_ :: TVar String          -- on creation
+      who_ :: !Int               -- ^ fixed upon creation
+    , tbreed_ :: TVar String     
     , tcolor_ :: TVar Double
     , heading_ :: TVar Double
     , xcor_ :: TVar Double
@@ -73,14 +87,14 @@ data Turtle = MkTurtle {
     , ttotalstm :: IORef Int
     , tsuccstm :: IORef Int
 #endif
-    } deriving (Eq)
+    }
 
 -- | The 'Patch' datatype follows a similar philosophy with the 'Turtle' (ADT).
--- Each field is a transactional variable (TVar) storing an attribute value of 'Patch'
--- For now only the default patch attributes are supported.
+-- Each field is a transactional variable (TVar) storing an attribute value of 'Patch', except
+-- the 'pxcor_' and 'pycor_' attributes which are fixed upon patch creation.
 data Patch = MkPatch {
-      pxcor_ :: !Int             -- on creation
-    , pycor_ :: !Int             -- on creation
+      pxcor_ :: !Int             -- ^ fixed upon creation
+    , pycor_ :: !Int             -- ^ fixed upon creation
     , pcolor_ :: TVar Double
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
@@ -90,12 +104,15 @@ data Patch = MkPatch {
     , ptotalstm :: IORef Int
     , psuccstm :: IORef Int
 #endif
-      } deriving (Eq)
+    }
 
+-- | The 'Link' datatype follows a similar philosophy with the 'Turtle' (ADT).
+-- Each field is a transactional variable (TVar) storing an attribute value of 'Link', except
+-- the 'end1_', 'end2_', 'directed' attributes which are fixed upon patch creation.
 data Link = MkLink {
-      end1_ :: !Int              -- on creation
-    , end2_ :: !Int              -- on creation
-    , directed_ :: Bool          -- on creation
+      end1_ :: !Int              -- ^ fixed upon creation
+    , end2_ :: !Int              -- ^ fixed upon creation
+    , directed_ :: Bool          -- ^ fixed upon creation
     , lcolor_ :: TVar Double
     , llabel_ :: TVar String
     , llabel_color_ :: TVar Double
@@ -110,34 +127,64 @@ data Link = MkLink {
     , ltotalstm :: IORef Int
     , lsuccstm :: IORef Int
 #endif
-    } deriving (Eq)
+    }
 
+-- | Holds the information for the turtle, if it's pen is up or down.
+--
+-- Compared to NetLogo's string representation, this is an Algebraic Data Type (ADT).
+-- NetLogo does not even raise a _runtime error_ for if their pen-mode string is ill-formatted,
+-- and assumes that any ill-formatted string, e.g. "downn", "UP" is the same as "down"
+data PenMode = Down | Up | Erase
+
+
+-- | Holds the information for the link, if it ties the two turtles together, i.e.
+-- one moving will result with the other moving too.
+--
+-- Compared to NetLogo's string representation, this is an Algebraic Data Type (ADT).
+-- NetLogo does not even raise a _runtime error_ for ill-formatted tie-mode strings.
 data TieMode = None | Fixed
 
--- | The 'Patches' ADT is an ordered map (dictionary) from coordinates (Int, Int) to 'Patch' data structures
+-- | The 'Patches' ADT is an 2d-nested vector with size (max-pxcor-min-pxcor)*(max-pycor-min-pycor) 
+-- that links the position (Int,Int) of a patch to its transactional attributes (patch variables) of the 'Patch' record.
+--
+-- The vector is pure and is initialized at the start of an HLogo program, upon calling 'run'.
 type Patches = Vector (Vector Patch)
 
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle
 
--- type Turtles_ = IOVector Turtle
-
 -- | The 'Links' ADT is an ordered map (dictionary) from turtle Int indices (from, to) to 'Link' data structures
 type Links = M.Map (Int, Int) Link
 
+-- | Any HLogo program executes either inside 'STM' or 'IO' side-effectful monad.
+-- We wrap these monads around a context mainly for two reasons:
+-- 
+-- 1) to have at runtime the dynamic information of the this-agent ('self') and its parent caller ('myself').
+-- 2) to restrict the types of the NetLogo primitives to specifc contexts, thus turning the NetLogo dynamic language to a statically type-checked eDSL. 
 type C s s' m a = ReaderT (s,s') m a
 
+instance Eq Turtle where
+    MkTurtle {who_ = w1} == MkTurtle {who_ = w2} = w1 == w2
+
+instance Eq Link where
+    -- TODO: broken for directed links because then the Link(e1,e2)=Link(e2,e1)
+    MkLink {end1_ = t1e1, end2_ = t1e2} == MkLink {end1_ = t2e1, end2_ = t2e2} =  t1e1 == t2e1 && t1e2 == t2e2
+
+instance Eq Patch where
+    MkPatch {pxcor_=x1,pycor_=y1} == MkPatch {pxcor_=x2,pycor_=y2} = x1 == x2 && y1 == y2
+
 instance Ord Turtle where
-    compare (MkTurtle {who_ = w1}) (MkTurtle {who_ = w2}) = compare w1 w2
+    MkTurtle {who_ = w1} `compare` MkTurtle {who_ = w2} = w1 `compare` w2
 
 instance Ord Link where
-    compare (MkLink {end1_ = xe1, end2_ = xe2}) (MkLink {end1_ = ye1, end2_ = ye2}) = compare (xe1,xe2) (ye1,ye2)
+    -- TODO: broken for undirected links because then the Link(e1,e2)>=Link(e2,e1)
+    MkLink {end1_ = t1e1, end2_ = t1e2} `compare` MkLink {end1_ = t2e1, end2_ = t2e2} = (t1e1,t1e2) `compare` (t2e1,t2e2)
     
 instance Ord Patch where
     -- NB: patches are compared "top-to bottom,left-ro-right" ascending
-    MkPatch {pxcor_=x1,pycor_=y1} `compare` MkPatch {pxcor_=x2,pycor_=y2} = let c1 = compare y2 y1
+    MkPatch {pxcor_=x1,pycor_=y1} `compare` MkPatch {pxcor_=x2,pycor_=y2} = let c1 = y2 `compare` y1
                                                                             in if c1 == EQ
-                                                                               then compare x1 x2
+                                                                               then x1 `compare` x2
                                                                                else c1
 
 instance Show Turtle where

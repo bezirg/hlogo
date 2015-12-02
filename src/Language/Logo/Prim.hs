@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, CPP #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Prim
@@ -1074,7 +1074,7 @@ agent_n_of :: (Player s, Agent a) => Int -> [a] -> C s _s' STM [a]
 agent_n_of n ls | n == 0     = return []
                 | n < 0     = error "negative index"
                 | otherwise = do
-  [o] <- one_of ls
+  [o] <- agent_one_of ls
   -- when (o == Nobody) $ error "empty agentset"
   ns <- n_of (n-1) (delete o ls)
   return (o:ns)

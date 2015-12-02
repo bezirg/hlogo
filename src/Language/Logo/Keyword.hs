@@ -812,5 +812,6 @@ create_breeded_links_with b as nls =  do
 
 -- | Internal
 {-# INLINE primary_colors #-}
+-- | Not much gain to turn this into a vector.
 primary_colors :: [Double]
 primary_colors = [gray, red, orange, brown, yellow, green, lime, turquoise, cyan, sky, blue, violet, magenta, pink]
