@@ -65,6 +65,7 @@ import qualified Data.Map.Strict as M
 import Data.Array
 import qualified Data.Vector as V
 import System.Random hiding (random, split)
+import System.Random.TF.Gen (splitn, seedTFGen)
 import Data.Function
 import Control.Monad (forM_, liftM, filterM, forever, when)
 import Data.Word (Word8)
@@ -96,7 +97,7 @@ import qualified Data.Foldable as F (foldlM)
 -- |  Reports this turtle or patch. 
 self :: (STMorIO m, Agent s) => C s _s' m [s] -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   return [s]
 
 {-# SPECIALIZE  myself :: Agent s => C s s' STM [s'] #-}
@@ -106,7 +107,7 @@ self = do
 -- NB: Implemented for ask, of, with
 myself :: (STMorIO m, Agent s) => C s s' m [s']
 myself = do
-  (_,m) <- Reader.ask
+  (_,m,_) <- Reader.ask
   return [m]
 
 {-# SPECIALIZE  other :: Agent s => [s] -> C s _s' STM [s] #-}
@@ -155,7 +156,7 @@ carefully c c' = catch c (\ ex -> let _ = (ex :: SomeException) in c')
 -- | Reports the patch at (dx, dy) from the caller, that is, the patch containing the point dx east and dy patches north of this agent. 
 patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m [Patch]
 patch_at x y = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
   patch (fromIntegral px + x) (fromIntegral py +y)
 
@@ -251,7 +252,7 @@ allp r as = do
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> C Turtle _s' STM ()
 jump n = do
-   (MkTurtle {xcor_ = tx, ycor_ = ty, heading_ = th}, _) <- Reader.ask
+   (MkTurtle {xcor_ = tx, ycor_ = ty, heading_ = th}, _,_) <- Reader.ask
    lift $ do
        h <- readTVar th
        x' <- liftM ((sin_ h * n) +) $ readTVar tx
@@ -279,7 +280,7 @@ jump n = do
 -- | The turtle sets its x-coordinate to x and its y-coordinate to y. 
 setxy :: Double -> Double -> C Turtle _s' STM ()
 setxy x' y' = do
-    (MkTurtle {xcor_ = tx, ycor_ = ty},_) <- Reader.ask
+    (MkTurtle {xcor_ = tx, ycor_ = ty},_,_) <- Reader.ask
     let max_x = max_pxcor_ conf
     let dmax_x = fromIntegral max_x
     let min_x = min_pxcor_ conf
@@ -335,7 +336,7 @@ instance TurtleLink Turtle where
     label_color_ = tlabel_color_
     color_ = tcolor_
     die = do
-      (MkTurtle {who_ = tw},_) <- Reader.ask
+      (MkTurtle {who_ = tw},_,_) <- Reader.ask
       lift $ modifyTVar' __turtles (IM.delete tw)
 
 instance TurtleLink Link where
@@ -345,7 +346,7 @@ instance TurtleLink Link where
     label_color_ = llabel_color_
     color_ = lcolor_
     die = do
-      (MkLink {end1_ = e1, end2_ = e2, directed_ = d}, _) <- Reader.ask
+      (MkLink {end1_ = e1, end2_ = e2, directed_ = d}, _,_) <- Reader.ask
       lift $ modifyTVar' __links (M.delete (e1,e2) . 
                                            (if d -- is directed
                                             then id
@@ -437,7 +438,7 @@ can_movep n = do
 
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
-  (t,_) <- Reader.ask
+  (t,_,_) <- Reader.ask
   lift $ writeTVar (heading_ t) $! v
 
 {-# SPECIALIZE  pxcor :: TurtlePatch s => C s _s' STM Int #-}
@@ -445,7 +446,7 @@ set_heading v = do
 -- |These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't move 
 pxcor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pxcor = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = x}) <- patch_on_ s
   return x
 
@@ -454,7 +455,7 @@ pxcor = do
 -- | These are built-in patch variables. They hold the x and y coordinate of the patch. They are always integers. You cannot set these variables, because patches don't mov 
 pycor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pycor = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {pycor_ = y}) <- patch_on_ s
   return y
 
@@ -462,7 +463,7 @@ pycor = do
 {-# SPECIALIZE  set_plabel :: String -> C Patch _s' STM () #-}
 set_plabel :: TurtlePatch s => String -> C s _s' STM ()
 set_plabel l = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {plabel_ = tl}) <- patch_on_ s
   lift $ writeTVar tl $! l
 
@@ -470,7 +471,7 @@ set_plabel l = do
 {-# SPECIALIZE  set_pcolor :: Double -> C Patch _s' STM () #-}
 set_pcolor :: TurtlePatch s => Double -> C s _s' STM ()
 set_pcolor c = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {pcolor_ = tc}) <- patch_on_ s
   lift $ writeTVar tc $! c
 
@@ -478,26 +479,26 @@ set_pcolor c = do
 {-# SPECIALIZE  set_breed :: String -> C Link _s' STM () #-}
 set_breed :: TurtleLink s => String -> C s _s' STM ()
 set_breed v = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ writeTVar (breed_ s) $! v
 
 {-# SPECIALIZE  set_color :: Double -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_color :: Double -> C Link _s' STM () #-}
 set_color :: TurtleLink s => Double -> C s _s' STM ()
 set_color v = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ writeTVar (color_ s) $! v
 
 {-# SPECIALIZE  set_label_color :: Double -> C Turtle _s' STM () #-}
 {-# SPECIALIZE   set_label_color :: Double -> C Link _s' STM () #-}
 set_label_color :: TurtleLink s => Double -> C s _s' STM ()
 set_label_color v = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ writeTVar (label_color_ s) $! v
 
 set_xcor :: Double -> C Turtle _s' STM ()
 set_xcor x' = do
-    (MkTurtle {xcor_ = tx},_) <- Reader.ask
+    (MkTurtle {xcor_ = tx},_,_) <- Reader.ask
     let max_x = max_pxcor_ conf
     let dmax_x = fromIntegral max_x
     let min_x = min_pxcor_ conf
@@ -513,12 +514,12 @@ set_xcor x' = do
 
 set_size :: Double -> C Turtle _s' STM ()
 set_size v = do
-  (t,_) <- Reader.ask
+  (t,_,_) <- Reader.ask
   lift $ writeTVar (size_ t) $! v
 
 set_ycor :: Double -> C Turtle _s' STM ()
 set_ycor y' = do
-   (MkTurtle {ycor_ = ty},_) <- Reader.ask
+   (MkTurtle {ycor_ = ty},_,_) <- Reader.ask
    let max_y = max_pycor_ conf
    let dmax_y = fromIntegral max_y
    let min_y = min_pycor_ conf
@@ -536,7 +537,7 @@ set_ycor y' = do
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 who :: STMorIO m => C Turtle _s' m Int
 who = do
-  (MkTurtle {who_=tw},_) <- Reader.ask
+  (MkTurtle {who_=tw},_,_) <- Reader.ask
   return tw
 
 
@@ -569,47 +570,42 @@ new_seed = do
              let daytime = toRational $ utctDayTime utc
              return $ quotRem (numerator daytime) (denominator daytime)
 
-random_seed :: Player s => Int -> C s _s' STM ()
+random_seed :: Int -> C s _s' STM ()
 random_seed i = do
-  (s,_) <- Reader.ask
-  let g = gen_ s
-  lift $ writeTVar g $! (mkStdGen i)
+  (_,_,g) <- Reader.ask
+  lift $ writeTVar g $! (seedTFGen (fromIntegral i, 0, 0, 0))
                 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
-random_xcor :: Player s => C s _s' STM Double
+random_xcor :: C s _s' STM Double
 random_xcor = do
-  (s,_) <- Reader.ask
-  let g = gen_ s
+  (_,_,g) <- Reader.ask
   gen <- lift $ readTVar g
   let (v, gen') = randomR (fromIntegral (min_pxcor_ conf) :: Double, fromIntegral $ max_pxcor_ conf) gen
   lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, y. 
-random_ycor :: Player s => C s _s' STM Double
+random_ycor :: C s _s' STM Double
 random_ycor = do
-  (s,_) <- Reader.ask
-  let g = gen_ s
+  (_,_,g) <- Reader.ask
   gen <- lift $ readTVar g
   let (v, gen') = randomR (fromIntegral (min_pycor_ conf) :: Double, fromIntegral $ max_pycor_ conf) gen
   lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random integer ranging from min-pxcor to max-pxcor inclusive. 
-random_pxcor :: Player s => C s _s' STM Int
+random_pxcor :: C s _s' STM Int
 random_pxcor = do
-  (s,_) <- Reader.ask
-  let g = gen_ s
+  (_,_,g) <- Reader.ask
   gen <- lift $ readTVar g
   let (v, gen') = randomR (min_pxcor_ conf, max_pxcor_ conf) gen
   lift $ writeTVar g $! gen'
   return v
 
 -- | Reports a random integer ranging from min-pycor to max-pycor inclusive. 
-random_pycor :: Player s => C s _s' STM Int
+random_pycor :: C s _s' STM Int
 random_pycor = do
-  (s,_) <- Reader.ask
-  let g = gen_ s
+  (_,_,g) <- Reader.ask
   gen <- lift $ readTVar g
   let (v, gen') = randomR (min_pycor_ conf, max_pycor_ conf) gen
   lift $ writeTVar g $! gen'
@@ -623,12 +619,11 @@ random_pycor = do
 -- | If number is positive, reports a random integer greater than or equal to 0, but strictly less than number.
 -- If number is negative, reports a random integer less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0 as well. 
-random :: (Player s, Num b, Real a) => a -> C s _s' STM b
+random :: (Num b, Real a) => a -> C s _s' STM b
 random x = do
-  (s,_) <- Reader.ask
-  let ts = gen_ s
+  (_,_,ts) <- Reader.ask
   gen <- lift $ readTVar ts
-  let (n, f) = properFraction (realToFrac x)
+  let (n, f) = properFraction (realToFrac x :: Double)
   let randRange = if n > 0 
                   then (0, if f == 0 
                        then n-1
@@ -636,17 +631,16 @@ random x = do
                   else (if f == 0
                         then n+1
                         else n, 0)
-  let (v, gen') = randomR randRange gen :: (Int, StdGen)
+  let (v, gen') = randomR randRange gen
   lift $ writeTVar ts $! gen'
-  return (fromIntegral v)
+  return (fromIntegral (v :: Int))
 
 -- |  If number is positive, reports a random floating point number greater than or equal to 0 but strictly less than number.
 -- If number is negative, reports a random floating point number less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0. 
-random_float :: Player s => Double -> C s _s' STM Double
+random_float :: Double -> C s _s' STM Double
 random_float x = do
-  (s,_) <- Reader.ask
-  let ts = gen_ s
+  (_,_,ts) <- Reader.ask
   gen <- lift $ readTVar ts
   let (v, gen') = randomR (if x > 0 then (0,x) else (x,0)) gen
   lift $ writeTVar ts $! gen'
@@ -681,7 +675,7 @@ home = setxy 0 0
 -- | The turtle turns right by number degrees. (If number is negative, it turns left.) 
 right :: Double -> C Turtle _s' STM ()
 right n = do
-  (MkTurtle {heading_=th},_) <- Reader.ask
+  (MkTurtle {heading_=th},_,_) <- Reader.ask
   lift $ modifyTVar' th (\ h -> mod_ (h+n) 360)
 {-# INLINE rt #-}
 -- | alias for 'right'
@@ -744,7 +738,7 @@ towardsxy = todo
 -- | The turtle makes itself invisible. 
 hide_turtle :: C Turtle _s' STM ()
 hide_turtle = do
-  (MkTurtle {hiddenp_ = th},_) <- Reader.ask
+  (MkTurtle {hiddenp_ = th},_,_) <- Reader.ask
   lift $ writeTVar th True
 
 {-# INLINE ht #-}
@@ -755,7 +749,7 @@ ht = hide_turtle
 -- | The turtle becomes visible again. 
 show_turtle :: C Turtle _s' STM ()
 show_turtle = do
-  (MkTurtle {hiddenp_ = th},_) <- Reader.ask
+  (MkTurtle {hiddenp_ = th},_,_) <- Reader.ask
   lift $ writeTVar th False
 
 {-# INLINE st #-}
@@ -766,7 +760,7 @@ st = show_turtle
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_down :: C Turtle _s' STM ()
 pen_down = do
-  (MkTurtle {pen_mode_ = tp},_) <- Reader.ask
+  (MkTurtle {pen_mode_ = tp},_,_) <- Reader.ask
   lift $ writeTVar tp Down
 
 {-# INLINE pd #-}
@@ -777,7 +771,7 @@ pd = pen_down
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_up :: C Turtle _s' STM ()
 pen_up = do
-  (MkTurtle {pen_mode_ = tp},_) <- Reader.ask
+  (MkTurtle {pen_mode_ = tp},_,_) <- Reader.ask
   lift $ writeTVar tp Up
 
 {-# INLINE pu #-}
@@ -788,7 +782,7 @@ pu = pen_up
 pen_erase :: C Turtle _s' STM ()
 -- | The turtle changes modes between drawing lines, removing lines or neither. 
 pen_erase = do
-  (MkTurtle {pen_mode_ = tp},_) <- Reader.ask
+  (MkTurtle {pen_mode_ = tp},_,_) <- Reader.ask
   lift $ writeTVar tp Erase
 
 {-# INLINE pe #-}
@@ -915,12 +909,11 @@ clear_links = lift $ atomically $ writeTVar __links M.empty
 
 -- | Clears the patches by resetting all patch variables to their default initial values, including setting their color to black. 
 clear_patches :: C Observer () IO ()
-clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pxcor_=px,pycor_=py,pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po, pgen_=pg})  -> lift $ do
+clear_patches = V.mapM_ (V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, pvars_=po})  -> lift $ do
                             atomically $ writeTVar pc 0
                             atomically $ writeTVar pl ""
                             atomically $ writeTVar plc 9.9
                             atomically $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
-                            atomically $ writeTVar pg $ mkStdGen (px + py * 1000)
                            )) __patches
 
 {-# INLINE cp #-}
@@ -1036,11 +1029,10 @@ position = find
 
 -- |  From an agentset, reports a random agent. If the agentset is empty, reports nobody.
 -- From a list, reports a random list item. It is an error for the list to be empty. 
-one_of :: Player s => [a] -> C s _s' STM [a]
+one_of :: [a] -> C s _s' STM [a]
 one_of [] = error "empty list"
 one_of l = do
-  (s,_) <- Reader.ask
-  let ts = gen_ s
+  (_,_,ts) <- Reader.ask
   gen <- lift $ readTVar ts
   let (v,gen') = randomR (0, length l -1) gen
   lift $ writeTVar ts $! gen'
@@ -1048,11 +1040,10 @@ one_of l = do
 
 -- Uses instead agent_one_of when types match
 -- {-# RULES "one_of/AgentRef" one_of = agent_one_of #-}
-agent_one_of :: (Player s, Agent a) => [a] -> C s _s' STM [a]
+agent_one_of :: (Agent a) => [a] -> C s _s' STM [a]
 agent_one_of [] = nobody
 agent_one_of l = do
-  (s,_) <- Reader.ask
-  let ts = gen_ s
+  (_,_,ts) <- Reader.ask
   gen <- lift $ readTVar ts
   let (v,gen') = randomR (0, length l -1) gen
   lift $ writeTVar ts $! gen'
@@ -1060,7 +1051,7 @@ agent_one_of l = do
 
 -- |  From an agentset, reports an agentset of size size randomly chosen from the input set, with no repeats.
 -- From a list, reports a list of size size randomly chosen from the input set, with no repeats. 
-n_of :: (Player s, Eq a) => Int -> [a] -> C s _s' STM [a]
+n_of :: (Eq a) => Int -> [a] -> C s _s' STM [a]
 n_of n ls | n == 0     = return []
           | n < 0     = error "negative index"
           | otherwise = do
@@ -1070,7 +1061,7 @@ n_of n ls | n == 0     = return []
 
 -- Uses instead agent_one_of when types match
 -- {-# RULES "n_of/AgentRef" n_of = agent_n_of #-}
-agent_n_of :: (Player s, Agent a) => Int -> [a] -> C s _s' STM [a]
+agent_n_of :: (Agent a) => Int -> [a] -> C s _s' STM [a]
 agent_n_of n ls | n == 0     = return []
                 | n < 0     = error "negative index"
                 | otherwise = do
@@ -1129,7 +1120,7 @@ sentence = (++)
 
 {-# WARNING shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
 -- | Reports a new list containing the same items as the input list, but in randomized order. 
-shuffle :: (Player s, Eq a) => [a] -> C s _s' STM [a]
+shuffle :: (Eq a) => [a] -> C s _s' STM [a]
 shuffle [] = return []
 shuffle [x] = return [x]
 shuffle l = do 
@@ -1151,7 +1142,7 @@ sort_by c l = return $ sortBy c l
 -- | Reports a list of agents, sorted according to each agent's value for reporter. Ties are broken randomly. 
 -- sort_on :: Ord a => CSTM a -> [AgentRef] -> CSTM [AgentRef]
 sort_on rep as = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   xs <- lift . sequence $ [Reader.runReaderT rep (a,s) | a <- as]
   let rs = zip xs as
   return $ map snd $ sortBy (compare `on` fst) rs where
@@ -1250,12 +1241,12 @@ max_ = maximum
 min_ :: Ord a => [a] -> a
 min_ = minimum
 
--- | Reports the statistical mean of the numeric items in the given list. Ignores non-numeric items.
-mean :: Real a => [a] -> Double
+-- | Reports the statistical mean of the numeric items in the given list.
+mean :: [Double] -> Double
 mean l = let (t,n) = foldl' (\(b,c) a -> (a+b,c+1)) (0,0) l 
-         in realToFrac t / realToFrac n
+         in t / n
 
--- | Reports the statistical median of the numeric items of the given list. Ignores non-numeric items.
+-- | Reports the statistical median of the numeric items of the given list.
 median :: [Double] -> Double
 median l = let (d, m) = length l `divMod` 2
            in case m of
@@ -1312,28 +1303,28 @@ subtract_headings h1 h2 = let
 -- | The link makes itself invisible. 
 hide_link :: C Link _s' STM ()
 hide_link = do
-  (MkLink {lhiddenp_ = h},_) <- Reader.ask
+  (MkLink {lhiddenp_ = h},_,_) <- Reader.ask
   lift $ writeTVar h True
 
 -- | The turtle becomes visible again. 
 show_link :: C Link _s' STM ()
 show_link = do
-  (MkLink {lhiddenp_ = h},_) <- Reader.ask
+  (MkLink {lhiddenp_ = h},_,_) <- Reader.ask
   lift $ writeTVar h False
 
 
 -- | Reports the distance between the endpoints of the link. 
 link_length :: C Link _s' STM Double
 link_length = do
-    (MkLink {end1_ =f, end2_ = t},_) <- Reader.ask
+    (MkLink {end1_ =f, end2_ = t},_,_) <- Reader.ask
     [MkTurtle {xcor_ = fx, ycor_ = fy}] <- turtle f
     [MkTurtle {xcor_ = tx, ycor_ = ty}] <- turtle t
     x <- lift $ readTVar fx
     y <- lift $ readTVar fy
     x' <- lift $ readTVar tx
     y' <- lift $ readTVar ty
-    return $ sqrt (delta x x' (max_pxcor_ conf) ^ 2 + 
-                delta y y' (max_pycor_ conf) ^ 2)
+    return $ sqrt (delta x x' (max_pxcor_ conf) ^ (2 :: Int) + 
+                delta y y' (max_pycor_ conf) ^ (2 :: Int))
 
 
 
@@ -1385,8 +1376,8 @@ link_length = do
 -- | Reports an agentset of all undirected links connected to the caller. 
 my_links :: C Turtle _s' STM [Link]
 my_links = do
-  (MkTurtle {who_=x},_) <- Reader.ask 
-  ls <- lift $ readTVar __links
+  (MkTurtle {who_=_x},_,_) <- Reader.ask 
+  _ls <- lift $ readTVar __links
   todo
   -- return $ map (uncurry LinkRef) $ M.assocs $ M.intersection (M.filterWithKey (\ (f,_) _ -> f == x) ls) (M.filterWithKey (\ (_,t) _ -> t == x) ls)
 
@@ -1394,8 +1385,8 @@ my_links = do
 -- | Reports an agentset of all the directed links going out from the caller to other nodes. 
 my_out_links :: C Turtle _s' STM [Link]
 my_out_links = do
-  (MkTurtle {who_=x},_) <- Reader.ask 
-  ls <- lift $ readTVar __links
+  (MkTurtle {who_=_x},_,_) <- Reader.ask 
+  _ls <- lift $ readTVar __links
   todo 
   -- return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (f,_) _ -> f == x) ls
 
@@ -1403,31 +1394,31 @@ my_out_links = do
 -- |  Reports an agentset of all the directed links coming in from other nodes to the caller. 
 my_in_links :: C Turtle _s' STM [Link]
 my_in_links = do
-  (MkTurtle {who_=x},_) <- Reader.ask 
-  ls <- lift $ readTVar __links
+  (MkTurtle {who_=_x},_,_) <- Reader.ask 
+  _ls <- lift $ readTVar __links
   todo
   -- return $ map (uncurry LinkRef) $ M.assocs $ M.filterWithKey (\ (_,t) _ -> t == x) ls
 
 -- | Ties end1 and end2 of the link together. If the link is a directed link end1 is the root turtle and end2 is the leaf turtle. The movement of the root turtle affects the location and heading of the leaf turtle. If the link is undirected the tie is reciprocal so both turtles can be considered root turtles and leaf turtles. Movement or change in heading of either turtle affects the location and heading of the other turtle. 
 tie :: C Link _s' STM ()
 tie = do
-  (MkLink {tie_mode = t},_) <- Reader.ask
+  (MkLink {tie_mode = t},_,_) <- Reader.ask
   lift $ writeTVar t Fixed
 
 -- | Unties end2 from end1 (sets tie-mode to "none") if they were previously tied together. If the link is an undirected link, then it will untie end1 from end2 as well. It does not remove the link between the two turtles. 
 untie :: C Link _s' STM ()
 untie = do
-  (MkLink {tie_mode = t},_) <- Reader.ask
+  (MkLink {tie_mode = t},_,_) <- Reader.ask
   lift $ writeTVar t None
 
 end1 :: C Link _s' STM [Turtle]
 end1 = do
-  (MkLink {end1_ = e1},_) <- Reader.ask
+  (MkLink {end1_ = e1},_,_) <- Reader.ask
   turtle e1
 
 end2 :: C Link _s' STM [Turtle]
 end2 = do
-  (MkLink {end2_ = e2},_) <- Reader.ask
+  (MkLink {end2_ = e2},_,_) <- Reader.ask
   turtle e2
 
 
@@ -1462,78 +1453,105 @@ increaseTotalSTM s = case s of
 
 #endif
 
+-- | plus one because we need a new generator for the parent ask/ofcaller too
+numBits :: Int
+numBits = ceiling ((logBase 2 $ fromIntegral $ numCapabilities + 1) :: Double)
+
 instance Agent Turtle where
     ask f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do 
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+        g <- readTVarIO tg
+        mapM_ (\ (core, asSection) -> do
+                 g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                 ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s,g') | a <- asSection]
               ) (split numCapabilities as)
         ThreadG.wait __tg
+        atomically $ writeTVar tg $ splitn g numBits 0
 
     of_ f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do
-                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-                 rs <- sequence [Thread.result =<< w | w <- ws]
-                 return $ concat rs -- lists traversals can be optimized
+        g <- readTVarIO tg
+        ws <- mapM (\ (core, asi) -> liftM snd $ do
+                                     g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                                     Thread.forkOn core (sequence [Reader.runReaderT f (a,s,g') | a <- asi])) (split numCapabilities as)
+        rs <- sequence [Thread.result =<< w | w <- ws]
+        atomically $ writeTVar tg $ splitn g numBits 0
+        return $ concat rs -- lists traversals can be optimized
 
 instance Agent Patch where
     ask f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do 
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+        g <- readTVarIO tg
+        mapM_ (\ (core, asSection) -> do
+                 g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                 ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s,g') | a <- asSection]
               ) (split numCapabilities as)
         ThreadG.wait __tg
+        atomically $ writeTVar tg $ splitn g numBits 0
 
     of_ f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do
-                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-                 rs <- sequence [Thread.result =<< w | w <- ws]
-                 return $ concat rs -- lists traversals can be optimized
+        g <- readTVarIO tg
+        ws <- mapM (\ (core, asi) -> liftM snd $ do
+                                     g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                                     Thread.forkOn core (sequence [Reader.runReaderT f (a,s,g') | a <- asi])) (split numCapabilities as)
+        rs <- sequence [Thread.result =<< w | w <- ws]
+        atomically $ writeTVar tg $ splitn g numBits 0
+        return $ concat rs -- lists traversals can be optimized
 
 instance Agent Link where
     ask f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 -> lift $ mapM_ (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do 
-        mapM_ (\ (core, asSection) -> 
-                   ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s) | a <- asSection]
+        g <- readTVarIO tg
+        mapM_ (\ (core, asSection) -> do
+                 g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                 ThreadG.forkOn core __tg $ sequence_ [Reader.runReaderT f (a,s,g') | a <- asSection]
               ) (split numCapabilities as)
         ThreadG.wait __tg
+        atomically $ writeTVar tg $ splitn g numBits 0
 
     of_ f as = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       -- case numCapabilities of
       --   1 ->  lift $ mapM (\ a -> Reader.runReaderT f (a,s)) as
       lift $ do
-                 ws <- mapM (\ (core, asi) -> liftM snd $ Thread.forkOn core (sequence [Reader.runReaderT f (a,s) | a <- asi])) (split numCapabilities as)
-                 rs <- sequence [Thread.result =<< w | w <- ws]
-                 return $ concat rs -- lists traversals can be optimized
+        g <- readTVarIO tg
+        ws <- mapM (\ (core, asi) -> liftM snd $ do
+                                     g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                                     Thread.forkOn core (sequence [Reader.runReaderT f (a,s,g') | a <- asi])) (split numCapabilities as)
+        rs <- sequence [Thread.result =<< w | w <- ws]
+        atomically $ writeTVar tg $ splitn g numBits 0
+        return $ concat rs -- lists traversals can be optimized
 
 
 
 askTurtles :: C Turtle _s IO a -> C _s _s' IO ()
 askTurtles f = do
-      (s,_) <- Reader.ask
+      (s,_,tg) <- Reader.ask
       lift $ do
+        g <- readTVarIO tg
         ts <- readTVarIO __turtles
-        mapM_ (\ (tslice,core) ->
-                  ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s)) tslice
+        mapM_ (\ (tslice,core) -> do
+                 g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+                 ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s,g')) tslice
              ) (zip (splitTurtles numCapabilities [ts]) [1..numCapabilities])
         ThreadG.wait __tg
-
+        atomically $ writeTVar tg $ splitn g numBits 0
     where
       splitTurtles :: Int -> [IM.IntMap Turtle] -> [IM.IntMap Turtle]
       splitTurtles 1 acc = acc
@@ -1546,16 +1564,19 @@ askTurtles f = do
 -- | The specified agent or agentset runs the given commands. 
 askPatches :: C Patch _s IO a -> C _s _s' IO ()
 askPatches f = do
-    (s,_) <- Reader.ask
+    (s,_,tg) <- Reader.ask
     -- case numCapabilities of
     --   1 -> lift $ V.mapM_ 
     --                  (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) 
     --              __patches
     lift $ do
-                 mapM (\ (start,size,core) -> 
-                           ThreadG.forkOn core __tg $ V.mapM_ (V.mapM_ (\ p -> Reader.runReaderT f (p,s))) (V.unsafeSlice start size __patches)
-                      ) (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
-                 ThreadG.wait __tg                               
+      g <- readTVarIO tg
+      mapM (\ (start,size,core) -> do
+              g' <- newTVarIO $ splitn g numBits (fromIntegral core)
+              ThreadG.forkOn core __tg $ V.mapM_ (V.mapM_ (\ p -> Reader.runReaderT f (p,s,g'))) (V.unsafeSlice start size __patches)
+           ) (splitN (max_pxcor_ conf - min_pxcor_ conf + 1) numCapabilities)
+      ThreadG.wait __tg                               
+      atomically $ writeTVar tg $ splitn g numBits 0
                      where
                        splitN :: Int -> Int -> [(Int,Int,Int)]
                        splitN width n = let (q,r) = width `quotRem` n
@@ -1622,9 +1643,9 @@ is_undirected_linkp [MkLink {directed_ = d}] = return $ not d
 hatch :: Int -> C Turtle _s' STM [Turtle]
 hatch n = do
 #ifdef STATS_STM
-    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _ _tt _ts, _) <- Reader.ask
+    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _tt _ts, _,_) <- Reader.ask
 #else
-    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _, _) <- Reader.ask
+    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr, _,_) <- Reader.ask
 #endif
     let b = bounds tarr
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
@@ -1644,8 +1665,7 @@ hatch n = do
                                                                             (newTVar =<< readTVar sz) <*>
                                                                             (newTVar =<< readTVar ps) <*>
                                                                             (newTVar =<< readTVar pm) <*>
-                                                                            newArray <*>
-                                                                            newTVar (mkStdGen i)
+                                                                            newArray
 #ifdef STATS_STM                                                                            
                                                                             <*> pure (unsafePerformIO (newIORef 0)) <*> 
                                                                             pure (unsafePerformIO (newIORef 0))
@@ -1668,7 +1688,7 @@ hatch n = do
 
 {-# INLINE turtles_on #-}
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
-turtles_on :: (Player s, TurtlePatch a) => [a] -> C s _s' IO [Turtle]
+turtles_on :: (TurtlePatch a) => [a] -> C s _s' IO [Turtle]
 turtles_on as = liftM concat $ turtles_here `of_` as
     
 {-# WARNING at_points "TODO: also has to support the Observer as Caller. A TurtleObserver typeclass" #-}
@@ -1702,7 +1722,7 @@ wait n = lift $ threadDelay (round $ n * 1000000)
 -- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
 unsafe_show :: (Show s, Show a) => a -> C s _s' IO ()
 unsafe_show a = do
-  (r,_) <- Reader.ask
+  (r,_,_) <- Reader.ask
   lift $ putStrLn $ Prelude.show r ++ ": " ++ Prelude.show a
 
 {-# DEPRECATED unsafe_print "it is slightly faster than print since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
@@ -1738,54 +1758,54 @@ stats_stm =
 
 with_breed :: TurtleLink s => (String -> String) -> C s _s' STM ()
 with_breed f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ modifyTVar' (breed_ s) f
 
 with_color :: TurtleLink s => (Double -> Double) -> C s _s' STM ()
 with_color f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ modifyTVar' (color_ s) f
 
 with_heading :: (Double -> Double) -> C Turtle _s' STM ()
 with_heading f = do
-  (MkTurtle {heading_ = tb},_) <- Reader.ask
+  (MkTurtle {heading_ = tb},_,_) <- Reader.ask
   lift $ modifyTVar' tb f
 
 with_shape :: TurtleLink s => (String -> String) -> C s _s' STM ()
 with_shape f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ modifyTVar' (shape_ s) f
 
 with_label :: TurtleLink s => (String -> String) -> C s _s' STM ()
 with_label f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ modifyTVar' (label_ s) f
 
 with_label_color :: TurtleLink s => (Double -> Double) -> C s _s' STM ()
 with_label_color f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   lift $ modifyTVar' (label_color_ s) f
 
 with_size :: (Double -> Double) -> C Turtle _s' STM ()
 with_size f = do
-  (MkTurtle {size_ = tb},_) <- Reader.ask
+  (MkTurtle {size_ = tb},_,_) <- Reader.ask
   lift $ modifyTVar' tb f
 
 with_pcolor :: TurtlePatch s => (Double -> Double) -> C s _s' STM ()
 with_pcolor f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {pcolor_ = tb}) <- patch_on_ s
   lift $ modifyTVar' tb f
 
 with_plabel :: TurtlePatch s => (String -> String) -> C s _s' STM ()
 with_plabel f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {plabel_ = tb}) <- patch_on_ s
   lift $ modifyTVar' tb f
 
 with_plabel_color :: TurtlePatch s => (Double -> Double) -> C s _s' STM ()
 with_plabel_color f = do
-  (s,_) <- Reader.ask
+  (s,_,_) <- Reader.ask
   (MkPatch {plabel_color_ = tb}) <- patch_on_ s
   lift $ modifyTVar' tb f
 
@@ -1857,7 +1877,7 @@ approximate_rgb = todo
 -- | Reports an agentset containing the 8 surrounding patches
 neighbors :: (STMorIO m, TurtlePatch s) => C s _s' m [Patch]
 neighbors = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = x, pycor_ = y}) <- patch_on_ s
     patch_set [p (x-1) (y-1),
                p (x-1) y,
@@ -1875,7 +1895,7 @@ neighbors = do
 -- | Reports an agentset containing the 4 surrounding patches
 neighbors4 :: (STMorIO m, TurtlePatch s) => C s _s' m [Patch]
 neighbors4 = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = x, pycor_ = y}) <- patch_on_ s
     patch_set [p (x-1) y,
                p (x+1) y,
@@ -1894,7 +1914,7 @@ neighbors4 = do
 -- |  Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle). 
 turtles_here :: (TurtlePatch s, STMorIO m) => C s _s' m [Turtle]
 turtles_here = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
     ts <- turtles
     filterM (\ (MkTurtle {xcor_ = x, ycor_ = y}) -> do 
@@ -1921,7 +1941,7 @@ turtles_at x y = do
 -- | patch-here reports the patch under the turtle. 
 patch_here :: STMorIO m => C Turtle _s' m [Patch]
 patch_here = do
-    (MkTurtle {xcor_ = x, ycor_ = y},_) <- Reader.ask
+    (MkTurtle {xcor_ = x, ycor_ = y},_,_) <- Reader.ask
     x' <- readTVarSI x
     y' <- readTVarSI y
     patch x' y'
@@ -1950,7 +1970,7 @@ turtle n = do
 -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
 heading :: STMorIO m => C Turtle _s' m Double
 heading = do
-    (MkTurtle {heading_ = h},_) <- Reader.ask
+    (MkTurtle {heading_ = h},_,_) <- Reader.ask
     readTVarSI h
 
 
@@ -1959,7 +1979,7 @@ heading = do
 -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
 xcor :: STMorIO m => C Turtle _s' m Double
 xcor = do
-    (MkTurtle {xcor_ = x},_) <- Reader.ask
+    (MkTurtle {xcor_ = x},_,_) <- Reader.ask
     readTVarSI x
 
 {-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
@@ -1967,7 +1987,7 @@ xcor = do
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: STMorIO m => C Turtle _s' m Double
 ycor = do
-    (MkTurtle {ycor_ = y},_) <- Reader.ask
+    (MkTurtle {ycor_ = y},_,_) <- Reader.ask
     readTVarSI y
 
 {-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
@@ -1976,14 +1996,14 @@ ycor = do
 {-# SPECIALIZE  pcolor :: C Patch _s' IO Double #-}
 pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
 pcolor = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     (MkPatch {pcolor_ = tc}) <- patch_on_ s
     readTVarSI tc
 
 
 plabel :: STMorIO m => TurtlePatch s => C s _s' m String
 plabel = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     (MkPatch {plabel_ = tl}) <- patch_on_ s
     readTVarSI tl
 
@@ -1994,7 +2014,7 @@ plabel = do
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 color :: STMorIO m => TurtleLink s => C s _s' m Double
 color = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     readTVarSI (color_ s)
 
 
@@ -2002,7 +2022,7 @@ color = do
 {-# SPECIALIZE  breed :: TurtleLink s => C s _s' IO String #-}
 breed :: STMorIO m => TurtleLink s => C s _s' m String
 breed = do
-    (s,_) <- Reader.ask
+    (s,_,_) <- Reader.ask
     readTVarSI (breed_ s)
 
 
@@ -2213,7 +2233,7 @@ scale_color c v minArg maxArg = do
     where
       -- | Internal
       findCentralColorNumber :: Double -> Double
-      findCentralColorNumber c = (fromIntegral (truncate (modulateDouble c / 10)) + 0.5) * 10
+      findCentralColorNumber c = (fromIntegral (truncate (modulateDouble c / 10) :: Int) + 0.5) * 10
       -- | Internal
       -- It has bug with mod_ truncate
       modulateDouble :: Double -> Double
@@ -2293,7 +2313,7 @@ instance STMorIO STM where
        t <- unsafeIOToSTM getCurrentTime
        writeTVar __timer $! t
     show a = do
-      (s,_) <- Reader.ask
+      (s,_,_) <- Reader.ask
       lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
     print a = lift $ writeTQueue __printQueue $ Prelude.show a
 
@@ -2307,7 +2327,7 @@ instance STMorIO IO where
       t <- getCurrentTime
       atomically $ writeTVar __timer $! t
     show a = do
-      (s,_) <- Reader.ask
+      (s,_,_) <- Reader.ask
       lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
     print a = lift $ atomically $ writeTQueue __printQueue $ Prelude.show a
 

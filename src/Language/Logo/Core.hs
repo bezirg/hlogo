@@ -30,7 +30,7 @@ import Data.Array (listArray)
 import qualified Data.Vector as V
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
-import System.Random (mkStdGen)
+import System.Random.TF.Gen (TFGen,seedTFGen)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 #ifdef STATS_STM
@@ -78,8 +78,7 @@ newPatch x y = let po = 1       -- patches_own only one element for now
                newTVarIO "" <*>
                newTVarIO 9.9 <*>
                -- init the patches-own variables to 0
-               (return . listArray (0, po -1) =<< replicateM po (newTVarIO 0)) <*>
-               newTVarIO (mkStdGen (x + y * 1000))
+               (return . listArray (0, po -1) =<< replicateM po (newTVarIO 0))
 #ifdef STATS_STM
                <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
 #endif
@@ -101,12 +100,16 @@ __printQueue = unsafePerformIO $ newTQueueIO
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> IO ()
+cInit :: Int -> IO (Observer,a, TVar TFGen)
 cInit po = do
   forkIO $ printer
 
   t <- getCurrentTime
   atomically $ writeTVar __timer t
+
+  ogen <- newTVarIO (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
+
+  return (undefined,undefined,ogen)             -- the initial context
 
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.

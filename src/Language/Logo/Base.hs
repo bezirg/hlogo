@@ -10,9 +10,9 @@
 -- The module contains the Base datatypes of the Language.
 module Language.Logo.Base (
                           -- * The typeclasses (interfaces) of each participant in a simulation
-                          Player (..), Agent (..), TurtleLink (..), C,
+                          Agent (..), TurtleLink (..), C
                           -- * The Observer datastructure
-                          Observer,ogen_
+                          ,Observer
                           -- * The agents' datastructures holding the attributes of the agents 
                           ,Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
                           -- * The containers storing multiple agents
@@ -25,25 +25,17 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Array (Array)
 import Data.Vector (Vector)
-import System.Random (StdGen, mkStdGen)
-import System.IO.Unsafe (unsafePerformIO)
+import System.Random.TF.Gen (TFGen)
 #ifdef STATS_STM
 import Data.IORef
 #endif
-
--- | A player can be any type that includes a random generator.
---
--- In other words, a player can roll the dice. 
--- Implementations for the observer and agents (turtle/patch/link).
-class Player s where
-    gen_ :: s -> TVar StdGen
 
 -- | An agent (subtype of 'Player') can be 'ask'ed to do some work or return a value `of_` his. 
 --
 -- Agents (of the same type, since we are typed) can be checked for 'Eq'uality (= in NetLogo, == in HLogo), 'Ord'ered (>,<,>=...)
 -- and 'Show'ed their identiy to screen.
 -- NB: 'Eq' context needed for agentset-operations (because an agentset is a list for now).
-class (Eq s, Player s) => Agent s where      
+class (Eq s) => Agent s where      
     --type AgentSet s
     ask :: C s p IO _b -> [s] -> C p p' IO ()
     of_ :: C s p IO b -> [s] -> C p p' IO [b]
@@ -82,7 +74,6 @@ data Turtle = MkTurtle {
     , pen_size_ :: TVar Double
     , pen_mode_ :: TVar PenMode
     , tvars_ :: Array Int (TVar Double)
-    , tgen_ :: TVar StdGen
 #ifdef STATS_STM
     , ttotalstm :: IORef Int
     , tsuccstm :: IORef Int
@@ -99,7 +90,6 @@ data Patch = MkPatch {
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
     , pvars_ :: Array Int (TVar Double)
-    , pgen_ :: TVar StdGen
 #ifdef STATS_STM
     , ptotalstm :: IORef Int
     , psuccstm :: IORef Int
@@ -122,7 +112,6 @@ data Link = MkLink {
     , lshape_ :: TVar String
     , tie_mode :: TVar TieMode
     , lvars_ :: Array Int (TVar Double)
-    , lgen_ :: TVar StdGen
 #ifdef STATS_STM
     , ltotalstm :: IORef Int
     , lsuccstm :: IORef Int
@@ -161,7 +150,7 @@ type Links = M.Map (Int, Int) Link
 -- 
 -- 1) to have at runtime the dynamic information of the this-agent ('self') and its parent caller ('myself').
 -- 2) to restrict the types of the NetLogo primitives to specifc contexts, thus turning the NetLogo dynamic language to a statically type-checked eDSL. 
-type C s s' m a = ReaderT (s,s') m a
+type C s s' m a = ReaderT (s,s',TVar TFGen) m a
 
 instance Eq Turtle where
     MkTurtle {who_ = w1} == MkTurtle {who_ = w2} = w1 == w2
@@ -198,19 +187,3 @@ instance Show Link where
 
 instance Show Observer where
     show _ = "observer"
-
-instance Player Turtle where
-    gen_ = tgen_
-
-instance Player Patch where
-    gen_ = pgen_
-
-instance Player Link where
-    gen_ = lgen_
-
-instance Player Observer where
-    gen_ _ = ogen_
-
-{-# NOINLINE ogen_ #-}
-ogen_ :: TVar StdGen
-ogen_ = unsafePerformIO $ newTVarIO (mkStdGen 0)   -- default StdGen seed equals 0
