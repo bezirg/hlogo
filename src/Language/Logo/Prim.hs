@@ -2331,6 +2331,21 @@ instance STMorIO IO where
       lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
     print a = lift $ atomically $ writeTQueue __printQueue $ Prelude.show a
 
+{-# RULES  "print/ObserverIO" print = printObserverIO #-}
+{-# RULES  "print/ObserverSTM" print = printObserverSTM #-}
+printObserverIO :: Show a => a -> C Observer b IO ()
+printObserverIO = lift . Prelude.print
+printObserverSTM :: Show a => a -> C Observer b STM ()
+printObserverSTM a = lift $ unsafeIOToSTM $ Prelude.print a
+
+{-# RULES "show/ObserverIO" show = showObserverIO #-}
+{-# RULES  "show/ObserverSTM" show = showObserverSTM #-}
+showObserverIO :: Show a => a -> C Observer b IO ()
+showObserverIO a = lift $ Prelude.putStrLn ("observer: " ++ Prelude.show a)
+showObserverSTM :: Show a => a -> C Observer b STM ()
+showObserverSTM a = lift $ unsafeIOToSTM $ Prelude.putStrLn ("observer: " ++ Prelude.show a)
+
+
 --{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
 --{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
 --{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
