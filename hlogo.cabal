@@ -94,13 +94,13 @@ benchmark fire
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   hs-source-dirs: bench/hlogo
 
-benchmark heatbugs
-  type:           exitcode-stdio-1.0
-  main-is:        Heatbugs.hs
-  build-depends:  hlogo, base
-  extensions:     TemplateHaskell, NoImplicitPrelude                                                
-  ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
-  hs-source-dirs: bench/hlogo
+-- benchmark heatbugs
+--   type:           exitcode-stdio-1.0
+--   main-is:        Heatbugs.hs
+--   build-depends:  hlogo, base
+--   extensions:     TemplateHaskell, NoImplicitPrelude                                                
+--   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
+--   hs-source-dirs: bench/hlogo
 
 -- SHEEP BENCHMARK
 -------------------

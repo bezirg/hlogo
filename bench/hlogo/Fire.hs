@@ -14,7 +14,7 @@ breeds_own "embers" []
 run ["setup", "go"]
 
 setup = do
-  ask (atomic $ set_pcolor green) =<< (with (liftM (< density) (unsafe_random_float 100)) =<< patches)
+  ask (atomic $ set_pcolor green) =<< (with (liftM (< density) (atomic $ random_float 100)) =<< patches)
   ask ignite =<< (with (liftM2 (==) pxcor min_pxcor ) =<< patches) -- make an initial left column of burning trees
   sit <- count =<< (with (liftM (== green) pcolor) =<< patches)
   atomic $ set_initial_trees (fromIntegral sit)

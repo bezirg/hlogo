@@ -80,39 +80,39 @@ case_Agentsets2 = runT $ do
   a2' <- atomic $ turtles
   a2 <- of_ (atomic $ who) =<< min_one_of a2' (atomic $ who)
   let e2 = 0
-  lift $ e2 @=? head a2
+  lift $ e2 @=? a2
 
   ask (atomic $ die) =<< with (liftM (<5) who) =<< turtles
   a3' <- atomic $ turtles
   a3 <- of_ (atomic $ who) =<< min_one_of a3' (atomic $ who)
   let e3 = 5
-  lift $ e3 @=? head a3
+  lift $ e3 @=? a3
 
   a4 <- of_ (atomic $ count =<< turtles_here) =<< turtle 7
   let e4 = 5
-  lift $ e4 @=? head a4
+  lift $ e4 @=? a4
 
   a5 <- of_ (atomic $ count =<< other =<< turtles_here) =<< turtle 7
   let e5 = 4
-  lift $ e5 @=? head a5
+  lift $ e5 @=? a5
 
   a6 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
   let e6 = 0
-  lift $ e6 @=? head a6
+  lift $ e6 @=? a6
 
   a7 <- of_ (atomic $ count =<< other =<< frogs_here) =<< turtle 7
   let e7 = 0
-  lift $ e7 @=? head a7
+  lift $ e7 @=? a7
 
   ask (atomic $ set_breed "mice") =<< turtle 7
   ask (atomic $ set_breed "mice") =<< turtle 8
   a8 <- of_ (atomic $ count =<< mice_here) =<< turtle 7
   let e8 = 2
-  lift $ e8 @=? head a8
+  lift $ e8 @=? a8
 
   a9 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
   let e9 = 1
-  lift $ e9 @=? head a9
+  lift $ e9 @=? a9
 
 case_Agentsets3 = runT $ do
   ca                  
@@ -153,86 +153,85 @@ case_Agentsets4_2D = runT $ do
   ask (atomic $ fd 3) =<< turtles
   ask (atomic . create_links_with =<< with (do
                                               w1 <- who
-                                              [w2] <- of_ who =<< myself
+                                              w2 <- of_ who =<< myself
                                               return $ w1 > w2)  =<< turtles)
       =<< turtles
   a1 <- atomic $ count =<< links
   let e1 = 4950
   lift $ e1 @=? a1
 
-  a2 <- atomic $ count =<< turtles
-  e2 <- count =<< turtle_set [liftM concat $ of_ self =<< turtles]
-  lift $ e2 @=? a2
+  -- a2 <- atomic $ count =<< turtles
+  -- e2 <- count =<< turtle_set [of_ self =<< turtles]
+  -- lift $ e2 @=? a2
 
-  a3 <- atomic $ count =<< patches
-  e3 <- count =<< patch_set [liftM concat $ of_ self =<< patches]
-  lift $ e3 @=? a3
+  -- a3 <- atomic $ count =<< patches
+  -- e3 <- count =<< patch_set [of_ self =<< patches]
+  -- lift $ e3 @=? a3
 
-  a4 <- atomic $ count =<< links
-  e4 <- count =<< link_set [liftM concat $ of_ self =<< links]
-  lift $ e4 @=? a4
+  -- a4 <- atomic $ count =<< links
+  -- e4 <- count =<< link_set [of_ self =<< links]
+  -- lift $ e4 @=? a4
 
-  a5 <- count =<< patch_set [liftM concat $ (of_ (atomic$ neighbors4) =<< patches)]
-  e5 <- count =<< patches
+  -- a5 <- count =<< patch_set [liftM concat $ (of_ (atomic$ neighbors4) =<< patches)]
+  -- e5 <- count =<< patches
+  -- lift $ e5 @=? a5
 
-  lift $ e5 @=? a5
+  -- a6 <- count =<< with (atomic $ anyp =<< turtles_here) =<< patches
+  -- e6 <- count =<< patch_set [of_ (atomic $ patch_here) =<< turtles]
+  -- lift $ e6 @=? a6
 
-  a6 <- count =<< with (atomic $ anyp =<< turtles_here) =<< patches
-  e6 <- count =<< patch_set [liftM concat $ of_ (atomic $ patch_here) =<< turtles]
-  lift $ e6 @=? a6
+  -- a7 <- count =<< with (atomic $ anyp =<< turtles_here) =<< patches
+  -- e7 <- count =<< turtle_set [of_ (atomic $ one_of =<< turtles_here) =<< patches]
+  -- lift $ e7 @=? a7
 
-  a7 <- count =<< with (atomic $ anyp =<< turtles_here) =<< patches
-  e7 <- count =<< turtle_set [liftM concat $ of_ (atomic $ one_of =<< turtles_here) =<< patches]
-  lift $ e7 @=? a7
+  -- a8 <- anyp =<< turtle_set [of_ nobody =<< turtles]
+  -- let e8 = False
+  -- lift $ e8 @=? a8
 
-  a8 <- anyp =<< turtle_set [liftM concat $ of_ nobody =<< turtles]
-  let e8 = False
-  lift $ e8 @=? a8
+  -- a9 <- anyp =<< patch_set [of_ nobody =<< turtles]
+  -- let e9 = False
+  -- lift $ e9 @=? a9
 
-  a9 <- anyp =<< patch_set [liftM concat $ of_ nobody =<< turtles]
-  let e9 = False
-  lift $ e9 @=? a9
-
-  a10 <- anyp =<< link_set [liftM concat $ of_ nobody =<< turtles]
-  let e10 = False
-  lift $ e10 @=? a10
+  -- a10 <- anyp =<< link_set [of_ nobody =<< turtles]
+  -- let e10 = False
+  -- lift $ e10 @=? a10
 
 
-  a11 <- anyp =<< turtle_set [liftM concat $ of_ nobody =<< patches]
-  let e11 = False
-  lift $ e11 @=? a11
+  -- a11 <- anyp =<< turtle_set [of_ nobody =<< patches]
+  -- let e11 = False
+  -- lift $ e11 @=? a11
 
-  a12 <- anyp =<< patch_set [liftM concat $ of_ nobody =<< patches]
-  let e12 = False
-  lift $ e12 @=? a12
+  -- a12 <- anyp =<< patch_set [of_ nobody =<< patches]
+  -- let e12 = False
+  -- lift $ e12 @=? a12
 
-  a13 <- anyp =<< link_set [liftM concat $ of_ nobody =<< patches]
-  let e13 = False
-  lift $ e13 @=? a13
+  -- a13 <- anyp =<< link_set [of_ nobody =<< patches]
+  -- let e13 = False
+  -- lift $ e13 @=? a13
 
-  a14 <- anyp =<< turtle_set [liftM concat $ of_ nobody =<< links]
-  let e14 = False
-  lift $ e14 @=? a14
+  -- a14 <- anyp =<< turtle_set [of_ nobody =<< links]
+  -- let e14 = False
+  -- lift $ e14 @=? a14
 
-  a15 <- anyp =<< patch_set [liftM concat $ of_ nobody =<< links]
-  let e15 = False
-  lift $ e15 @=? a15
+  -- a15 <- anyp =<< patch_set [of_ nobody =<< links]
+  -- let e15 = False
+  -- lift $ e15 @=? a15
 
-  a16 <- anyp =<< link_set [liftM concat $ of_ nobody =<< links]
-  let e16 = False
-  lift $ e16 @=? a16
+  -- a16 <- anyp =<< link_set [of_ nobody =<< links]
+  -- let e16 = False
+  -- lift $ e16 @=? a16
 
-  a17 <- anyp =<< turtle_set [liftM (concat) $ of_ (with (return False) =<< turtles) =<< turtles]
-  let e17 = False
-  lift $ e17 @=? a17
+  -- a17 <- anyp =<< turtle_set [of_ (with (return False) =<< turtles) =<< turtles]
+  -- let e17 = False
+  -- lift $ e17 @=? a17
 
-  a18 <- anyp =<< patch_set [liftM (concat) $ of_ (with (return False) =<< patches) =<< turtles]
-  let e18 = False
-  lift $ e18 @=? a18
+  -- a18 <- anyp =<< patch_set [of_ (with (return False) =<< patches) =<< turtles]
+  -- let e18 = False
+  -- lift $ e18 @=? a18
 
-  a19 <- anyp =<< link_set [liftM (concat) $ of_ (with (return False) =<< links) =<< turtles]
-  let e19 = False
-  lift $ e19 @=? a19
+  -- a19 <- anyp =<< link_set [of_ (with (return False) =<< links) =<< turtles]
+  -- let e19 = False
+  -- lift $ e19 @=? a19
 
 case_Agentsets5Box_2D = runT $ do
   atomic $ random_seed 3782
@@ -271,7 +270,7 @@ case_AgentSetEquality = runT $ do
    crt 10
    ask (atomic . create_links_with =<< with (do
                                                w1 <- who
-                                               [w2] <- of_ who =<< myself
+                                               w2 <- of_ who =<< myself
                                                return $ w1 > w2)  =<< turtles)
       =<< turtles
 
@@ -341,12 +340,12 @@ case_SimpleLinkAgentset = runT $ do
   ask (atomic die) =<< link 0 1
 
   a22 <- of_ (do
-              [w1] <- of_ who =<< atomic end1
-              [w2] <- of_ who =<< atomic end2
+              w1 <- of_ who =<< atomic end1
+              w2 <- of_ who =<< atomic end2
               return [w1,w2])
              =<< atomic (one_of =<< links)
   let e22 = [1,0]
-  lift $ e22 @=? concat a22
+  lift $ e22 @=? a22
 
 case_CountTurtlesOptimization = runT $ do
   ca                                

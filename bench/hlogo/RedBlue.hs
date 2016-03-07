@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, TemplateHaskell, NoImplicitPrelude #-}
 -- Options: hwrap, vwrap
 import Language.Logo
 
@@ -15,7 +15,7 @@ run ["setup", "go"]
 
 setup = do
   askPatches (atomic $ do
-                [c] <- one_of [black, black, black, black, black, black, black, black, red, blue]
+                c <- one_of [black, black, black, black, black, black, black, black, red, blue]
                 set_pcolor c)
   create_turtles NR_TURTLES
   reset_ticks

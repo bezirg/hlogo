@@ -258,7 +258,7 @@ breeds [plural,singular] = do
                                                    let {t = ts IM.! $(varE y)}
                                                    b <- lift $ readTVarIO (tbreed_ t)
                                                    return $ if b == $(litE (stringL plural)) 
-                                                            then [t] 
+                                                            then t 
                                                             else error ("turtle is not a " ++ singular) |]) []]
 
   ss <- funD (mkName singular) [clause [varP y] (normalB [| do 
@@ -266,7 +266,7 @@ breeds [plural,singular] = do
                                                     let {t = ts IM.! $(varE y)}
                                                     b <- lift $ readTVar (tbreed_ t)
                                                     return $ if b == $(litE (stringL plural)) 
-                                                             then [t] 
+                                                             then t 
                                                              else error ("turtle is not a " ++ singular) |]) []]
   th' <- sigD (mkName (plural ++ "_here")) [t| forall s _s'. TurtlePatch s => C s _s' STM [Turtle]|]
   th <- valD (varP (mkName (plural ++ "_here"))) (normalB [| do 
@@ -290,7 +290,7 @@ breeds [plural,singular] = do
   --                                                                  |]) []
 
   ta <- funD (mkName (plural ++ "_at")) [clause [varP x, varP y] (normalB [| do 
-                                                                       [MkPatch {pxcor_=px,pycor_=py}] <- patch_at $(varE x) $(varE y)
+                                                                       MkPatch {pxcor_=px,pycor_=py} <- patch_at $(varE x) $(varE y)
                                                                        ts <- turtles
                                                                        filterM (\ (MkTurtle {xcor_ = x_, ycor_ = y_, tbreed_ = tb}) -> do 
                                                                                   x' <- lift $ readTVar x_
@@ -307,7 +307,7 @@ breeds [plural,singular] = do
 
   ib <- funD (mkName ("is_" ++ singular ++ "p")) [clause [varP y] 
                                           (normalB [| case $(varE y) of
-                                                        [MkTurtle {tbreed_ = tb}] -> do
+                                                        MkTurtle {tbreed_ = tb} -> do
                                                          liftM ($(litE (stringL plural)) ==) (readTVarSI tb)
                                                     |]) []]
   return [sp,up,us,ss,th',th,ta,ib]
@@ -706,13 +706,13 @@ newLBreed f t d b ls = lift $ MkLink f t d <$>
 
 
 
+{-# INLINE create_link_from_ #-}
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_from_ :: [Turtle] -> Int -> C Turtle _s' STM ()
-create_link_from_ f ls = case f of
-                       [_] -> create_links_from_ f ls
-                       _ -> throw $ TypeException "singleton agentset"
+create_link_from_ :: Turtle -> Int -> C Turtle _s' STM ()
+create_link_from_ f ls = create_links_from_ [f] ls
+
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
@@ -725,13 +725,13 @@ create_links_from_ as nls = do
     where insertLink f x s =  do
                        n <- newLink f x nls
                        return $ M.insertWith (flip const) (f,x) n s
+
+{-# INLINE create_link_to_ #-}
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_to_ :: [Turtle] -> Int -> C Turtle _s' STM ()
-create_link_to_ t ls = case t of
-                     [_] -> create_links_to_ t ls
-                     _ -> throw $ TypeException "singleton agentset"
+create_link_to_ :: Turtle -> Int -> C Turtle _s' STM ()
+create_link_to_ t ls = create_links_to_ [t] ls
 
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
@@ -747,13 +747,12 @@ create_links_to_ as nls = do
                        return $ M.insertWith (flip const) (x,t) n s
                                    
 
+{-# INLINE create_link_with_ #-}
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
 -- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_with_ :: [Turtle] -> Int -> C Turtle _s' STM ()
-create_link_with_ w ls = case w of
-                     [_] -> create_links_with_ w ls
-                     _ -> throw $ TypeException "singleton agentset"
+create_link_with_ :: Turtle -> Int -> C Turtle _s' STM ()
+create_link_with_ w ls = create_links_with_ [w] ls
 
 -- |  Used for creating breeded and unbreeded links between turtles.
 -- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.

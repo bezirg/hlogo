@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, EmptyDataDecls #-}
+{-# LANGUAGE CPP, EmptyDataDecls, TypeFamilies #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Base
@@ -37,9 +37,16 @@ import Data.IORef
 -- NB: 'Eq' context needed for agentset-operations (because an agentset is a list for now).
 class (Eq s) => Agent s where      
     --type AgentSet s
-    ask :: C s p IO _b -> [s] -> C p p' IO ()
-    of_ :: C s p IO b -> [s] -> C p p' IO [b]
+    ask :: C (One s) p IO _b -> s -> C p p' IO ()
+    of_ :: C (One s) p IO b -> s -> C p p' IO (Many s b)
 
+type family One a where
+    One [a] = a
+    One a = a
+
+type family Many a b where
+    Many [a] b = [b]
+    Many a b = b
     
 -- | A subtype of Agent is a TurtleLink, i.e. either a Turtle or a Link.
 -- 

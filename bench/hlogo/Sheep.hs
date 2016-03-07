@@ -35,7 +35,7 @@ setup = do
   ask (atomic $ set_pcolor green) =<< patches
   when grassp $ ask (atomic $ do
                        r <- random grass_regrowth_time
-                       c <- liftM head (one_of [green, brown])
+                       c <- one_of [green, brown]
                        set_countdown r
                        set_pcolor c
                      ) =<< patches
@@ -85,8 +85,8 @@ grow_grass = do
   when (c == brown) $ do
                d <- countdown
                if (d <= 0)
-               then atomic $ set_pcolor green >> set_countdown grass_regrowth_time
-               else atomic $ set_countdown $ d -1
+                 then atomic $ set_pcolor green >> set_countdown grass_regrowth_time
+                 else atomic $ set_countdown $ d -1
 
 
 

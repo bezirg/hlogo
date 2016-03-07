@@ -63,7 +63,7 @@ case_All4 = runT $ do
               s <- self
               th <- atomic $ one_of =<< turtles_here
               s' <- of_ (atomic $ patch_here) th 
-              return $ s == concat s') =<< patches
+              return $ s == s') =<< patches
   let e1 = True
   lift $ e1 @=? a1
 

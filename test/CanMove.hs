@@ -28,18 +28,18 @@ case_CanMove2Box_2D = runT $ do
   crt 1
   ask (atomic $ set_heading 0 >> fd 5.1) =<< turtle 0
 
-  [a1] <- of_ (atomic $ ycor) =<< turtle 0
+  a1 <- of_ (atomic $ ycor) =<< turtle 0
   let e1 = 5.1
   lift $ e1 @=? a1
 
-  [a1] <- of_ (atomic $ can_movep 12) =<< turtle 0
+  a1 <- of_ (atomic $ can_movep 12) =<< turtle 0
   let e1 = False
   lift $ e1 @=? a1
 
-  [a2] <- of_ (atomic $ can_movep 11.6) =<< turtle 0
+  a2 <- of_ (atomic $ can_movep 11.6) =<< turtle 0
   let e2 = False
   lift $ e2 @=? a2
 
-  [a3] <- of_ (atomic $ can_movep 11.3) =<< turtle 0
+  a3 <- of_ (atomic $ can_movep 11.3) =<< turtle 0
   let e3 = True
   lift $ e3 @=? a3
