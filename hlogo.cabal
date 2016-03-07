@@ -52,7 +52,7 @@ library
                       Language.Logo.Prim, 
                       Language.Logo.Exception
   other-modules:      Language.Logo.Conf
-  ghc-options:        -Wall -fno-warn-unused-do-bind
+  ghc-options:        -Wall -fno-warn-unused-do-bind -fno-ignore-asserts
   if flag(stats-stm)
      cpp-options:     -DSTATS_STM
   hs-source-dirs:     src
@@ -64,7 +64,7 @@ test-suite test
   type:               exitcode-stdio-1.0
   main-is:            Test.hs
   build-depends:      hlogo, base, transformers>=0.4, test-framework, test-framework-hunit, test-framework-th, HUnit
-  ghc-options:        -fno-ignore-asserts -threaded "-with-rtsopts=-N2"
+  ghc-options:        -threaded "-with-rtsopts=-N2"
   hs-source-dirs:     test                        
 
 -- BENCHMARKS

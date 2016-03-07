@@ -76,10 +76,10 @@ import  Timer
 
 
 main = defaultMainWithArgs [
-        agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
-        agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
+       agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
+       agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
        anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
-       askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
+       -- askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
        booleanoperatorsTestGroup ,--         listsTestGroup,        rgbTestGroup,
        breedsTestGroup , --                   mathTestGroup,         runTestGroup,
        canmoveTestGroup , --                  memberTestGroup,       selfmyselfTestGroup,

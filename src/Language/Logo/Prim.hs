@@ -83,8 +83,10 @@ import Data.Colour.SRGB (sRGB24)
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Data.Functor.Identity (runIdentity)
 
+import Data.IORef (writeIORef, readIORef, modifyIORef')
+
 #ifdef STATS_STM
-import Data.IORef
+import Data.IORef (atomicModifyIORef, newIORef)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Foldable as F (foldlM)
 #endif
@@ -434,7 +436,8 @@ can_movep n = do
   let py_new = round $ y + if vertical_wrap_ conf
                            then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
                            else  dy_*n
-  return (not (not (horizontal_wrap_ conf) && (px_new > mx || px_new < min_pxcor_ conf)) || (not (vertical_wrap_ conf) && (py_new > my || py_new < min_pycor_ conf)))
+  return (not (not (horizontal_wrap_ conf) && (px_new > mx || px_new < min_pxcor_ conf)) 
+       || (not (vertical_wrap_ conf) && (py_new > my || py_new < min_pycor_ conf)))
 
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
@@ -926,12 +929,12 @@ cp = clear_patches
 -- | Clears the tick counter.
 -- Does not set the counter to zero. After this command runs, the tick counter has no value. Attempting to access or update it is an error until reset-ticks is called. 
 clear_ticks :: C Observer () IO ()
-clear_ticks = lift $ atomically $ writeTVar __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
+clear_ticks = lift $ writeIORef __tick (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# INLINE reset_ticks #-}
 -- | Resets the tick counter to zero, sets up all plots, then updates all plots (so that the initial state of the world is plotted). 
 reset_ticks :: C Observer () IO ()
-reset_ticks = lift $ atomically $ writeTVar __tick 0
+reset_ticks = lift $ writeIORef __tick 0
 
 {-# INLINE tick #-}
 -- | Advances the tick counter by one and updates all plots. 
@@ -942,7 +945,7 @@ tick = tick_advance 1
 {-# INLINE tick_advance #-}
 -- | Advances the tick counter by number. The input may be an integer or a floating point number. (Some models divide ticks more finely than by ones.) The input may not be negative. 
 tick_advance :: Double -> C Observer () IO ()
-tick_advance n = lift $ atomically $ modifyTVar' __tick (+n)
+tick_advance n = lift $ modifyIORef' __tick (+n)
 
 {-# INLINE butfirst #-}
 -- | When used on a list, but-first reports all of the list items of list except the first
@@ -1688,7 +1691,7 @@ hatch n = do
 
 {-# INLINE turtles_on #-}
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
-turtles_on :: (TurtlePatch a) => [a] -> C s _s' IO [Turtle]
+turtles_on :: TurtlePatch a => [a] -> C s _s' IO [Turtle]
 turtles_on as = liftM concat $ turtles_here `of_` as
     
 {-# WARNING at_points "TODO: also has to support the Observer as Caller. A TurtleObserver typeclass" #-}
@@ -2034,7 +2037,7 @@ breed = do
 
 -- | Reports the heading from this agent to the given agent. 
 towards :: (TurtlePatch a, TurtlePatch s) => [a] -> C s _s' m Double
-towards = undefined
+towards = todo
 
 -- -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. This can include the agent itself.
 -- in_radius :: (TurtlePatch a, TurtlePatch s) => [a] -> Double -> C s _s' m [a]
@@ -2056,7 +2059,7 @@ links = do
     ls <- readTVarSI __links
     return $ nubBy checkForUndirected $ M.elems ls
         where
-          checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = e1 == e2' && e1' == e2
+          checkForUndirected ((MkLink {end1_ = e1, end2_ = e2, directed_ = False})) ((MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = (e1 == e2' && e1' == e2) || (e1==e1' && e2==e2')
           checkForUndirected _ _ = False
 
 -- print :: Show a => a -> C _s _s' m ()
@@ -2135,13 +2138,6 @@ links = do
 --                y' <- lift $ readTVar ty'
 --                return $ sqrt (delta x x' (fromIntegral (max_pxcor_ conf) :: Int) ^ (2::Int) + 
 --                            delta y y' (fromIntegral (max_pycor_ conf) :: Int) ^ (2::Int)) <= n) as
-
-
-{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
-{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
--- | Reports the current value of the tick counter. The result is always a number and never negative. 
-ticks :: STMorIO m => C _s _s' m Double
-ticks = readTVarSI __tick
 
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
@@ -2287,6 +2283,9 @@ scale_color c v minArg maxArg = do
 -- The correct lifting (STM or IO) is left to type inference.
 class Monad m => STMorIO m where
     readTVarSI :: TVar a -> C s _s' m a
+    -- | Reports the current value of the tick counter. The result is always a number and never negative. 
+    ticks :: C _s _s' m Double
+
     timer ::  C _s _s' m Double
     reset_timer :: C _s _s' m ()
     -- | Prints value in the Command Center, preceded by this agent, and followed by a carriage return.
@@ -2305,6 +2304,7 @@ class Monad m => STMorIO m where
 
 instance STMorIO STM where
     readTVarSI = lift . readTVar
+    ticks = lift $ unsafeIOToSTM $ readIORef __tick
     timer = lift $ do
       t <- readTVar __timer
       t' <- unsafeIOToSTM getCurrentTime
@@ -2319,6 +2319,7 @@ instance STMorIO STM where
 
 instance STMorIO IO where
     readTVarSI = lift . readTVarIO
+    ticks = lift $ readIORef __tick
     timer = lift $ do
        t <- readTVarIO __timer
        t' <- getCurrentTime
@@ -2346,6 +2347,8 @@ showObserverSTM :: Show a => a -> C Observer b STM ()
 showObserverSTM a = lift $ unsafeIOToSTM $ Prelude.putStrLn ("observer: " ++ Prelude.show a)
 
 
+--{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
+--{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
 --{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
 --{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
 --{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}

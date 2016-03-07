@@ -35,14 +35,10 @@ case_TurtleSet_2D = runT $ do
                a2 <- turtles
                lift $ [] @=? e2 \\ a2
               
-               let a3 = atomic $ turtle_set [sort_ =<< patches, turtle 0]
-
-               assertTypeException (lift . evaluate =<< a3)
-  
-               e4 <- atomic $ turtle_set [turtles, turtle 0]
-               a4 <- turtles
+               e3 <- atomic $ turtle_set [turtles, turtle 0]
+               a3 <- turtles
                
-               lift $ [] @=? e4 \\ a4
+               lift $ [] @=? e3 \\ a3
 
                let e5 = [4,6,9]
                a5 <- sort_ =<< of_ who =<< atomic (turtle_set [turtle 6, turtle 4, turtle 9])
@@ -61,9 +57,6 @@ case_TurtleSet_2D = runT $ do
                a7 <- count =<< turtle_set [unsafe_frogs, unsafe_mice]
                lift $ e7 @=? a7
 
-               a8 <- of_ (turtle_set [self]) =<< patch 0 0
-               assertTypeException (lift $ evaluate $ head a8)
-
 case_TurtleSet_3D = assertFailure "HLogo does not currently support 3D lattices"
 
 case_EmptyTurtleSet = runT $ do
@@ -76,17 +69,10 @@ case_EmptyTurtleSet = runT $ do
    
    lift $ a2 @=? e2
 
-   a3<- atomic $ turtle_set [nobody, nobody]
-   e3 <- atomic $ no_patches
-
-   lift $ assertBool "HLogo currently does not support agentset distinction" $ e3 /= a3
-
 case_TurtleSetNestedLists = assertFailure "HLogo currently does not support flattening deeply nested agentsets"
 
 case_PatchSet2_2D = runT $ do
    crt 1
-   a1 <- of_ (atomic $ patch_set [self])  =<< turtle 0
-   assertTypeException (lift $ evaluate $ head a1)
 
    ask (atomic $ set_glob1 3) =<< patch 0 0
    a2 <- atomic $ glob1
@@ -104,9 +90,6 @@ case_PatchSet2_2D = runT $ do
    a5 <- atomic $ patches
    e5 <- atomic $ patch_set [patch 0 0, sort_ =<< patches]
    lift $ [] @=? e5 \\ a5
-
-   a6 <- atomic $ patch_set [sort_ =<< turtles, patch 0 0]
-   assertTypeException (lift $ evaluate a6)
 
    a7 <-  sort_ =<< of_ pxcor =<< atomic (patch_set [patch 3 0, patch 1 0, patch 2 0])
    let e7 = [1,2,3]
@@ -132,11 +115,6 @@ case_EmptyPatchSet = runT $ do
    lift $ e2 @=? a2
 
    
-   a3 <- atomic $ patch_set [nobody, nobody]
-   e3 <- atomic $ no_turtles
-
-   lift $ assertBool "HLogo currently does not support agentset distinction" $ e3 /= a3
-      
 case_PatchSetNestedLists_2D = assertFailure "HLogo currently does not support flattening deeply nested agentsets"
 
 case_PatchSetNestedLists_3D = assertFailure "HLogo does not currently support 3D lattices"
@@ -159,13 +137,6 @@ case_LinkSet_2D = runT $ do
    e3 <- atomic $ links
    lift $ [] @=? a3 \\ e3
 
-
-   a4 <- atomic $ link_set [sort_ =<< turtles, link 0 1]
-   assertTypeException $ lift $ evaluate a4
-
-   a5 <- atomic $ link_set [sort_ =<< patches, link 0 1]
-   assertTypeException $ lift $ evaluate a5
-
    a6 <- atomic $ link_set [links, link 0 1]
    e6 <- atomic $ links
    lift $ [] @=? a6 \\ e6
@@ -185,11 +156,6 @@ case_EmptyLinkSet = runT $ do
    a2 <- atomic $ link_set [nobody, nobody]
    e2 <- atomic $ no_links
    lift $ e2 @=? a2
-
-   a3 <- atomic $ link_set [nobody, nobody]
-   e3 <- atomic $ no_patches
-
-   lift $ assertBool "HLogo currently does not support agentset distinction" $ e3 /= a3
 
 case_LinkSetNestedLists =  assertFailure "HLogo currently does not support flattening deeply nested agentsets"
                             

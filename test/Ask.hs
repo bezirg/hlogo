@@ -73,6 +73,7 @@ case_RecursiveCallInsideAsk1 = let
       crt 1
       go2 5
       crt 1
+    go2 :: Int -> C a b IO () -- sig. needed because of monomorphism restriction?
     go2 x =
       ask (do
              g <- glob1
@@ -98,6 +99,7 @@ case_RecursiveCallInsideAsk2 = let
       crt 1
       go2
       crt 1
+    go2 :: C a b IO () -- sig. needed because of monomorphism restriction?
     go2 = ask (do
                  g <- glob1
                  atomic $ set_glob1 (g + 1)
@@ -119,6 +121,7 @@ case_RecursiveCallInsideAsk2 = let
                                   lift $ e2 @=? a2
           
 case_RecursionOverAsk = let
+    explore :: C Turtle a IO ()   -- sig. needed because of monomorphism restriction?
     explore = do
       t <- tvar
       when (t == 0) (do

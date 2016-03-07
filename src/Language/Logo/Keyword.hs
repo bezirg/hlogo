@@ -48,7 +48,7 @@ globals vs  = do
     clear_globals <- valD (varP $ mkName "clear_globals") 
                 (normalB $ if null vs
                            then [| return () :: C Observer () IO () |]
-                           else doE $ map (\ v -> noBindS [| atomically (lift (writeTVar $(varE (mkName ("__" ++ v))) 0)) |]) vs) []
+                           else [| lift $(doE $ map (\ v -> noBindS [| atomically (writeTVar $(varE (mkName ("__" ++ v))) 0) |]) vs ) :: C Observer () IO ()  |]) []
     -- create 2 getters (1 prim and 1 unsafe) per global variable
     settersGetters <- liftM concat $ mapM (\ v -> do
                       noInline <- pragInlD (mkName ("__" ++ v)) NoInline FunLike AllPhases                 
@@ -459,9 +459,10 @@ run procs = do
                    clear_turtles
                    clear_links
                    clear_patches
-                   clear_drawing
-                   clear_all_plots
-                   clear_output
+                   -- Disabled for now, because not implemented/not related
+                   -- clear_drawing
+                   -- clear_all_plots
+                   -- clear_output
                {-# INLINE ca #-}
                ca = clear_all |]
 

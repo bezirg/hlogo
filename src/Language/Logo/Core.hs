@@ -33,9 +33,7 @@ import Control.Monad
 import System.Random.TF.Gen (TFGen,seedTFGen)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
-#ifdef STATS_STM
-import Data.IORef (newIORef)
-#endif
+import Data.IORef (IORef, newIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
@@ -44,8 +42,8 @@ import Control.Applicative
 -- | The global (atomically-modifiable) tick variable
 --
 -- Double because NetLogo also allows different than 1-tick increments
-__tick :: TVar Double
-__tick = unsafePerformIO $ newTVarIO (error "The tick counter has not been started yet. Use RESET-TICKS.")
+__tick :: IORef Double
+__tick = unsafePerformIO $ newIORef (error "The tick counter has not been started yet. Use RESET-TICKS.")
 
 {-# NOINLINE __who #-}
 -- | The global (atomically-modifiable) who-counter variable

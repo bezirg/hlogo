@@ -147,6 +147,7 @@ case_Agentsets3 = runT $ do
   lift $ e8 @=? a8
 
 case_Agentsets4_2D = runT $ do
+  ca
   atomic $ random_seed 29020
   crt 100
   ask (atomic $ fd 3) =<< turtles
@@ -247,8 +248,8 @@ case_AgentSetEquality = runT $ do
    e2 <- atomic links
    lift $ e2 @=? a2
 
-   a3 <- atomic turtles
-   e3 <- atomic links
+   a3 <- atomic patches
+   e3 <- atomic patches
    lift $ e3 @=? a3
 
    a4 <- atomic no_turtles
@@ -299,7 +300,7 @@ case_AgentSetEquality = runT $ do
    e13 <- atomic $ patches
    lift $ e13 @=? a13
 
-   a14 <- with (liftM (== 3) $ atomic who) =<< turtles
+   a14 <- with (pxcor >>= \ x -> return $ x == 2) =<< patches
    e14 <- with (pxcor >>= \ x -> pycor >>= \ y -> return $ x == 3 && y == 3) =<< patches
    lift $ False @=? e14 == a14
 
