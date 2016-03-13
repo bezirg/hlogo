@@ -205,3 +205,16 @@ benchmark redblue30000
   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
   cpp-options:    -DNR_TURTLES=30000
   hs-source-dirs: bench/hlogo
+
+-- IMPLEMENTATION DECISION MICROBENCHMARKS 
+-- turned off, only for testing
+
+-- benchmark createTurtles
+--   type: exitcode-stdio-1.0
+--   main-is: createTurtles.hs
+--   build-depends:
+--     base,
+--     containers,
+--     criterion
+--   hs-source-dirs: bench/impl
+--   ghc-options: -O -fno-ignore-asserts -threaded "-with-rtsopts=-N4"

@@ -10,13 +10,14 @@
 -- The module contains the Base datatypes of the Language.
 module Language.Logo.Base (
                           -- * The typeclasses (interfaces) of each participant in a simulation
-                          Agent (..), TurtleLink (..), C
+                          Agent (..), With (..), TurtleLink (..), C
                           -- * The Observer datastructure
                           ,Observer
                           -- * The agents' datastructures holding the attributes of the agents 
                           ,Turtle (..), Patch (..), Link (..),PenMode (..), TieMode (..)
                           -- * The containers storing multiple agents
                           ,Patches,Turtles,Links
+                          , One, Many
                           ) where
 
 import Control.Concurrent.STM
@@ -34,19 +35,24 @@ import Data.IORef
 --
 -- Agents (of the same type, since we are typed) can be checked for 'Eq'uality (= in NetLogo, == in HLogo), 'Ord'ered (>,<,>=...)
 -- and 'Show'ed their identiy to screen.
--- NB: 'Eq' context needed for agentset-operations (because an agentset is a list for now).
-class (Eq s) => Agent s where      
-    --type AgentSet s
+class Agent s where      
     ask :: C (One s) p IO _b -> s -> C p p' IO ()
     of_ :: C (One s) p IO b -> s -> C p p' IO (Many s b)
 
+class With s where
+    with :: C (One s) p IO Bool -> s -> C p p' IO s
+
 type family One a where
-    One [a] = a
+    One Patches = Patch
+    One Turtles = Turtle
+    One Links = Link
     One a = a
 
 type family Many a b where
-    Many [a] b = [b]
-    Many a b = b
+    Many Turtle b = b
+    Many Patch b = b
+    Many Link b = b
+    Many a b = [b]
     
 -- | A subtype of Agent is a TurtleLink, i.e. either a Turtle or a Link.
 -- 
@@ -144,7 +150,7 @@ data TieMode = None | Fixed
 -- that links the position (Int,Int) of a patch to its transactional attributes (patch variables) of the 'Patch' record.
 --
 -- The vector is pure and is initialized at the start of an HLogo program, upon calling 'run'.
-type Patches = Vector (Vector Patch)
+type Patches = Vector Patch
 
 -- | The 'Turtles' ADT is an 'IM.IntMap' from who indices to 'Turtle' data structures
 type Turtles = IM.IntMap Turtle

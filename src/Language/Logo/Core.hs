@@ -63,9 +63,10 @@ __tg = unsafePerformIO $ ThreadG.new
 {-# NOINLINE __patches #-}
 -- | The global turtles vector
 __patches :: Patches
-__patches = V.fromList [V.fromList [unsafePerformIO (newPatch x y) 
-                                   | y <- [min_pycor_ conf..max_pycor_ conf]] 
-                       | x <- [min_pxcor_ conf..max_pxcor_ conf]]
+__patches = V.fromList [unsafePerformIO (newPatch x y) 
+                       | x <- [min_pxcor_ conf..max_pxcor_ conf]
+                       , y <- [min_pycor_ conf..max_pycor_ conf] 
+                       ]
 
 {-# INLINE newPatch #-}
 -- | Returns a 'Patch' structure with default arguments (based on NetLogo)

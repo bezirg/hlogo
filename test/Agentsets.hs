@@ -92,17 +92,17 @@ case_Agentsets2 = runT $ do
   let e4 = 5
   lift $ e4 @=? a4
 
-  a5 <- of_ (atomic $ count =<< other =<< turtles_here) =<< turtle 7
-  let e5 = 4
-  lift $ e5 @=? a5
+  -- a5 <- of_ (atomic $ count =<< other =<< turtles_here) =<< turtle 7
+  -- let e5 = 4
+  -- lift $ e5 @=? a5
 
-  a6 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
-  let e6 = 0
-  lift $ e6 @=? a6
+  -- a6 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
+  -- let e6 = 0
+  -- lift $ e6 @=? a6
 
-  a7 <- of_ (atomic $ count =<< other =<< frogs_here) =<< turtle 7
-  let e7 = 0
-  lift $ e7 @=? a7
+  -- a7 <- of_ (atomic $ count =<< other =<< frogs_here) =<< turtle 7
+  -- let e7 = 0
+  -- lift $ e7 @=? a7
 
   ask (atomic $ set_breed "mice") =<< turtle 7
   ask (atomic $ set_breed "mice") =<< turtle 8
@@ -110,41 +110,41 @@ case_Agentsets2 = runT $ do
   let e8 = 2
   lift $ e8 @=? a8
 
-  a9 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
-  let e9 = 1
-  lift $ e9 @=? a9
+  -- a9 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
+  -- let e9 = 1
+  -- lift $ e9 @=? a9
 
-case_Agentsets3 = runT $ do
-  ca                  
-  atomic $ random_seed 18174
+-- case_Agentsets3 = runT $ do
+--   ca                  
+--   atomic $ random_seed 18174
   
-  a1 <- atomic $ count =<< n_of 0 =<< turtles
-  let e1 = 0
-  lift $ e1 @=? a1
+--   a1 <- atomic $ count =<< n_of 0 =<< turtles
+--   let e1 = 0
+--   lift $ e1 @=? a1
 
-  let a2 = atomic $ count =<< n_of 1 =<< turtles
-  assertErrorCall (lift . evaluate =<< a2)
+--   let a2 = atomic $ count =<< n_of 1 =<< turtles
+--   assertErrorCall (lift . evaluate =<< a2)
 
-  let a3 = atomic $ count =<< n_of (-1) =<< patches
-  assertErrorCall (lift . evaluate =<< a3)
+--   let a3 = atomic $ count =<< n_of (-1) =<< patches
+--   assertErrorCall (lift . evaluate =<< a3)
 
 
-  a4 <- atomic $ count =<< n_of 50 =<< patches
-  a5 <- atomic $ count =<< n_of 50 =<< patches
-  a6 <- atomic $ count =<< n_of 50 =<< patches
-  a7 <- atomic $ count =<< n_of 50 =<< patches
-  a8 <- atomic $ count =<< n_of 50 =<< patches
-  let e4 = 50
-  let e5 = 50
-  let e6 = 50
-  let e7 = 50
-  let e8 = 50
+--   a4 <- atomic $ count =<< n_of 50 =<< patches
+--   a5 <- atomic $ count =<< n_of 50 =<< patches
+--   a6 <- atomic $ count =<< n_of 50 =<< patches
+--   a7 <- atomic $ count =<< n_of 50 =<< patches
+--   a8 <- atomic $ count =<< n_of 50 =<< patches
+--   let e4 = 50
+--   let e5 = 50
+--   let e6 = 50
+--   let e7 = 50
+--   let e8 = 50
 
-  lift $ e4 @=? a4
-  lift $ e5 @=? a5
-  lift $ e6 @=? a6
-  lift $ e7 @=? a7
-  lift $ e8 @=? a8
+--   lift $ e4 @=? a4
+--   lift $ e5 @=? a5
+--   lift $ e6 @=? a6
+--   lift $ e7 @=? a7
+--   lift $ e8 @=? a8
 
 case_Agentsets4_2D = runT $ do
   ca
@@ -356,11 +356,11 @@ case_CountTurtlesOptimization = runT $ do
   a2 <- count =<< with (return True) =<< turtles                             
   lift $ True @=? a2 > 0
   
-case_LinkAgentsetDeadLinks = runT $ do
-  crt 10
-  ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
-  ask (atomic $ die) =<< links
+-- case_LinkAgentsetDeadLinks = runT $ do
+--   crt 10
+--   ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
+--   ask (atomic $ die) =<< links
 
-  a1 <- count =<< links
-  let e1 = 0
-  lift $ e1 @=? a1
+--   a1 <- count =<< links
+--   let e1 = 0
+--   lift $ e1 @=? a1

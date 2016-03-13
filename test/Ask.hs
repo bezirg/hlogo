@@ -47,26 +47,26 @@ case_AskRNG_2D = runT $ do
   lift $ e4 @=? a4
 
 
-case_AskRNG_2D_Nof = runT $ do 
-  atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
-  ca
-  -- this is not the same as 4 times one_of! (above), because we delete successive draws from the agentset (so as not to return duplicates)
-  ask (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches) 
+-- case_AskRNG_2D_Nof = runT $ do 
+--   atomic $ random_seed 0 -- not needed, because observer is initialized anyway with seed=0
+--   ca
+--   -- this is not the same as 4 times one_of! (above), because we delete successive draws from the agentset (so as not to return duplicates)
+--   ask (atomic $ sprout 1) =<< atomic (n_of 4 =<< patches) 
 
 
-  let e1 = (14,13,95,224)
-  let e2 = (-12,9,75,287)
-  let e3 = (-16,-4,5,275)
-  let e4 = (9,13,135,150)
+--   let e1 = (14,13,95,224)
+--   let e2 = (-12,9,75,287)
+--   let e3 = (-16,-4,5,275)
+--   let e4 = (9,13,135,150)
 
-  a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
-  a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
-  a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
-  a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
+--   a1 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 0
+--   a2 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 1
+--   a3 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 2
+--   a4 <- of_ (atomic $ liftM4 (,,,) xcor ycor color heading)  =<< turtle 3
   
-  -- we have to do this because turtle-n ends up in different patches, since patches run in parallel
-  -- so we cannot associate a n-who of turtle to its attributes
-  lift $ assertBool "wrong attributes of turtles" $ null ([a1,a2,a3,a4]\\[e1,e2,e3,e4])
+--   -- we have to do this because turtle-n ends up in different patches, since patches run in parallel
+--   -- so we cannot associate a n-who of turtle to its attributes
+--   lift $ assertBool "wrong attributes of turtles" $ null ([a1,a2,a3,a4]\\[e1,e2,e3,e4])
 
 case_RecursiveCallInsideAsk1 = let
     go1 = do

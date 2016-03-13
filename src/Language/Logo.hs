@@ -20,7 +20,7 @@ where
 
 
 
-import Prelude hiding (show, print)
+import Prelude hiding (show, print, length)
 import Language.Logo.Keyword
 import Language.Logo.Prim
 import Language.Logo.Exception

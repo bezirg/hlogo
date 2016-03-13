@@ -24,32 +24,32 @@ run [] -- workaround for tests
 
 
 comparingagentsTestGroup = $(testGroupGenerator)
-case_ComparingLinks = runT $ do
-  crt 3
-  ask (atomic $ fd 5) =<< turtles
-  ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 0
-  ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 1
-  ask (atomic $ create_links_with =<< other =<< turtles) =<< turtle 0
+-- case_ComparingLinks = runT $ do
+--   crt 3
+--   ask (atomic $ fd 5) =<< turtles
+--   ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 0
+--   ask (atomic $ create_links_to =<< other =<< turtles) =<< turtle 1
+--   ask (atomic $ create_links_with =<< other =<< turtles) =<< turtle 0
   
-  a1 <- atomic $ liftM2 (>) (link 1 0) (link 0 1)
-  let e1 = True
-  lift $ e1 @=? a1
+--   a1 <- atomic $ liftM2 (>) (link 1 0) (link 0 1)
+--   let e1 = True
+--   lift $ e1 @=? a1
 
-  a2 <- atomic $ liftM2 (>) (link 0 1) (link 0 1)
-  let e2 = False
-  lift $ e2 @=? a2
+--   a2 <- atomic $ liftM2 (>) (link 0 1) (link 0 1)
+--   let e2 = False
+--   lift $ e2 @=? a2
 
-  a3 <- atomic $ liftM2 (<) (link 0 1) (link 0 1)
-  let e3 = False
-  lift $ e3 @=? a3
+--   a3 <- atomic $ liftM2 (<) (link 0 1) (link 0 1)
+--   let e3 = False
+--   lift $ e3 @=? a3
 
-  a4 <- atomic $ liftM2 (>=) (link 0 1) (link 0 1)
-  let e4 = True
-  lift $ e4 @=? a4
+--   a4 <- atomic $ liftM2 (>=) (link 0 1) (link 0 1)
+--   let e4 = True
+--   lift $ e4 @=? a4
 
-  a5 <- atomic $ liftM2 (<=) (link 0 1) (link 0 1)
-  let e5 = True
-  lift $ e5 @=? a5
+--   a5 <- atomic $ liftM2 (<=) (link 0 1) (link 0 1)
+--   let e5 = True
+--   lift $ e5 @=? a5
   
 
 case_ComparingTurtles = runT $ do

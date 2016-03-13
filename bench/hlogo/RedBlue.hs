@@ -14,9 +14,9 @@ args = ["--max-pxcor=100"
 run ["setup", "go"]
 
 setup = do
-  askPatches (atomic $ do
-                c <- one_of [black, black, black, black, black, black, black, black, red, blue]
-                set_pcolor c)
+  ask (atomic $ do
+         c <- one_of [black, black, black, black, black, black, black, black, red, blue]
+         set_pcolor c) =<< patches
   create_turtles NR_TURTLES
   reset_ticks
 

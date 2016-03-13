@@ -132,18 +132,18 @@ case_LinkSet_2D = runT $ do
    lift $ e2 @=? a2
 
 
-   ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
-   -- a3 <- atomic $ link_set [sort_ =<< links, link 0 1]
-   -- e3 <- atomic $ links
-   -- lift $ [] @=? a3 \\ e3
+   -- ask (atomic $ create_links_with =<< other =<< turtles) =<< turtles
+   -- -- a3 <- atomic $ link_set [sort_ =<< links, link 0 1]
+   -- -- e3 <- atomic $ links
+   -- -- lift $ [] @=? a3 \\ e3
 
-   -- a6 <- atomic $ link_set [links, link 0 1]
-   -- e6 <- atomic $ links
-   -- lift $ [] @=? a6 \\ e6
+   -- -- a6 <- atomic $ link_set [links, link 0 1]
+   -- -- e6 <- atomic $ links
+   -- -- lift $ [] @=? a6 \\ e6
 
-   a7 <- atomic $ count =<< link_set [link 1 2, link 1 2]
-   let e7 = 1
-   lift $ e7 @=? a7
+   -- a7 <- atomic $ count =<< link_set [link 1 2, link 1 2]
+   -- let e7 = 1
+   -- lift $ e7 @=? a7
 
 
 case_LinkSet_3D = assertFailure "HLogo does not currently support 3D lattices"
