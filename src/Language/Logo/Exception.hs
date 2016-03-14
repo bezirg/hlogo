@@ -27,7 +27,7 @@ import Control.Exception hiding (catch)
 import qualified Control.Exception as E (catch)
 import Control.Concurrent.STM
 import Data.Typeable
-import Control.Monad.Trans.RWS.Strict (liftCatch)
+import Control.Monad.Trans.Reader (liftCatch)
 
 {-# INLINE catch #-}
 -- | Catches an Exception in STM monad
