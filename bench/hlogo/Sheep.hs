@@ -56,14 +56,13 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t > 1000) (unsafe_sheep >>= count >>= print >> stop)
+  when (t > 1000) (sheep >>= count >>= print >> stop)
   ask (do
          move
-         e <- senergy
          when grassp $ do
-            atomic $ set_senergy (e -1)
+            atomic $ with_senergy (\ e -> e - 1)
             eat_grass
-       ) =<< unsafe_sheep
+       ) =<< turtles -- turtle < unsafe_sheep < sheep
   when grassp (ask grow_grass =<< patches)
   tick
 

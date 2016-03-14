@@ -38,7 +38,7 @@ module Language.Logo.Prim (
                             patch_size, max_pxcor, max_pycor, min_pxcor, min_pycor, world_width, world_height, clear_all_plots, clear_drawing, cd, clear_output, clear_turtles, ct, clear_patches, cp, clear_links, clear_ticks, reset_ticks, tick, tick_advance, ticks, histogram, repeat_, report, loop, stop, while, stats_stm,
 
                             -- * Input/Output
-                            show, unsafe_show, print, unsafe_print, read_from_string, timer, reset_timer,
+                            show, print, read_from_string, timer, reset_timer,
 
                             -- * IO Operations
                             atomic, ask, of_, snapshot, 
@@ -143,7 +143,7 @@ patch' x y = let mix = min_pxcor_ conf
                  may = max_pycor_ conf
                  norm_x = if horizontal_wrap_ conf then ((round x + max) `mod` (max*2+1)) - max else round x
                  norm_y = if vertical_wrap_ conf then ((round y + may) `mod` (may*2+1)) - may else round y
-             in if mix <= norm_x && norm_x >= max && miy <= norm_y && norm_y >= may
+             in if mix <= norm_x && norm_x <= max && miy <= norm_y && norm_y <= may
                 then __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
                 else error "nobody" -- i cannot put nobody here because this function is pure
     
@@ -1731,18 +1731,6 @@ every n a = a >> wait n
 wait :: Double -> C _s _s' IO ()
 wait n = lift $ threadDelay (round $ n * 1000000)
 
-{-# DEPRECATED unsafe_show "it is slightly faster than show since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
--- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_show :: (Show s, Show a) => a -> C s _s' IO ()
-unsafe_show a = do
-  (r,_) <- RWS.ask
-  lift $ putStrLn $ Prelude.show r ++ ": " ++ Prelude.show a
-
-{-# DEPRECATED unsafe_print "it is slightly faster than print since it does not involve any STM, but it should not matter that much and also printing is discourage on real benchmarking." #-} 
--- | Considered unsafe; the output may be mangled, because of many threads writing to the same output
-unsafe_print :: Show a => a -> C _s _s' IO ()
-unsafe_print a = lift $ Prelude.print a
-
 stats_stm :: C Observer () IO Double
 stats_stm = 
 #ifndef STATS_STM 
@@ -2065,10 +2053,6 @@ links = M.fromDistinctAscList . nubBy checkForUndirected <$> (M.toAscList <$> re
           checkForUndirected (_,(MkLink {end1_ = e1, end2_ = e2, directed_ = False})) (_,(MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = (e1 == e2' && e1' == e2) || (e1==e1' && e2==e2')
           checkForUndirected _ _ = False
 
--- print :: Show a => a -> C _s _s' m ()
-
-
-
 
 
 --{-# WARNING towards "TODO: wrapping" #-}
@@ -2334,6 +2318,8 @@ instance STMorIO IO where
       (s,_) <- RWS.ask
       lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
     print a = lift $ atomically $ writeTQueue __printQueue $ Prelude.show a
+
+-- it is ok that observer unsafe-prints, because when it runs, it is the only agent running.
 
 {-# RULES  "print/ObserverIO" print = printObserverIO #-}
 {-# RULES  "print/ObserverSTM" print = printObserverSTM #-}

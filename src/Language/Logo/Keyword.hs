@@ -245,25 +245,17 @@ link_breeds_own p vs = do
 breeds :: [String] -> Q [Dec]
 breeds [plural,singular] = do
   sp <- valD (varP (mkName plural)) (normalB [| IM.fromDistinctAscList <$> (filterM (\ (_,MkTurtle {tbreed_ = tb}) -> do
-                                                                                     b <- lift $ readTVar tb
+                                                                                     b <- readTVarSI tb
                                                                                      return $ b == $(litE (stringL plural))) =<< (IM.toAscList <$> turtles))
                                         |]) []
   up <- valD (varP (mkName ("unsafe_" ++ plural))) (normalB [| with (breed >>= \ b -> return (b == $(litE (stringL plural)))) =<< turtles |]) []
   x <- newName "x"
   y <- newName "y"
-  us <- funD (mkName ("unsafe_" ++ singular)) [clause [varP y] 
-                                       (normalB [| do 
-                                                   ts <- lift (readTVarIO __turtles)
-                                                   let {t = ts IM.! $(varE y)}
-                                                   b <- lift $ readTVarIO (tbreed_ t)
-                                                   return $ if b == $(litE (stringL plural)) 
-                                                            then t 
-                                                            else error ("turtle is not a " ++ singular) |]) []]
 
   ss <- funD (mkName singular) [clause [varP y] (normalB [| do 
-                                                    ts <- lift (readTVar __turtles)
+                                                    ts <- readTVarSI __turtles
                                                     let {t = ts IM.! $(varE y)}
-                                                    b <- lift $ readTVar (tbreed_ t)
+                                                    b <- readTVarSI (tbreed_ t)
                                                     return $ if b == $(litE (stringL plural)) 
                                                              then t 
                                                              else error ("turtle is not a " ++ singular) |]) []]
@@ -307,7 +299,7 @@ breeds [plural,singular] = do
                                                         MkTurtle {tbreed_ = tb} -> do
                                                          liftM ($(litE (stringL plural)) ==) (readTVarSI tb)
                                                     |]) []]
-  return [sp,up,us,ss,th',th,ta,ib]
+  return [sp,up,ss,th',th,ta,ib]
 breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wolves\", \"wolf\"]"
 
 
