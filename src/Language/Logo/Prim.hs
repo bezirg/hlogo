@@ -1488,7 +1488,7 @@ instance Agent Turtles where
       RWS.put g0
       lift $ do
         mapM_ (\ (tslice,core,g') -> 
-                 ThreadG.forkOn core __tg $ mapM_ (\ t -> RWS.evalRWST f (t,s) g') tslice
+                 ThreadG.forkOn core __tg $ RWS.evalRWST (mapM_ (\ t -> RWS.local (const (t,s)) f) tslice) undefined g'
              ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         ThreadG.wait __tg
 
@@ -1500,7 +1500,7 @@ instance Agent Turtles where
       RWS.put g0
       lift $ do
         ws <- mapM (\ (tslice,core,g') -> snd <$> 
-                                       ThreadG.forkOn core __tg (IM.elems <$> mapM (\ t -> fst <$> RWS.evalRWST f (t,s) g') tslice)
+                                       ThreadG.forkOn core __tg (IM.elems . fst <$> RWS.evalRWST (mapM (\ t -> RWS.local (const (t,s)) f) tslice) undefined g')
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1512,7 +1512,7 @@ instance With Turtles where
       RWS.put g0
       lift $ do
         ws <- mapM (\ (tslice,core,g') -> snd <$> 
-                 ThreadG.forkOn core __tg (filterM (\ (_,t) -> fst <$> RWS.evalRWST f (t,s) g') $ IM.toAscList tslice)
+                 ThreadG.forkOn core __tg (fst <$> RWS.evalRWST (filterM (\ (_,t) -> RWS.local (const (t,s)) f) $ IM.toAscList tslice) undefined g')
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         IM.fromDistinctAscList . concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1536,7 +1536,7 @@ instance Agent Patches where
       RWS.put g0
       lift $ do
               mapM (\ ((start,size,core),g') -> 
-                      ThreadG.forkOn core __tg $ V.mapM_ (\ p -> RWS.evalRWST f (p,s) g') (V.unsafeSlice start size as)
+                      ThreadG.forkOn core __tg $ RWS.evalRWST (V.mapM_ (\ p -> RWS.local (const (p,s)) f) (V.unsafeSlice start size as)) undefined g'
                    ) (zip (splitPatches (V.length as) numCapabilities) gs)
               ThreadG.wait __tg                               
 
@@ -1547,7 +1547,7 @@ instance Agent Patches where
       RWS.put g0
       lift $ do
         ws <- mapM (\ ((start,size,core),g') -> snd <$> 
-                                              Thread.forkOn core (V.toList <$> V.mapM (\ p -> fst <$> RWS.evalRWST f (p,s) g') (V.unsafeSlice start size as))
+                                              Thread.forkOn core (V.toList . fst <$> RWS.evalRWST (V.mapM (\ p -> RWS.local (const (p,s)) f) (V.unsafeSlice start size as)) undefined g')
                   ) (zip (splitPatches (V.length as) numCapabilities) gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1559,7 +1559,7 @@ instance With Patches where
       RWS.put g0
       lift $ do
         ws <- mapM (\ ((start,size,core),g') -> snd <$> 
-                                     Thread.forkOn core (V.filterM (\ p -> fst <$> RWS.evalRWST f (p,s) g') (V.unsafeSlice start size as))
+                                     Thread.forkOn core (fst <$> RWS.evalRWST (V.filterM (\ p ->  RWS.local (const (p,s)) f) (V.unsafeSlice start size as)) undefined g')
                   ) (zip (splitPatches (V.length as) numCapabilities) gs)
         V.concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1571,7 +1571,7 @@ instance Agent Links where
       RWS.put g0
       lift $ do 
         mapM_ (\ ((core, asSection),g') -> 
-                   ThreadG.forkOn core __tg $ sequence_ [RWS.evalRWST f (a,s) g' | a <- asSection]
+                   ThreadG.forkOn core __tg $ RWS.evalRWST (mapM_ (\ a -> RWS.local (const (a,s)) f) asSection) undefined g'
               ) (zip (splitLinks numCapabilities $ M.elems as) gs)
         ThreadG.wait __tg
 
@@ -1582,7 +1582,7 @@ instance Agent Links where
       RWS.put g0
       lift $ do
         ws <- mapM (\ ((core, asi),g') -> snd <$> 
-                                   Thread.forkOn core (sequence [fst <$> RWS.evalRWST f (a,s) g' | a <- asi]) 
+                                   Thread.forkOn core (fst <$> RWS.evalRWST (mapM (\ a -> RWS.local (const (a,s)) f) asi) undefined g')
                   ) (zip (splitLinks numCapabilities $ M.elems as) gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1595,7 +1595,7 @@ instance With Links where
       RWS.put g0
       lift $ do
         ws <- mapM (\ ((core, asi),g') -> snd <$> 
-                                     Thread.forkOn core (filterM (\ (_,a) -> fst <$> RWS.evalRWST f (a,s) g') asi)
+                                     Thread.forkOn core (fst <$> RWS.evalRWST (filterM (\ (_,a) -> RWS.local (const (a,s)) f) asi) undefined g')
                   ) (zip (splitLinks numCapabilities $ M.toAscList as) gs)
         M.fromDistinctAscList . concat <$> sequence [Thread.result =<< w | w <- ws]
 
