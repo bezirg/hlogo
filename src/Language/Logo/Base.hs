@@ -21,7 +21,7 @@ module Language.Logo.Base (
                           ) where
 
 import Control.Concurrent.STM
-import Control.Monad.Trans.Reader
+import Control.Monad.Trans.RWS.Strict (RWST)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Array (Array)
@@ -163,7 +163,7 @@ type Links = M.Map (Int, Int) Link
 -- 
 -- 1) to have at runtime the dynamic information of the this-agent ('self') and its parent caller ('myself').
 -- 2) to restrict the types of the NetLogo primitives to specifc contexts, thus turning the NetLogo dynamic language to a statically type-checked eDSL. 
-type C s s' m a = ReaderT (s,s',TVar TFGen) m a
+type C s s' m a = RWST (s,s') () TFGen m a
 
 instance Eq Turtle where
     MkTurtle {who_ = w1} == MkTurtle {who_ = w2} = w1 == w2

@@ -10,6 +10,8 @@
 -- The core long-lived components of the simulation engine
 module Language.Logo.Core (
                            cInit
+                          ,__initialReader
+                          ,__initialState
                           ,__tick
                           ,__who
                           ,__timer 
@@ -95,20 +97,21 @@ __printQueue :: TQueue String
 __printQueue = unsafePerformIO $ newTQueueIO
 
 
+__initialReader :: (Observer,a)
+__initialReader = (undefined,undefined)
+
+__initialState :: TFGen
+__initialState = seedTFGen (40, 0, 0, 0)
 
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> IO (Observer,a, TVar TFGen)
+cInit :: Int -> IO () 
 cInit po = do
   forkIO $ printer
 
   t <- getCurrentTime
   atomically $ writeTVar __timer t
-
-  ogen <- newTVarIO (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
-
-  return (undefined,undefined,ogen)             -- the initial context
 
   where
     -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
