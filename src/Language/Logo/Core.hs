@@ -2,28 +2,28 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Core
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental
 --
 -- The core long-lived components of the simulation engine
-module Language.Logo.Core (
-                           cInit
-                          ,__tick
-                          ,__who
-                          ,__timer 
-                          ,__tg
-                          ,__patches
-                          ,__turtles
-                          ,__links
-                          ,__printQueue
-                          ) where
+module Language.Logo.Core
+    ( cInit
+    , __tick
+    , __who
+    , __timer 
+    , __tg
+    , __patches
+    , __turtles
+    , __links
+    , __printQueue
+    ) where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
-import Language.Logo.Conf
 import Language.Logo.Base
+import Language.Logo.CmdOpt
 import qualified Data.Map.Strict as M (empty)
 import qualified  Data.IntMap.Strict as IM (empty)
 import qualified Data.Vector as V (fromList, replicateM)
@@ -63,9 +63,27 @@ __tg = unsafePerformIO $ ThreadG.new
 -- | The global turtles vector
 __patches :: Patches
 __patches = V.fromList [unsafePerformIO (newPatch x y) 
-                       | x <- [min_pxcor_ conf..max_pxcor_ conf]
-                       , y <- [min_pycor_ conf..max_pycor_ conf] 
+                       | x <- [min_pxcor_ cmdOpt..max_pxcor_ cmdOpt]
+                       , y <- [min_pycor_ cmdOpt..max_pycor_ cmdOpt] 
                        ]
+-- two other ways
+
+-- __patches = unsafePerformIO $ let b = max_pycor_ conf - min_pycor_ conf + 1
+--                               in V.generateM ((max_pxcor_ conf-min_pxcor_ conf+1)*b)
+--                                      (\ i ->
+--                                           let 
+--                                               (q,r) = i `quotRem` b
+--                                           in newPatch (q+min_pxcor_ conf) (r+min_pycor_ conf)
+--                                      )
+
+-- __patches = V.unfoldr (\ (x,y) -> if y > max_pycor_ conf
+--                                  then
+--                                      if x == max_pxcor_ conf
+--                                      then Nothing
+--                                      else Just (unsafePerformIO (newPatch (x+1) (min_pycor_ conf)), (x+1,min_pycor_ conf+1))
+--                                  else Just (unsafePerformIO (newPatch x y), (x, y+1))
+--                       ) (min_pxcor_ conf, min_pycor_ conf)
+
 
 {-# INLINE newPatch #-}
 -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
@@ -76,7 +94,7 @@ newPatch x y = let po = 1       -- patches_own only one element for now
                newTVarIO "" <*>
                newTVarIO 9.9 <*>
                -- init the patches-own variables to 0
-               (V.replicateM po (newTVarIO 0))
+               V.replicateM po (newTVarIO 0)
 #ifdef STATS_STM
                <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
 #endif
@@ -99,21 +117,15 @@ __printQueue = unsafePerformIO $ newTQueueIO
 -- Returns the top-level Observer context.
 cInit :: Int -> IO (Observer,a,TVar TFGen)
 cInit po = do
-  _ <- forkIO $ printer
 
-  t <- getCurrentTime
-  atomically $ writeTVar __timer t
+  -- The printer just reads an IO chan for incoming text and outputs it to standard output.
+  _ <- forkIO $ forever $ putStrLn =<< atomically (readTQueue __printQueue) 
+
+  (atomically . writeTVar __timer) =<< getCurrentTime
 
   ogen <- newTVarIO (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
 
   return (undefined,undefined,ogen)             -- the initial context
-
-
-  where
-    -- | The printer just reads an IO chan for incoming text and outputs it to standard output.
-    printer :: IO ()
-    printer = forever $ putStrLn =<< atomically (readTQueue __printQueue)
-
 
 
 

@@ -2,27 +2,27 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Conf
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental
 --
 -- The getopt-like command-line (HLogo-runtime) args passed to every HLogo program
-module Language.Logo.Conf
+module Language.Logo.CmdOpt
     (
-      Conf (..)
-    , conf
+      CmdOpt (..)
+    , cmdOpt
     ) where
 
-import System.IO.Unsafe (unsafePerformIO)
 import System.Console.CmdArgs
+import System.IO.Unsafe (unsafePerformIO)
 
-{-# NOINLINE conf #-}
-conf :: Conf
-conf = unsafePerformIO (cmdArgs confOpt)
+{-# NOINLINE cmdOpt #-}
+cmdOpt :: CmdOpt
+cmdOpt = unsafePerformIO (cmdArgs cmdOptSpec)
 
 -- | All the possible command-line (HLogo-runtime) args and their types
-data Conf = Conf {
+data CmdOpt = CmdOpt {
       max_pxcor_ :: Int
     , max_pycor_ :: Int
     , min_pxcor_ :: Int
@@ -32,7 +32,7 @@ data Conf = Conf {
     , vertical_wrap_ :: Bool
     , split_ :: Split
     , patch_size_ :: Int
-  } deriving (Show, Eq, Data)
+  } deriving (Show, Data)
 
 -- | Where lies the origin location (0,0) in the 2d-space
 data Origin = Center
@@ -58,13 +58,13 @@ data Split = HorizontalSplit
            | VerticalSplit
            | ChunkSplit
            | RoundRobinSplit
-           deriving (Show, Eq, Data, Enum)
+           deriving (Show, Data, Enum)
 
 -- | Internal
 --
 -- The cmdargs command-line specification.
-confOpt :: Conf
-confOpt = Conf {
+cmdOptSpec :: CmdOpt
+cmdOptSpec = CmdOpt {
             max_pxcor_ = 16 
                          &= explicit 
                          &= name "max-pxcor"  
@@ -110,6 +110,6 @@ confOpt = Conf {
           &= program "hlogo" 
           &= help "HLogo framework" 
           &= helpArg [explicit, name "h", name "help"]
-          &= summary ("model compiled with HLogo v0.1.9, (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou")
+          &= summary ("model compiled with HLogo v0.1.9, (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou") -- summary is --version
 
 

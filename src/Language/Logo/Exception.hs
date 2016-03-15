@@ -1,7 +1,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Exception
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental

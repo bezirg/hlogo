@@ -2,18 +2,15 @@
 
 module AgentsetBuilding (agentsetbuildingTestGroup) where
 
-import Language.Logo.Keyword
-import Language.Logo.Prim
-import Language.Logo.Base
-import Language.Logo.Exception
-import Control.Monad.Trans.Class
-import Test.Framework
 import Test.Framework.TH
 import Test.Framework.Providers.HUnit
 import Test.HUnit
-import Control.Monad
-import Data.List
 import Utility
+
+import Language.Logo
+import Control.Monad.Trans.Class (lift)
+
+
 
 globals ["glob1"]
 breeds ["frogs", "frog"]

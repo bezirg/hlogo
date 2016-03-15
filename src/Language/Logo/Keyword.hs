@@ -2,20 +2,21 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Keyword
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental
 --
 -- The module defines the macros of the HLogo language using TemplateHaskell (lisp-like macros).
-module Language.Logo.Keyword (
-                              -- * Running an HLogo program
-                              run, runT,
-                              -- * Declaring new breeds
-                              breeds,directed_link_breed,undirected_link_breed,
-                              -- * User-provided variables
-                              globals, patches_own, turtles_own, links_own, breeds_own, link_breeds_own
-                             ) where
+module Language.Logo.Keyword
+    (
+      -- * Running an HLogo program
+      run, runT
+      -- * Declaring new breeds
+    , breeds, directed_link_breed, undirected_link_breed
+      -- * User-provided variables
+    , globals, patches_own, turtles_own, links_own, breeds_own, link_breeds_own
+    ) where
 
 import Language.Haskell.TH
 import Language.Logo.Core
@@ -243,6 +244,7 @@ link_breeds_own p vs = do
 -- NB: breed agents share the same who counter (same namespace). The agentset 'turtles' returns all turtle-like agents (both turtles and any-breeds).
 breeds :: [String] -> Q [Dec]
 breeds [plural,singular] = do
+  sp' <- sigD (mkName plural) [t| forall _s _s' m. STMorIO m => C _s _s' m Turtles |]
   sp <- valD (varP (mkName plural)) (normalB [| IM.fromDistinctAscList <$> (filterM (\ (_,MkTurtle {tbreed_ = tb}) -> do
                                                                                      b <- readTVarSI tb
                                                                                      return $ b == $(litE (stringL plural))) =<< (IM.toAscList <$> turtles))
@@ -251,6 +253,7 @@ breeds [plural,singular] = do
   x <- newName "x"
   y <- newName "y"
 
+  ss' <- sigD (mkName singular) [t| forall _s _s' m. STMorIO m => Int -> C _s _s' m Turtle |]
   ss <- funD (mkName singular) [clause [varP y] (normalB [| do 
                                                     ts <- readTVarSI __turtles
                                                     let {t = ts IM.! $(varE y)}
@@ -298,7 +301,7 @@ breeds [plural,singular] = do
                                                         MkTurtle {tbreed_ = tb} -> do
                                                          liftM ($(litE (stringL plural)) ==) (readTVarSI tb)
                                                     |]) []]
-  return [sp,up,ss,th',th,ta,ib]
+  return [sp',sp,up,ss',ss,th',th,ta,ib]
 breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wolves\", \"wolf\"]"
 
 

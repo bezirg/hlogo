@@ -2,7 +2,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Prim
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental
@@ -51,40 +51,44 @@ import Prelude hiding (show,print, length)
 import qualified Prelude (show, print, length)
 import Language.Logo.Base
 import Language.Logo.Core
-import Language.Logo.Conf
+import Language.Logo.CmdOpt
 import Language.Logo.Exception
-import Control.Concurrent.STM
+
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
-import Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Thread as Thread (forkOn, result)
-import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
-import Data.List hiding (length)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
-import System.Random (randomR)
-import System.Random.TF.Gen (splitn, seedTFGen)
-import qualified System.Random.TF.Instances as TF (randomR)
+import Data.List (delete, nub,nubBy, find, sort, sortBy)
 import Control.Monad (forM_, liftM, filterM, forever, when, (<=<))
 import Data.Word (Word8)
+import qualified Data.Foldable as F (foldl', toList, foldlM)
+import Data.Maybe (fromMaybe)
+
+-- concurrency
+import Control.Concurrent.STM
+import GHC.Conc.Sync (unsafeIOToSTM)
 import GHC.Conc (numCapabilities)
+import Control.Concurrent (threadDelay)
+import qualified Control.Concurrent.Thread as Thread (forkOn, result)
+import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
+import Data.IORef (writeIORef, readIORef, modifyIORef')
+
+
 -- for rng
-import System.CPUTime
+import System.Random (randomR)
+import qualified System.Random.TF.Instances as TF (randomR)
+import System.Random.TF.Gen (splitn, seedTFGen)
+import System.CPUTime (getCPUTime)
 import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
-import Data.Ratio       ( numerator, denominator )
+import Data.Ratio (numerator, denominator)
+
 
 -- For diagrams
 import qualified Diagrams.Prelude as Diag
 import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
-import GHC.Conc.Sync (unsafeIOToSTM)
-import Data.Functor.Identity (runIdentity)
-
-import Data.IORef (writeIORef, readIORef, modifyIORef')
-
-import qualified Data.Foldable as F (toList, foldlM)
 
 #ifdef STATS_STM
 import Data.IORef (atomicModifyIORef, newIORef)
@@ -136,12 +140,12 @@ patch x y = pure $ patch' x y
 
 {-# INLINE patch' #-}
 patch' :: Double -> Double -> Patch
-patch' x y = let mix = min_pxcor_ conf
-                 miy = min_pycor_ conf
-                 max = max_pxcor_ conf
-                 may = max_pycor_ conf
-                 norm_x = if horizontal_wrap_ conf then ((round x + max) `mod` (max*2+1)) - max else round x
-                 norm_y = if vertical_wrap_ conf then ((round y + may) `mod` (may*2+1)) - may else round y
+patch' x y = let mix = min_pxcor_ cmdOpt
+                 miy = min_pycor_ cmdOpt
+                 max = max_pxcor_ cmdOpt
+                 may = max_pycor_ cmdOpt
+                 norm_x = if horizontal_wrap_ cmdOpt then ((round x + max) `mod` (max*2+1)) - max else round x
+                 norm_y = if vertical_wrap_ cmdOpt then ((round y + may) `mod` (may*2+1)) - may else round y
              in if mix <= norm_x && norm_x <= max && miy <= norm_y && norm_y <= may
                 then __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
                 else error "nobody" -- i cannot put nobody here because this function is pure
@@ -158,7 +162,7 @@ patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m Patch
 patch_at x y = do
   (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
-  patch (fromIntegral px + x) (fromIntegral py +y)
+  pure $ patch' (fromIntegral px + x) (fromIntegral py +y)
 
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' STM Patch #-}
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' IO Patch #-}
@@ -169,16 +173,16 @@ patch_ahead n = do
   y <- ycor
   dx_ <- dx
   dy_ <- dy
-  let mx = max_pxcor_ conf
-  let my = max_pycor_ conf
-  let px_new = (fromIntegral (round x :: Int) :: Double) + if horizontal_wrap_ conf
+  let mx = max_pxcor_ cmdOpt
+  let my = max_pycor_ cmdOpt
+  let px_new = (fromIntegral (round x :: Int) :: Double) + if horizontal_wrap_ cmdOpt
                                                          then (dx_*n + fromIntegral mx) `mod_` (mx * 2 + 1) - fromIntegral mx
                                                          else dx_*n
 
-  let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ conf
+  let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ cmdOpt
                                                          then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
                                                          else  dy_*n
-  patch px_new py_new
+  pure $ patch' px_new py_new
 
 {-# INLINE black #-}
 black :: Double
@@ -258,8 +262,8 @@ allp r as = undefined
 --   pure $ Prelude.length as == Prelude.length res
 
 {-# INLINE length #-}
-length :: [a] -> Int
-length = Prelude.length
+length :: (STMorIO m) => [a] -> C _s _s' m Int
+length = pure . Prelude.length
 
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> C Turtle _s' STM ()
@@ -269,20 +273,20 @@ jump n = do
        h <- readTVar th
        x' <- liftM ((sin_ h * n) +) $ readTVar tx
        y' <- liftM ((cos_ h * n) +) $ readTVar ty
-       let max_x = max_pxcor_ conf
+       let max_x = max_pxcor_ cmdOpt
        let dmax_x = fromIntegral max_x
-       let min_x = min_pxcor_ conf
+       let min_x = min_pxcor_ cmdOpt
        let dmin_x = fromIntegral min_x
-       let max_y = max_pycor_ conf
+       let max_y = max_pycor_ cmdOpt
        let dmax_y = fromIntegral max_y
-       let min_y = min_pycor_ conf
+       let min_y = min_pycor_ cmdOpt
        let dmin_y = fromIntegral min_y
-       if horizontal_wrap_ conf
+       if horizontal_wrap_ cmdOpt
          then
            writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
          else
            when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx x'
-       if vertical_wrap_ conf
+       if vertical_wrap_ cmdOpt
          then
              writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
          else
@@ -293,22 +297,22 @@ jump n = do
 setxy :: Double -> Double -> C Turtle _s' STM ()
 setxy x' y' = do
     (MkTurtle {xcor_ = tx, ycor_ = ty},_,_) <- Reader.ask
-    let max_x = max_pxcor_ conf
+    let max_x = max_pxcor_ cmdOpt
     let dmax_x = fromIntegral max_x
-    let min_x = min_pxcor_ conf
+    let min_x = min_pxcor_ cmdOpt
     let dmin_x = fromIntegral min_x
-    let max_y = max_pycor_ conf
+    let max_y = max_pycor_ cmdOpt
     let dmax_y = fromIntegral max_y
-    let min_y = min_pycor_ conf
+    let min_y = min_pycor_ cmdOpt
     let dmin_y = fromIntegral min_y
-    if horizontal_wrap_ conf
+    if horizontal_wrap_ cmdOpt
       then
         lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
       else
           if dmin_x -0.5 < x' && x' < dmax_x + 0.5
           then lift $ writeTVar tx $! x'
           else error "wrap"
-    if vertical_wrap_ conf
+    if vertical_wrap_ cmdOpt
       then
           lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
       else
@@ -398,20 +402,20 @@ turtle_set ts = liftM (foldr (\ t@(MkTurtle {who_=w}) acc ->
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 --  NB: HLogo no support for nested patch_set concatenation/flattening
 patch_set :: STMorIO m => [C _s _s' m Patch] -> C _s _s' m Patches
-patch_set ts = V.fromList <$> sequence ts
+patch_set = fmap V.fromList . sequence
 
 {-# SPECIALIZE  link_set :: [C _s _s' STM Link] -> C _s _s' STM Links #-}
 {-# SPECIALIZE  link_set :: [C _s _s' IO Link] -> C _s _s' IO Links #-}
 -- | Reports an agentset containing all of the links anywhere in any of the inputs.
 --  NB: HLogo no support for nested turtle_set concatenation/flattening
 link_set :: STMorIO m => [C _s _s' m Link] -> C _s _s' m Links
-link_set ts = liftM (foldr (\ l@(MkLink {end1_=f,end2_=t}) acc -> -- if x == Nobody -- filter Nobody
+link_set = fmap (foldr (\ l@(MkLink {end1_=f,end2_=t}) acc -> -- if x == Nobody -- filter Nobody
                                       -- then acc
                                       -- else case x of -- type check
                                       --        LinkRef _ _ -> 
                                  M.insert (f,t) l acc
                                              -- _ -> throw $ TypeException "link" x
-                           ) M.empty) (sequence ts)
+                        ) M.empty) . sequence
 
 
 {-# WARNING can_movep "TODO: test it" #-}
@@ -424,16 +428,16 @@ can_movep n = do
   y <- ycor
   dx_ <- dx
   dy_ <- dy
-  let mx = max_pxcor_ conf
-  let my = max_pycor_ conf
-  let px_new = round $ x + if horizontal_wrap_ conf
+  let mx = max_pxcor_ cmdOpt
+  let my = max_pycor_ cmdOpt
+  let px_new = round $ x + if horizontal_wrap_ cmdOpt
                            then (dx_*n + fromIntegral mx) `mod_` (mx * 2 + 1) - fromIntegral mx
                            else dx_*n
-  let py_new = round $ y + if vertical_wrap_ conf
+  let py_new = round $ y + if vertical_wrap_ cmdOpt
                            then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
                            else  dy_*n
-  pure (not (not (horizontal_wrap_ conf) && (px_new > mx || px_new < min_pxcor_ conf)) 
-       || (not (vertical_wrap_ conf) && (py_new > my || py_new < min_pycor_ conf)))
+  pure (not (not (horizontal_wrap_ cmdOpt) && (px_new > mx || px_new < min_pxcor_ cmdOpt)) 
+       || (not (vertical_wrap_ cmdOpt) && (py_new > my || py_new < min_pycor_ cmdOpt)))
 
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
@@ -446,8 +450,7 @@ set_heading v = do
 pxcor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pxcor = do
   (s,_,_) <- Reader.ask
-  MkPatch {pxcor_ = x} <- patch_on_ s
-  pure x
+  pxcor_ <$> patch_on_ s
 
 {-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' STM Int #-}
 {-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' IO Int #-}
@@ -455,8 +458,7 @@ pxcor = do
 pycor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pycor = do
   (s,_,_) <- Reader.ask
-  MkPatch {pycor_ = y} <- patch_on_ s
-  pure y
+  pycor_ <$> patch_on_ s
 
 {-# SPECIALIZE  set_plabel :: String -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_plabel :: String -> C Patch _s' STM () #-}
@@ -498,11 +500,11 @@ set_label_color v = do
 set_xcor :: Double -> C Turtle _s' STM ()
 set_xcor x' = do
     (MkTurtle {xcor_ = tx},_,_) <- Reader.ask
-    let max_x = max_pxcor_ conf
+    let max_x = max_pxcor_ cmdOpt
     let dmax_x = fromIntegral max_x
-    let min_x = min_pxcor_ conf
+    let min_x = min_pxcor_ cmdOpt
     let dmin_x = fromIntegral min_x
-    if horizontal_wrap_ conf
+    if horizontal_wrap_ cmdOpt
      then
          lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
      else
@@ -519,11 +521,11 @@ set_size v = do
 set_ycor :: Double -> C Turtle _s' STM ()
 set_ycor y' = do
    (MkTurtle {ycor_ = ty},_,_) <- Reader.ask
-   let max_y = max_pycor_ conf
+   let max_y = max_pycor_ cmdOpt
    let dmax_y = fromIntegral max_y
-   let min_y = min_pycor_ conf
+   let min_y = min_pycor_ cmdOpt
    let dmin_y = fromIntegral min_y
-   if vertical_wrap_ conf
+   if vertical_wrap_ cmdOpt
      then
          lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
      else
@@ -544,13 +546,13 @@ who = do
 {-# SPECIALIZE  dx :: C Turtle _s' IO Double #-}
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: STMorIO m => C Turtle _s' m Double
-dx = liftM sin_ heading
+dx = sin_ <$> heading
 
 {-# SPECIALIZE  dy :: C Turtle _s' STM Double #-}
 {-# SPECIALIZE  dy :: C Turtle _s' IO Double #-}
 -- | Reports the y-increment (the amount by which the turtle's ycor would change) if the turtle were to take one step forward in its current heading. 
 dy :: STMorIO m => C Turtle _s' m Double
-dy = liftM cos_ heading
+dy = cos_ <$> heading
 
 -- | Reports a number suitable for seeding the random number generator.
 -- The numbers reported by new-seed are based on the current date and time in milliseconds. 
@@ -559,7 +561,7 @@ dy = liftM cos_ heading
 -- NB: taken from Haskell's random library
 new_seed :: C _s _s' STM Int
 new_seed = do
-    cpt          <- lift $ unsafeIOToSTM getCPUTime
+    cpt <- lift $ unsafeIOToSTM getCPUTime
     (sec, psec) <- lift $ unsafeIOToSTM getTime
     pure $ fromIntegral (sec * 12345 + psec + cpt)
         where
@@ -567,19 +569,19 @@ new_seed = do
           getTime = do
              utc <- getCurrentTime
              let daytime = toRational $ utctDayTime utc
-             pure $ quotRem (numerator daytime) (denominator daytime)
+             pure $ numerator daytime `quotRem` denominator daytime
 
 random_seed :: Int -> C s _s' STM ()
 random_seed i = do
   (_,_,tgen) <-Reader.ask
-  lift $ writeTVar tgen $! (seedTFGen (fromIntegral i, 0, 0, 0))
+  lift $ writeTVar tgen $! seedTFGen (fromIntegral i, 0, 0, 0)
                 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
 random_xcor :: C s _s' STM Double
 random_xcor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = randomR (fromIntegral (min_pxcor_ conf) :: Double, fromIntegral $ max_pxcor_ conf) gen
+  let (v, gen') = randomR (fromIntegral (min_pxcor_ cmdOpt) :: Double, fromIntegral $ max_pxcor_ cmdOpt) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -588,7 +590,7 @@ random_ycor :: C s _s' STM Double
 random_ycor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = randomR (fromIntegral (min_pycor_ conf) :: Double, fromIntegral $ max_pycor_ conf) gen
+  let (v, gen') = randomR (fromIntegral (min_pycor_ cmdOpt) :: Double, fromIntegral $ max_pycor_ cmdOpt) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -597,7 +599,7 @@ random_pxcor :: C s _s' STM Int
 random_pxcor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = TF.randomR (min_pxcor_ conf, max_pxcor_ conf) gen
+  let (v, gen') = TF.randomR (min_pxcor_ cmdOpt, max_pxcor_ cmdOpt) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -606,7 +608,7 @@ random_pycor :: C s _s' STM Int
 random_pycor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = TF.randomR (min_pycor_ conf, max_pycor_ conf) gen
+  let (v, gen') = TF.randomR (min_pycor_ cmdOpt, max_pycor_ cmdOpt) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -829,43 +831,43 @@ xor p q = (p || q) && not (p && q)
 {-# SPECIALIZE  patch_size :: C _s _s' STM Int #-}
 {-# SPECIALIZE  patch_size :: C _s _s' IO Int #-}
 patch_size :: STMorIO m => C _s _s' m Int
-patch_size = pure $ patch_size_ conf
+patch_size = pure $ patch_size_ cmdOpt
 
 {-# SPECIALIZE  max_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
 max_pxcor :: STMorIO m => C _s _s' m Int
-max_pxcor = pure $ max_pxcor_ conf
+max_pxcor = pure $ max_pxcor_ cmdOpt
 
 {-# SPECIALIZE  max_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 max_pycor :: STMorIO m => C _s _s' m Int
-max_pycor = pure $ max_pycor_ conf
+max_pycor = pure $ max_pycor_ cmdOpt
 
 {-# SPECIALIZE  min_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
 min_pxcor :: STMorIO m => C _s _s' m Int
-min_pxcor = pure $ min_pxcor_ conf
+min_pxcor = pure $ min_pxcor_ cmdOpt
 
 {-# SPECIALIZE  min_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 min_pycor :: STMorIO m => C _s _s' m Int
-min_pycor = pure $ min_pycor_ conf
+min_pycor = pure $ min_pycor_ cmdOpt
 
 {-# SPECIALIZE  world_width :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_width :: C _s _s' IO Int #-}
 -- | This reporter gives the total width of the NetLogo world. 
 world_width :: STMorIO m => C _s _s' m Int
-world_width = pure $ max_pxcor_ conf - min_pxcor_ conf + 1
+world_width = pure $ max_pxcor_ cmdOpt - min_pxcor_ cmdOpt + 1
 
 {-# SPECIALIZE  world_height :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_height :: C _s _s' IO Int #-}
 -- | This reporter gives the total height of the NetLogo world. 
 world_height :: STMorIO m => C _s _s' m Int
-world_height = pure $ max_pycor_ conf - min_pycor_ conf + 1
+world_height = pure $ max_pycor_ cmdOpt - min_pycor_ cmdOpt + 1
 
 
 {-# WARNING clear_all_plots "TODO" #-}
@@ -1144,8 +1146,7 @@ shuffle [] = pure []
 shuffle [x] = pure [x]
 shuffle l = do 
   x <- one_of l
-  xs <- shuffle (delete x l)
-  pure $ x:xs
+  (x:) <$> shuffle (delete x l)
 
 {-# INLINE sort_ #-}
 -- | Reports a sorted list of numbers, strings, or agents. 
@@ -1263,7 +1264,7 @@ min_ = minimum
 
 -- | Reports the statistical mean of the numeric items in the given list.
 mean :: [Double] -> Double
-mean l = let (t,n) = foldl' (\(b,c) a -> (a+b,c+1)) (0,0) l 
+mean l = let (t,n) = F.foldl' (\(b,c) a -> (a+b,c+1)) (0,0) l 
          in t / n
 
 -- | Reports the statistical median of the numeric items of the given list.
@@ -1343,8 +1344,8 @@ link_length = do
     y <- lift $ readTVar fy
     x' <- lift $ readTVar tx
     y' <- lift $ readTVar ty
-    pure $ sqrt (delta x x' (max_pxcor_ conf) ^ (2 :: Int) + 
-                delta y y' (max_pycor_ conf) ^ (2 :: Int))
+    pure $ sqrt (delta x x' (max_pxcor_ cmdOpt) ^ (2 :: Int) + 
+                delta y y' (max_pycor_ cmdOpt) ^ (2 :: Int))
 
 
 
@@ -1473,7 +1474,10 @@ increaseTotalSTM s = case s of
 
 #endif
 
--- | plus one because we need a new generator for the parent ask/ofcaller too
+
+-- | Internal
+--
+-- plus one because we need a new generator for the parent ask/ofcaller too
 numBits :: Int
 numBits = ceiling ((logBase 2 $ fromIntegral $ numCapabilities + 1) :: Double)
 
@@ -1536,11 +1540,10 @@ splitPatches :: Int -> Int -> [(Int,Int,Int)]
 splitPatches width n = let (q,r) = width `quotRem` n
                            splitPatches' (0,s,l) c = (0, q+s, (s,q,c):l)
                            splitPatches' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
-                       in  case (foldl' splitPatches' (r,0,[]) ([1..n] :: [Int])) of
+                       in  case (F.foldl' splitPatches' (r,0,[]) ([1..n] :: [Int])) of
                              (_,_,res) -> res
 
 instance Agent Patches where
-    -- | The specified agent or agentset runs the given commands. 
     ask f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
@@ -1620,7 +1623,7 @@ instance With Links where
 -- | internal
 splitLinks :: Int -> [a] -> [(Int, [a])]
 splitLinks 1 l = [(1,l)]
-splitLinks n l = let (d,m) = length l `quotRem` n
+splitLinks n l = let (d,m) = Prelude.length l `quotRem` n
                      split' 0 _ _ = []
                      split' x 0 l' = let (t, rem_list) = splitAt d l'
                                      in (x,t) : split' (x-1) 0 rem_list
@@ -1631,18 +1634,6 @@ splitLinks n l = let (d,m) = length l `quotRem` n
 -- | For an agent, reports the value of the reporter for that agent (turtle or patch). 
 --  For an agentset, reports a list that contains the value of the reporter for each agent in the agentset (in random order). 
                  
-  
--- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
--- in other words, the agents satisfying the given condition. 
---with :: (Agent a, Agent [a]) => C a _s IO Bool -> [a] -> C _s _s' IO [a]
--- with f as = do
---   res <- f `of_` as
---   return $ foldr (\ (a, r) l -> if r then a:l else l) [] (zip as res)
-
---{-# SPECIALIZE  with :: C Turtle p IO Bool -> Turtles -> C p p' IO [Turtle] #-}
---{-# SPECIALIZE  with :: C Patch p IO Bool -> Patches -> C p p' IO [Patch] #-}
---{-# SPECIALIZE  with :: C Link p IO Bool -> Links -> C p p' IO [Link] #-}
-
 {-# WARNING loop  "TODO: use MaybeT or ErrorT" #-}
 -- |  Runs the list of commands forever, or until the current procedure exits through use of the stop command or the report command. 
 -- NB: Report command will not stop it in HLogo, only the stop primitive. 
@@ -1746,7 +1737,7 @@ every n a = a >> wait n
 -- | Wait the given number of seconds. (This needn't be an integer; you can specify fractions of seconds.) Note that you can't expect complete precision; the agent will never wait less than the given amount, but might wait slightly more. 
 -- | NB: Works differently than NetLogo, in that only the calling thread is suspended, not the whole simulation
 wait :: Double -> C _s _s' IO ()
-wait n = lift $ threadDelay (round $ n * 1000000)
+wait n = lift $ threadDelay (truncate $ n * 1000000)
 
 stats_stm :: C Observer () IO Double
 stats_stm = 
@@ -1907,8 +1898,8 @@ neighbors = do
                                   , (x+1, y)
                                   , (x+1, y+1)
                                   ]
-                      , (horizontal_wrap_ conf || (x' <= max_pxcor_ conf && x' >= min_pxcor_ conf)) 
-                      && (vertical_wrap_ conf || (y' <= max_pycor_ conf || y' >=  min_pycor_ conf))]
+                      , (horizontal_wrap_ cmdOpt || (x' <= max_pxcor_ cmdOpt && x' >= min_pxcor_ cmdOpt)) 
+                      && (vertical_wrap_ cmdOpt || (y' <= max_pycor_ cmdOpt || y' >=  min_pycor_ cmdOpt))]
 
 -- | Reports an agentset containing the 4 surrounding patches
 neighbors4 :: (STMorIO m, TurtlePatch s) => C s _s' m Patches
@@ -1921,8 +1912,8 @@ neighbors4 = do
                                   , (x, y-1)
                                   , (x, y+1)
                                   ]
-                      , (horizontal_wrap_ conf || (x' <= max_pxcor_ conf && x' >= min_pxcor_ conf)) 
-                      && (vertical_wrap_ conf || (y' <= max_pycor_ conf || y' >=  min_pycor_ conf))]
+                      , (horizontal_wrap_ cmdOpt || (x' <= max_pxcor_ cmdOpt && x' >= min_pxcor_ cmdOpt)) 
+                      && (vertical_wrap_ cmdOpt || (y' <= max_pycor_ cmdOpt || y' >=  min_pycor_ cmdOpt))]
 
 
 {-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' STM Turtles #-}
@@ -1952,15 +1943,13 @@ turtles_at x y = do
                                    pure $ round x' == px && round y' == py
                                 ) =<< (IM.toAscList <$> turtles))
 
-{-# SPECIALIZE  patch_here :: C Turtle _s' STM Patch #-}
-{-# SPECIALIZE  patch_here :: C Turtle _s' IO Patch #-}
+{-# SPECIALIZE INLINE patch_here :: C Turtle _s' STM Patch #-}
+{-# SPECIALIZE INLINE patch_here :: C Turtle _s' IO Patch #-}
 -- | patch-here reports the patch under the turtle. 
 patch_here :: STMorIO m => C Turtle _s' m Patch
 patch_here = do
     (MkTurtle {xcor_ = x, ycor_ = y},_,_) <- Reader.ask
-    x' <- readTVarSI x
-    y' <- readTVarSI y
-    patch x' y'
+    patch' <$> readTVarSI x <*> readTVarSI y
 
 
 {-# SPECIALIZE INLINE turtles :: C _s _s' STM Turtles #-}
@@ -1969,8 +1958,8 @@ patch_here = do
 turtles :: STMorIO m => C _s _s' m Turtles
 turtles = readTVarSI __turtles
 
-{-# SPECIALIZE  turtle :: Int -> C _s _s' STM Turtle #-}
-{-# SPECIALIZE  turtle :: Int -> C _s _s' IO Turtle #-}
+{-# SPECIALIZE INLINE turtle :: Int -> C _s _s' STM Turtle #-}
+{-# SPECIALIZE INLINE turtle :: Int -> C _s _s' IO Turtle #-}
 -- | Reports the turtle with the given who number, or nobody if there is no such turtle. For breeded turtles you may also use the single breed form to refer to them. 
 turtle :: STMorIO m => Int -> C _s _s' m Turtle
 turtle n = do
@@ -1978,8 +1967,8 @@ turtle n = do
     maybe nobody pure $ IM.lookup n ts
 
 
-{-# SPECIALIZE  heading :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  heading :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE INLINE heading :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE INLINE heading :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It indicates the direction the turtle is facing. 
 heading :: STMorIO m => C Turtle _s' m Double
 heading = do
@@ -1987,43 +1976,43 @@ heading = do
     readTVarSI h
 
 
-{-# SPECIALIZE  xcor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  xcor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE INLINE xcor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE INLINE xcor :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the current x coordinate of the turtle. 
 xcor :: STMorIO m => C Turtle _s' m Double
 xcor = do
     (MkTurtle {xcor_ = x},_,_) <- Reader.ask
     readTVarSI x
 
-{-# SPECIALIZE  ycor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  ycor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE INLINE ycor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE INLINE ycor :: C Turtle _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the current y coordinate of the turtle.
 ycor :: STMorIO m => C Turtle _s' m Double
 ycor = do
     (MkTurtle {ycor_ = y},_,_) <- Reader.ask
     readTVarSI y
 
-{-# SPECIALIZE  pcolor :: C Turtle _s' STM Double #-}
-{-# SPECIALIZE  pcolor :: C Turtle _s' IO Double #-}
-{-# SPECIALIZE  pcolor :: C Patch _s' STM Double #-}
-{-# SPECIALIZE  pcolor :: C Patch _s' IO Double #-}
+{-# SPECIALIZE INLINE pcolor :: C Turtle _s' STM Double #-}
+{-# SPECIALIZE INLINE pcolor :: C Turtle _s' IO Double #-}
+{-# SPECIALIZE INLINE pcolor :: C Patch _s' STM Double #-}
+{-# SPECIALIZE INLINE pcolor :: C Patch _s' IO Double #-}
 pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
 pcolor = do
     (s,_,_) <- Reader.ask
-    (MkPatch {pcolor_ = tc}) <- patch_on_ s
-    readTVarSI tc
+    readTVarSI =<< pcolor_ <$> patch_on_ s
 
-
+{-# SPECIALIZE INLINE plabel :: C Turtle _s' STM String #-}
+{-# SPECIALIZE INLINE plabel :: C Turtle _s' IO String #-}
+{-# SPECIALIZE INLINE plabel :: C Patch _s' STM String #-}
+{-# SPECIALIZE INLINE plabel :: C Patch _s' IO String #-}
 plabel :: STMorIO m => TurtlePatch s => C s _s' m String
 plabel = do
     (s,_,_) <- Reader.ask
-    (MkPatch {plabel_ = tl}) <- patch_on_ s
-    readTVarSI tl
+    readTVarSI =<< plabel_ <$> patch_on_ s
 
 
-
-{-# SPECIALIZE  color :: TurtleLink s => C s _s' STM Double #-}
-{-# SPECIALIZE  color :: TurtleLink s => C s _s' IO Double #-}
+{-# SPECIALIZE INLINE color :: TurtleLink s => C s _s' STM Double #-}
+{-# SPECIALIZE INLINE color :: TurtleLink s => C s _s' IO Double #-}
 -- | This is a built-in turtle variable. It holds the turtle's "who number" or ID number, an integer greater than or equal to zero. You cannot set this variable; a turtle's who number never changes. 
 color :: STMorIO m => TurtleLink s => C s _s' m Double
 color = do
@@ -2031,8 +2020,8 @@ color = do
     readTVarSI (color_ s)
 
 
-{-# SPECIALIZE  breed :: TurtleLink s => C s _s' STM String #-}
-{-# SPECIALIZE  breed :: TurtleLink s => C s _s' IO String #-}
+{-# SPECIALIZE INLINE breed :: TurtleLink s => C s _s' STM String #-}
+{-# SPECIALIZE INLINE breed :: TurtleLink s => C s _s' IO String #-}
 breed :: STMorIO m => TurtleLink s => C s _s' m String
 breed = do
     (s,_,_) <- Reader.ask
@@ -2052,14 +2041,11 @@ towards = todo
 -- -- | Reports an agentset that includes only those agents from the original agentset whose distance from the caller is less than or equal to number. This can include the agent itself.
 -- in_radius :: (TurtlePatch a, TurtlePatch s) => [a] -> Double -> C s _s' m [a]
 
-{-# SPECIALIZE   link :: Int -> Int -> C _s _s' STM Link #-}
-{-# SPECIALIZE   link :: Int -> Int -> C _s _s' IO Link #-}
+{-# SPECIALIZE INLINE link :: Int -> Int -> C _s _s' STM Link #-}
+{-# SPECIALIZE INLINE link :: Int -> Int -> C _s _s' IO Link #-}
 -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
 link :: STMorIO m => Int -> Int -> C _s _s' m Link
-link f t = do
-    ls <- readTVarSI __links
-    maybe nobody pure $ M.lookup (f,t) ls
-
+link f t = (fromMaybe (error "nobody") . M.lookup (f,t)) <$> readTVarSI __links
 
 {-# SPECIALIZE  links :: C _s _s' STM Links #-}
 {-# SPECIALIZE  links :: C _s _s' IO Links #-}
@@ -2090,15 +2076,15 @@ links = M.fromDistinctAscList . nubBy checkForUndirected <$> (M.toAscList <$> re
 --     return $ sqrt (deltaX x x' ^ 2 + 
 --                 deltaY y y' ^ 2)
 --     where
---       deltaX a1 a2 = if horizontal_wrap_ conf
+--       deltaX a1 a2 = if horizontal_wrap_ cmdOpt
 --                      then min 
 --                               (abs (a2 - a1))
---                               (abs (a2 - (fromIntegral $ max_pxcor_ conf) - a1 + (fromIntegral $ min_pxcor_ conf) + 1))
+--                               (abs (a2 - (fromIntegral $ max_pxcor_ cmdOpt) - a1 + (fromIntegral $ min_pxcor_ cmdOpt) + 1))
 --                      else abs (a2 -a1)
---       deltaY a1 a2 = if vertical_wrap_ conf
+--       deltaY a1 a2 = if vertical_wrap_ cmdOpt
 --                      then min 
 --                               (abs (a2 - a1)) 
---                               (abs (a2 - (fromIntegral $ max_pycor_ conf) - a1 + (fromIntegral $ min_pycor_ conf) + 1))
+--                               (abs (a2 - (fromIntegral $ max_pycor_ cmdOpt) - a1 + (fromIntegral $ min_pycor_ cmdOpt) + 1))
 --                      else abs (a2 -a1)
 
 --   towards a = do
@@ -2140,8 +2126,8 @@ links = M.fromDistinctAscList . nubBy checkForUndirected <$> (M.toAscList <$> re
 --     filterM (\ (TurtleRef _ (MkTurtle {xcor_ = tx', ycor_ = ty'})) -> do 
 --                x' <- lift $ readTVar tx'
 --                y' <- lift $ readTVar ty'
---                return $ sqrt (delta x x' (fromIntegral (max_pxcor_ conf) :: Int) ^ (2::Int) + 
---                            delta y y' (fromIntegral (max_pycor_ conf) :: Int) ^ (2::Int)) <= n) as
+--                return $ sqrt (delta x x' (fromIntegral (max_pxcor_ cmdOpt) :: Int) ^ (2::Int) + 
+--                            delta y y' (fromIntegral (max_pycor_ cmdOpt) :: Int) ^ (2::Int)) <= n) as
 
 
 --   distance [PatchRef (x,y) _] = distancexy (fromIntegral x) (fromIntegral y)
@@ -2161,15 +2147,15 @@ links = M.fromDistinctAscList . nubBy checkForUndirected <$> (M.toAscList <$> re
 --     return $ sqrt (deltaX x x' ^ 2 + 
 --                 deltaY y y' ^ 2)
 --     where
---       deltaX a1 a2 = if horizontal_wrap_ conf
+--       deltaX a1 a2 = if horizontal_wrap_ cmdOpt
 --                      then min 
 --                               (abs (a2 - a1))
---                               (abs (a2 - fromIntegral (max_pxcor_ conf) - a1 + fromIntegral (min_pxcor_ conf) + 1))
+--                               (abs (a2 - fromIntegral (max_pxcor_ cmdOpt) - a1 + fromIntegral (min_pxcor_ cmdOpt) + 1))
 --                      else abs (a2 -a1)
---       deltaY a1 a2 = if vertical_wrap_ conf
+--       deltaY a1 a2 = if vertical_wrap_ cmdOpt
 --                      then min 
 --                               (abs (a2 - a1)) 
---                               (abs (a2 - fromIntegral (max_pycor_ conf) - a1 + fromIntegral (min_pycor_ conf) + 1))
+--                               (abs (a2 - fromIntegral (max_pycor_ cmdOpt) - a1 + fromIntegral (min_pycor_ cmdOpt) + 1))
 --                      else abs (a2 -a1)
 
 --   towards a = do
@@ -2237,19 +2223,19 @@ scale_color c v minArg maxArg = do
       -- | Internal
       -- It has bug with mod_ truncate
       modulateDouble :: Double -> Double
-      modulateDouble c = runIdentity $
+      modulateDouble c = 
         if c < 0 || c >= maxColor
-        then do
+        then 
           let c' = c `mod_` truncate maxColor
-          if c'<0
-            then do
+          in if c'<0
+             then 
               let c'' = c' + maxColor
-              if c'' >= maxColor
-               then pure 139.9999999999999
-               else pure c''
-            else pure c'
-        else pure c
-             where maxColor = 140 :: Double
+              in if c'' >= maxColor
+                 then 139.9999999999999
+                 else c''
+             else  c'
+        else c
+            where maxColor = 140 :: Double
 
 -- | Tells each patch to give equal shares of (number * 100) percent of the value of patch-variable to its eight neighboring patches. number should be between 0 and 1. Regardless of topology the sum of patch-variable will be conserved across the world. (If a patch has fewer than eight neighbors, each neighbor still gets an eighth share; the patch keeps any leftover shares.) 
 -- can be done better, in a single sequential atomic
@@ -2308,58 +2294,57 @@ class Monad m => STMorIO m where
 
 instance STMorIO STM where
     readTVarSI = lift . readTVar
+
     ticks = lift $ unsafeIOToSTM $ readIORef __tick
-    timer = lift $ do
-      t <- readTVar __timer
-      t' <- unsafeIOToSTM getCurrentTime
-      pure $ realToFrac (t' `diffUTCTime` t)              
-    reset_timer = lift $ do
-       t <- unsafeIOToSTM getCurrentTime
-       writeTVar __timer $! t
+
+    timer = lift $ realToFrac <$> (diffUTCTime <$> unsafeIOToSTM getCurrentTime <*> readTVar __timer)
+
+    reset_timer = lift $ writeTVar __timer =<< unsafeIOToSTM getCurrentTime
+
     show a = do
       (s,_,_) <- Reader.ask
       lift $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
-    print a = lift $ writeTQueue __printQueue $ Prelude.show a
+
+    print = lift . writeTQueue __printQueue . Prelude.show
 
 instance STMorIO IO where
     readTVarSI = lift . readTVarIO
+
     ticks = lift $ readIORef __tick
-    timer = lift $ do
-       t <- readTVarIO __timer
-       t' <- getCurrentTime
-       pure $ realToFrac (t' `diffUTCTime` t)              
-    reset_timer = lift $ do
-      t <- getCurrentTime
-      atomically $ writeTVar __timer $! t
+
+    timer = lift $ realToFrac <$> (diffUTCTime <$> getCurrentTime <*> readTVarIO __timer)
+
+    reset_timer = lift $ (atomically . writeTVar __timer) =<< getCurrentTime
+      
     show a = do
       (s,_,_) <- Reader.ask
       lift $ atomically $ writeTQueue __printQueue $ Prelude.show s ++ ": " ++ Prelude.show a
-    print a = lift $ atomically $ writeTQueue __printQueue $ Prelude.show a
 
--- it is ok that observer unsafe-prints, because when it runs, it is the only agent running.
+    print = lift . (atomically . writeTQueue __printQueue) . Prelude.show
 
-{-# RULES  "print/ObserverIO" print = printObserverIO #-}
-{-# RULES  "print/ObserverSTM" print = printObserverSTM #-}
+
+{-# RULES "print/ObserverIO" print = printObserverIO #-}
+{-# RULES "print/ObserverSTM" print = printObserverSTM #-}
 printObserverIO :: Show a => a -> C Observer b IO ()
 printObserverIO = lift . Prelude.print
 printObserverSTM :: Show a => a -> C Observer b STM ()
-printObserverSTM a = lift $ unsafeIOToSTM $ Prelude.print a
+printObserverSTM a = lift $ unsafeIOToSTM $ Prelude.print a -- it is ok that observer unsafe-prints, because when it runs, it is the only agent running.
 
 {-# RULES "show/ObserverIO" show = showObserverIO #-}
-{-# RULES  "show/ObserverSTM" show = showObserverSTM #-}
+{-# RULES "show/ObserverSTM" show = showObserverSTM #-}
 showObserverIO :: Show a => a -> C Observer b IO ()
 showObserverIO a = lift $ Prelude.putStrLn ("observer: " ++ Prelude.show a)
 showObserverSTM :: Show a => a -> C Observer b STM ()
 showObserverSTM a = lift $ unsafeIOToSTM $ Prelude.putStrLn ("observer: " ++ Prelude.show a)
 
 
---{-# SPECIALIZE  ticks :: C _s _s' STM Double #-}
---{-# SPECIALIZE  ticks :: C _s _s' IO Double #-}
---{-# SPECIALIZE  timer :: C _s _s' STM Double #-}
---{-# SPECIALIZE  timer :: C _s _s' IO Double #-}
---{-# SPECIALIZE  reset_timer :: C _s _s' STM () #-}
---{-# SPECIALIZE  reset_timer :: C _s _s' IO () #-}
---{-# SPECIALIZE  show :: (Show s, Show a) => a -> C s _s' STM () #-}
---{-# SPECIALIZE  show :: (Show s, Show a) => a -> C s _s' IO () #-}
---{-# SPECIALIZE  print :: Show a => a -> C _s _s' STM () #-}
---{-# SPECIALIZE  print :: Show a => a -> C _s _s' IO () #-}
+{-# SPECIALIZE INLINE ticks :: C _s _s' STM Double #-}
+{-# SPECIALIZE INLINE ticks :: C _s _s' IO Double #-}
+{-# SPECIALIZE INLINE timer :: C _s _s' STM Double #-}
+{-# SPECIALIZE INLINE timer :: C _s _s' IO Double #-}
+{-# SPECIALIZE INLINE reset_timer :: C _s _s' STM () #-}
+{-# SPECIALIZE INLINE reset_timer :: C _s _s' IO () #-}
+{-# SPECIALIZE INLINE show :: (Show s, Show a) => a -> C s _s' STM () #-}
+{-# SPECIALIZE INLINE show :: (Show s, Show a) => a -> C s _s' IO () #-}
+{-# SPECIALIZE INLINE print :: Show a => a -> C _s _s' STM () #-}
+{-# SPECIALIZE INLINE print :: Show a => a -> C _s _s' IO () #-}

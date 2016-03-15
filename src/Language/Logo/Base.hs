@@ -2,7 +2,7 @@
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Base
--- Copyright   :  (c) 2013-2015, the HLogo team
+-- Copyright   :  (c) 2013-2016, the HLogo team
 -- License     :  BSD3
 -- Maintainer  :  Nikolaos Bezirgiannis <bezirgia@cwi.nl>
 -- Stability   :  experimental
@@ -35,10 +35,13 @@ import Data.IORef
 -- Agents (of the same type, since we are typed) can be checked for 'Eq'uality (= in NetLogo, == in HLogo), 'Ord'ered (>,<,>=...)
 -- and 'Show'ed their identiy to screen.
 class Agent s where      
+    -- | The specified agent or agentset runs the given commands. 
     ask :: C (One s) p IO _b -> s -> C p p' IO ()
     of_ :: C (One s) p IO b -> s -> C p p' IO (Many s b)
 
 class With s where
+    -- | Takes two inputs: an agentset and a boolean reporter. Reports a new agentset containing only those agents that reported true 
+    -- in other words, the agents satisfying the given condition. 
     with :: C (One s) p IO Bool -> s -> C p p' IO s
 
 type family One a where

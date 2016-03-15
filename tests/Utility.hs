@@ -1,6 +1,7 @@
 module Utility where
 
-import Language.Logo.Exception
+import Language.Logo
+
 import Control.Monad.Trans.Class
 import Test.HUnit
 

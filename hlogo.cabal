@@ -58,14 +58,14 @@ library
     -- for command-line setting the World 2d-space options (max-pxcor, world wrapping)
     cmdargs
   exposed-modules:
-    Language.Logo, 
+    Language.Logo 
+  other-modules:      
     Language.Logo.Base, 
     Language.Logo.Core, 
     Language.Logo.Keyword, 
     Language.Logo.Prim, 
     Language.Logo.Exception
-  other-modules:      
-    Language.Logo.Conf
+    Language.Logo.CmdOpt
   ghc-options: -Wall -fno-warn-orphans -fno-ignore-asserts
   if flag(stats-stm)
     cpp-options: -DSTATS_STM
@@ -76,7 +76,7 @@ library
 
 test-suite unit
   type: exitcode-stdio-1.0
-  main-is: Test.hs
+  main-is: unit.hs
   build-depends: base, hlogo, transformers>=0.4, test-framework, test-framework-hunit, test-framework-th, HUnit
   ghc-options: -fno-ignore-asserts -threaded "-with-rtsopts=-N2"
   hs-source-dirs: tests                        
