@@ -62,12 +62,11 @@ import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
 import Data.List hiding (length)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
-import Data.Array
 import qualified Data.Vector as V
-import System.Random hiding (random, split)
+import System.Random (randomR)
 import System.Random.TF.Gen (splitn, seedTFGen)
-import Data.Function
-import Control.Monad (forM_, liftM, filterM, forever, when)
+import qualified System.Random.TF.Instances as TF (randomR)
+import Control.Monad (forM_, liftM, filterM, forever, when, (<=<))
 import Data.Word (Word8)
 import GHC.Conc (numCapabilities)
 -- for rng
@@ -598,7 +597,7 @@ random_pxcor :: C s _s' STM Int
 random_pxcor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = randomR (min_pxcor_ conf, max_pxcor_ conf) gen
+  let (v, gen') = TF.randomR (min_pxcor_ conf, max_pxcor_ conf) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -607,7 +606,7 @@ random_pycor :: C s _s' STM Int
 random_pycor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readTVar tgen
-  let (v, gen') = randomR (min_pycor_ conf, max_pycor_ conf) gen
+  let (v, gen') = TF.randomR (min_pycor_ conf, max_pycor_ conf) gen
   lift $ writeTVar tgen $! gen'
   pure v
 
@@ -631,7 +630,7 @@ random x = do
                   else (if f == 0
                         then n+1
                         else n, 0)
-  let (v, gen') = randomR randRange gen
+  let (v, gen') = TF.randomR randRange gen
   lift $ writeTVar tgen $! gen'
   pure (fromIntegral (v :: Int))
 
@@ -913,7 +912,7 @@ clear_patches = V.mapM_ (\ (MkPatch {pcolor_=pc, plabel_=pl, plabel_color_=plc, 
                             atomically $ writeTVar pc 0
                             atomically $ writeTVar pl ""
                             atomically $ writeTVar plc 9.9
-                            atomically $ mapM_ (`writeTVar` 0) (elems po) -- patches-own to 0
+                            atomically $ V.mapM_ (`writeTVar` 0) po -- patches-own to 0
                         ) __patches
 
 {-# INLINE cp #-}
@@ -1034,7 +1033,7 @@ one_of l | Prelude.null l = error "empty one_of"
          | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readTVar tgen
-  let (v,gen') = randomR (0, Prelude.length l -1) gen
+  let (v,gen') = TF.randomR (0, Prelude.length l -1) gen
   lift $ writeTVar tgen $! gen'
   pure $ F.toList l !! v
 
@@ -1044,7 +1043,7 @@ one_of_patches l | V.null l = error "empty one_of"
                  | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readTVar tgen
-  let (v,gen') = randomR (0, V.length l -1) gen
+  let (v,gen') = TF.randomR (0, V.length l -1) gen
   lift $ writeTVar tgen $! gen'
   pure $ l `V.unsafeIndex` v
 
@@ -1054,7 +1053,7 @@ one_of_links l | M.null l = error "empty one_of"
                | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readTVar tgen
-  let (v,gen') = randomR (0, M.size l -1) gen
+  let (v,gen') = TF.randomR (0, M.size l -1) gen
   lift $ writeTVar tgen $! gen'
   pure $ snd $ M.elemAt v l
 
@@ -1085,7 +1084,7 @@ n_of n ls | n == 0     = pure []
 {-# WARNING min_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
 -- | Reports a random agent in the agentset that reports the lowest value for the given reporter. If there is a tie, this command reports one random agent that meets the condition.
 --min_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
-min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,a1) a2 -> do
+min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
                                     pure $ case mv1 of
                                              Nothing -> (Just v2,a2)
@@ -1097,7 +1096,7 @@ min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,a1) a2 -> do
 {-# WARNING max_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
 -- | Reports the agent in the agentset that has the highest value for the given reporter. If there is a tie this command reports one random agent with the highest value. If you want all such agents, use with-max instead. 
 --max_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
-max_one_of as r = snd <$> F.foldlM (\ acc@(mv1,a1) a2 -> do
+max_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
                                     pure $ case mv1 of
                                              Nothing -> (Just v2,a2)
@@ -1548,7 +1547,7 @@ instance Agent Patches where
               g <- readTVarIO tgen
               let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
               atomically $ writeTVar tgen $! g0
-              mapM (\ ((start,size,core),g') -> do
+              mapM_ (\ ((start,size,core),g') -> do
                       tgen' <- newTVarIO g'
                       ThreadG.forkOn core __tg $ V.mapM_ (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as)
                    ) (zip (splitPatches (V.length as) numCapabilities) gs)
@@ -1680,9 +1679,8 @@ hatch n = do
 #else
     (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr, _,_) <- Reader.ask
 #endif
-    let b = bounds tarr
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
-    let newArray = pure . listArray b =<< sequence [newTVar =<< readTVar (tarr ! i) | i <- [fst b.. snd b]]
+    let newArray = V.mapM (newTVar <=< readTVar) tarr
     let newTurtles w = pure . IM.fromDistinctAscList =<< sequence [do
                                                                         t <- MkTurtle <$>
                                                                             pure i <*>

@@ -8,14 +8,14 @@
 -- Stability   :  experimental
 --
 -- The getopt-like command-line (HLogo-runtime) args passed to every HLogo program
-module Language.Logo.Conf (
-                           Conf (..)
-                          ,conf
-                          ) where
+module Language.Logo.Conf
+    (
+      Conf (..)
+    , conf
+    ) where
 
 import System.IO.Unsafe (unsafePerformIO)
 import System.Console.CmdArgs
-import Distribution.PackageDescription.TH -- for injecting  cabal version
 
 {-# NOINLINE conf #-}
 conf :: Conf
@@ -110,6 +110,6 @@ confOpt = Conf {
           &= program "hlogo" 
           &= help "HLogo framework" 
           &= helpArg [explicit, name "h", name "help"]
-          &= summary ("model compiled with HLogo v" ++ $(packageVariable (pkgVersion . package)) ++ ", (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou")
+          &= summary ("model compiled with HLogo v0.1.9, (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou")
 
 

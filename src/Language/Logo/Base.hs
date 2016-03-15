@@ -24,7 +24,6 @@ import Control.Concurrent.STM
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
-import Data.Array (Array)
 import Data.Vector (Vector)
 import System.Random.TF.Gen (TFGen)
 #ifdef STATS_STM
@@ -86,7 +85,7 @@ data Turtle = MkTurtle {
     , size_ :: TVar Double
     , pen_size_ :: TVar Double
     , pen_mode_ :: TVar PenMode
-    , tvars_ :: Array Int (TVar Double)
+    , tvars_ :: Vector (TVar Double)
 #ifdef STATS_STM
     , ttotalstm :: IORef Int
     , tsuccstm :: IORef Int
@@ -102,7 +101,7 @@ data Patch = MkPatch {
     , pcolor_ :: TVar Double
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
-    , pvars_ :: Array Int (TVar Double)
+    , pvars_ :: Vector (TVar Double)
 #ifdef STATS_STM
     , ptotalstm :: IORef Int
     , psuccstm :: IORef Int
@@ -124,7 +123,7 @@ data Link = MkLink {
     , thickness_ :: TVar Double
     , lshape_ :: TVar String
     , tie_mode :: TVar TieMode
-    , lvars_ :: Array Int (TVar Double)
+    , lvars_ :: Vector (TVar Double)
 #ifdef STATS_STM
     , ltotalstm :: IORef Int
     , lsuccstm :: IORef Int

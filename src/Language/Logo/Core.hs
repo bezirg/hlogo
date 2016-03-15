@@ -26,8 +26,7 @@ import Language.Logo.Conf
 import Language.Logo.Base
 import qualified Data.Map.Strict as M (empty)
 import qualified  Data.IntMap.Strict as IM (empty)
-import Data.Array (listArray)
-import qualified Data.Vector as V
+import qualified Data.Vector as V (fromList, replicateM)
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random.TF.Gen (TFGen,seedTFGen)
@@ -77,7 +76,7 @@ newPatch x y = let po = 1       -- patches_own only one element for now
                newTVarIO "" <*>
                newTVarIO 9.9 <*>
                -- init the patches-own variables to 0
-               (return . listArray (0, po -1) =<< replicateM po (newTVarIO 0))
+               (V.replicateM po (newTVarIO 0))
 #ifdef STATS_STM
                <*> pure (unsafePerformIO (newIORef 0)) <*> pure (unsafePerformIO (newIORef 0))
 #endif
@@ -100,7 +99,7 @@ __printQueue = unsafePerformIO $ newTQueueIO
 -- Returns the top-level Observer context.
 cInit :: Int -> IO (Observer,a,TVar TFGen)
 cInit po = do
-  forkIO $ printer
+  _ <- forkIO $ printer
 
   t <- getCurrentTime
   atomically $ writeTVar __timer t

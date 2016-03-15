@@ -21,18 +21,17 @@ import Language.Haskell.TH
 import Language.Logo.Core
 import Language.Logo.Base
 import Language.Logo.Prim
-import Language.Logo.Exception
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.Reader as Reader
 import Control.Concurrent (runInUnboundThread)
 import Control.Concurrent.STM
-import Data.Array
+import qualified Data.Vector as V ((!), replicateM)
 import Data.List (genericLength)
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
 import System.Environment (withArgs)
-import Control.Monad (liftM, filterM, replicateM)
-import System.Random (randomR)
+import Control.Monad (liftM, filterM)
+import System.Random.TF.Instances (randomR)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Foldable (foldlM, foldrM)
 #if __GLASGOW_HASKELL__ < 710
@@ -82,16 +81,16 @@ turtles_own vs = do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Turtle _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv V.! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ writeTVar (pv ! $(litE (integerL i))) $! $(varE y)
+                                                                       lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y)
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                       lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
 
           return [p',p,w,x]
@@ -111,18 +110,18 @@ patches_own vs = do
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (s,_,_) <- Reader.ask
                                                  (MkPatch {pvars_ = pv}) <- patch_on_ s
-                                                 readTVarSI $ pv ! $(litE (integerL i))
+                                                 readTVarSI $ pv V.! $(litE (integerL i))
                                                  |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                  (s,_,_) <- Reader.ask
                                                  (MkPatch {pvars_ = pv}) <- patch_on_ s
-                                                 lift $ writeTVar (pv ! $(litE (integerL i))) $! $(varE y)
+                                                 lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y)
                                                                     |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
                                                  (s,_,_) <- Reader.ask
                                                  (MkPatch {pvars_ = pv}) <- patch_on_ s
-                                                 lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                 lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
           return [p',p,w,x]
             ) (zip vs [0..])
@@ -142,16 +141,16 @@ links_own vs = do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Link _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv V.! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ writeTVar (pv ! $(litE (integerL i))) $! $(varE y) 
+                                                                       lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y) 
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y) 
+                                                                       lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y) 
                                                                      |]) []]
 
           return [p',p,w,x]
@@ -193,16 +192,16 @@ breeds_own p vs = do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Turtle _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv V.! $(litE (integerL i)))
                                               |]) []
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ writeTVar (pv ! $(litE (integerL i))) $! $(varE y)
+                                                                       lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y)
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask 
-                                                                       lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                       lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
 
           return [p',p,w,x]
@@ -220,18 +219,18 @@ link_breeds_own p vs = do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Link _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
                                                  (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv ! $(litE (integerL i)))
+                                                 readTVarSI (pv V.! $(litE (integerL i)))
 
                                               |]) []
 
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ writeTVar (pv ! $(litE (integerL i))) $! $(varE y)
+                                                                       lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y)
                                                                      |]) []]
           x <- funD (mkName ("with_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                                       lift $ modifyTVar' (pv ! $(litE (integerL i))) $(varE y)
+                                                                       lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
 
           return [p',p,w,x]
@@ -371,7 +370,7 @@ run procs = do
                              newTVarIO 1 <*>
                              newTVarIO 1 <*>
                              newTVarIO Up <*>
-                             (return . listArray (0, $(tlength) -1) =<< replicateM $(tlength) (newTVarIO 0))
+                             (V.replicateM $(tlength) (newTVarIO 0))
                          return ((i,t):ts, g'')
                            ) ([],gen) range_
                   let ns' = IM.fromDistinctAscList ns
@@ -517,7 +516,7 @@ newOrderedBreed i o b x to = do
        newTVarIO 1 <*>
        newTVarIO 1 <*>
        newTVarIO Up <*>
-       (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0))
+       (V.replicateM to (newTVarIO 0))
 #ifdef STATS_STM
        <*> newIORef 0 <*>
        newIORef 0
@@ -543,7 +542,7 @@ newSprout w to x y = do
        newTVar 1 <*>
        newTVar 1 <*>
        newTVar Up <*>
-       (return . listArray (0, to-1) =<< replicateM to (newTVar 0))
+       (V.replicateM to (newTVar 0))
 #ifdef STATS_STM
        <*> pure (unsafePerformIO (newIORef 0)) <*>
        pure (unsafePerformIO (newIORef 0))
@@ -568,7 +567,7 @@ newBSprout w to x y b = do
        newTVar 1 <*>
        newTVar 1 <*>
        newTVar Up <*>
-       (return . listArray (0, to-1) =<< replicateM to (newTVar 0))
+       (V.replicateM to (newTVar 0))
 #ifdef STATS_STM
        <*> pure (unsafePerformIO (newIORef 0)) <*>
        pure (unsafePerformIO (newIORef 0))
@@ -596,7 +595,7 @@ newOrderedTurtle i o x to = do
              newTVarIO 1 <*>
              newTVarIO 1 <*>
              newTVarIO Up <*>
-             (return . listArray (0, to-1) =<< replicateM to (newTVarIO 0))
+             (V.replicateM to (newTVarIO 0))
 #ifdef STATS_STM
              <*> newIORef 0 <*>
              newIORef 0
@@ -631,7 +630,7 @@ create_breeds b n to = do
                                newTVarIO 1 <*>
                                newTVarIO 1 <*>
                                newTVarIO Up <*>
-                               (return . listArray (0, to -1) =<< replicateM to (newTVarIO 0)))
+                               (V.replicateM to (newTVarIO 0)))
 #ifdef STATS_STM
                                <*> newIORef 0 <*>
                                newIORef 0)
@@ -670,7 +669,7 @@ newLink f t ls = MkLink f t <$>
                   newTVar 0 <*>
                   newTVar "default" <*>
                   newTVar None <*>
-                  (return . listArray (0, ls-1) =<< replicateM ls (newTVar 0))
+                  (V.replicateM ls (newTVar 0))
 #ifdef STATS_STM
                   <*> pure (unsafePerformIO (newIORef 0)) <*>
                   pure (unsafePerformIO (newIORef 0))
@@ -688,7 +687,7 @@ newLBreed f t d b ls = MkLink f t d <$>
                   newTVar 0 <*>
                   newTVar "default" <*>
                   newTVar None <*>
-                  (return . listArray (0, ls-1) =<< replicateM ls (newTVar 0))
+                  (V.replicateM ls (newTVar 0))
 #ifdef STATS_STM
                   <*> pure (unsafePerformIO (newIORef 0)) <*>
                   pure (unsafePerformIO (newIORef 0))
