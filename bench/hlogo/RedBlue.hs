@@ -28,9 +28,10 @@ go = forever $ do
 
 behave = do
   c <- pcolor
-  atomic $ fd 1 >> if c == red
-                   then lt 30
-                   else when (c == blue) (rt 30)
+  atomic $ fd 1
+  if c == red
+   then atomic $ lt 30
+   else when (c == blue) (atomic $ rt 30)
 
 
 
