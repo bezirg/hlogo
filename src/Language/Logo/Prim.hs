@@ -285,7 +285,7 @@ jump n = do
          then
            writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
          else
-           when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx x'
+           when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx $! x'
        if vertical_wrap_ cmdOpt
          then
              writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y

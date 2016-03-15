@@ -18,6 +18,11 @@ setup = do
          c <- one_of [black, black, black, black, black, black, black, black, red, blue]
          set_pcolor c) =<< patches
   create_turtles NR_TURTLES
+  ask (atomic $ do
+         x <- random_xcor
+         y <- random_ycor
+         setxy x y
+      ) =<< turtles
   reset_ticks
 
 go = forever $ do
