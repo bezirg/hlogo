@@ -72,7 +72,7 @@ import GHC.Conc (numCapabilities)
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Thread as Thread (forkOn, result)
 import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
-import Data.IORef (writeIORef, readIORef, modifyIORef')
+import Data.IORef (writeIORef, readIORef, modifyIORef', newIORef)
 
 
 -- for rng
@@ -144,8 +144,8 @@ patch' x y = let mix = min_pxcor_ cmdOpt
                  miy = min_pycor_ cmdOpt
                  max = max_pxcor_ cmdOpt
                  may = max_pycor_ cmdOpt
-                 norm_x = if horizontal_wrap_ cmdOpt then ((round x + max) `mod` (max*2+1)) - max else round x
-                 norm_y = if vertical_wrap_ cmdOpt then ((round y + may) `mod` (may*2+1)) - may else round y
+                 norm_x = if horizontal_wrap_ cmdOpt then ((round x + max) `mod` (max-mix+1)) + mix else round x
+                 norm_y = if vertical_wrap_ cmdOpt then ((round y + may) `mod` (may-miy+1)) + miy else round y
              in if mix <= norm_x && norm_x <= max && miy <= norm_y && norm_y <= may
                 then __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
                 else error "nobody" -- i cannot put nobody here because this function is pure
@@ -173,14 +173,16 @@ patch_ahead n = do
   y <- ycor
   dx_ <- dx
   dy_ <- dy
-  let mx = max_pxcor_ cmdOpt
-  let my = max_pycor_ cmdOpt
+  let max = max_pxcor_ cmdOpt
+  let may = max_pycor_ cmdOpt
+  let mix = min_pxcor_ cmdOpt
+  let miy = min_pycor_ cmdOpt
   let px_new = (fromIntegral (round x :: Int) :: Double) + if horizontal_wrap_ cmdOpt
-                                                         then (dx_*n + fromIntegral mx) `mod_` (mx * 2 + 1) - fromIntegral mx
+                                                         then (dx_*n + fromIntegral max) `mod_` (max - mix + 1) + fromIntegral mix
                                                          else dx_*n
 
   let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ cmdOpt
-                                                         then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
+                                                         then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                                                          else  dy_*n
   pure $ patch' px_new py_new
 
@@ -283,12 +285,12 @@ jump n = do
        let dmin_y = fromIntegral min_y
        if horizontal_wrap_ cmdOpt
          then
-           writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+           writeTVar tx $! ((x' + dmax_x) `mod_` (max_x - min_x +1)) + dmin_x
          else
            when (dmin_x -0.5 < x' && x' < dmax_x + 0.5) $ writeTVar tx $! x'
        if vertical_wrap_ cmdOpt
          then
-             writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+             writeTVar ty $! ((y' + dmax_y) `mod_` (max_y - min_y +1)) + dmin_y
          else
            when (dmin_y -0.5  < y' && y' < dmax_y + 0.5) $ writeTVar ty $! y'
 
@@ -307,14 +309,14 @@ setxy x' y' = do
     let dmin_y = fromIntegral min_y
     if horizontal_wrap_ cmdOpt
       then
-        lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+        lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x - min_x +1)) + dmin_x
       else
           if dmin_x -0.5 < x' && x' < dmax_x + 0.5
           then lift $ writeTVar tx $! x'
           else error "wrap"
     if vertical_wrap_ cmdOpt
       then
-          lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+          lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y - min_y +1)) + dmin_y
       else
           if dmin_y -0.5  < y' && y' < dmax_y + 0.5
           then lift $ writeTVar ty $! y'
@@ -428,16 +430,18 @@ can_movep n = do
   y <- ycor
   dx_ <- dx
   dy_ <- dy
-  let mx = max_pxcor_ cmdOpt
-  let my = max_pycor_ cmdOpt
+  let max = max_pxcor_ cmdOpt
+  let may = max_pycor_ cmdOpt
+  let mix = min_pxcor_ cmdOpt
+  let miy = min_pycor_ cmdOpt
   let px_new = round $ x + if horizontal_wrap_ cmdOpt
-                           then (dx_*n + fromIntegral mx) `mod_` (mx * 2 + 1) - fromIntegral mx
+                           then (dx_*n + fromIntegral max) `mod_` (max - mix + 1) + fromIntegral mix
                            else dx_*n
   let py_new = round $ y + if vertical_wrap_ cmdOpt
-                           then (dy_*n + fromIntegral my) `mod_` (my * 2 + 1) - fromIntegral my
+                           then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                            else  dy_*n
-  pure (not (not (horizontal_wrap_ cmdOpt) && (px_new > mx || px_new < min_pxcor_ cmdOpt)) 
-       || (not (vertical_wrap_ cmdOpt) && (py_new > my || py_new < min_pycor_ cmdOpt)))
+  pure (not (not (horizontal_wrap_ cmdOpt) && (px_new > max || px_new < min_pxcor_ cmdOpt)) 
+       || (not (vertical_wrap_ cmdOpt) && (py_new > may || py_new < min_pycor_ cmdOpt)))
 
 set_heading :: Double -> C Turtle _s' STM ()
 set_heading v = do
@@ -506,7 +510,7 @@ set_xcor x' = do
     let dmin_x = fromIntegral min_x
     if horizontal_wrap_ cmdOpt
      then
-         lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x + abs min_x +1)) + dmin_x
+         lift $ writeTVar tx $! ((x' + dmax_x) `mod_` (max_x - min_x +1)) + dmin_x
      else
          if dmin_x -0.5 < x' && x' < dmax_x + 0.5
          then lift $ writeTVar tx $! x'
@@ -527,7 +531,7 @@ set_ycor y' = do
    let dmin_y = fromIntegral min_y
    if vertical_wrap_ cmdOpt
      then
-         lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y + abs min_y +1)) + dmin_y
+         lift $ writeTVar ty $! ((y' + dmax_y) `mod_` (max_y - min_y +1)) + dmin_y
      else
          if dmin_y -0.5 < y' && y' < dmax_y + 0.5
          then lift $ writeTVar ty $! y'
@@ -571,59 +575,59 @@ new_seed = do
              let daytime = toRational $ utctDayTime utc
              pure $ numerator daytime `quotRem` denominator daytime
 
-random_seed :: Int -> C s _s' STM ()
+random_seed :: Int -> C s _s' IO ()
 random_seed i = do
   (_,_,tgen) <-Reader.ask
-  lift $ writeTVar tgen $! seedTFGen (fromIntegral i, 0, 0, 0)
+  lift $ writeIORef tgen $! seedTFGen (fromIntegral i, 0, 0, 0)
                 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
-random_xcor :: C s _s' STM Double
+random_xcor :: C s _s' IO Double
 random_xcor = do
   (_,_,tgen) <-Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v, gen') = randomR (fromIntegral (min_pxcor_ cmdOpt) :: Double, fromIntegral $ max_pxcor_ cmdOpt) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure v
 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, y. 
-random_ycor :: C s _s' STM Double
+random_ycor :: C s _s' IO Double
 random_ycor = do
   (_,_,tgen) <-Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v, gen') = randomR (fromIntegral (min_pycor_ cmdOpt) :: Double, fromIntegral $ max_pycor_ cmdOpt) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure v
 
 -- | Reports a random integer ranging from min-pxcor to max-pxcor inclusive. 
-random_pxcor :: C s _s' STM Int
+random_pxcor :: C s _s' IO Int
 random_pxcor = do
   (_,_,tgen) <-Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v, gen') = TF.randomR (min_pxcor_ cmdOpt, max_pxcor_ cmdOpt) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure v
 
 -- | Reports a random integer ranging from min-pycor to max-pycor inclusive. 
-random_pycor :: C s _s' STM Int
+random_pycor :: C s _s' IO Int
 random_pycor = do
   (_,_,tgen) <-Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v, gen') = TF.randomR (min_pycor_ cmdOpt, max_pycor_ cmdOpt) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure v
 
 {-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
-{-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer () STM b #-}
-{-# SPECIALIZE random :: (Num b, Real a) => a -> C Turtle _s' STM b #-}
-{-# SPECIALIZE random :: (Num b, Real a) => a -> C Patch _s' STM b #-}
-{-# SPECIALIZE random :: (Num b, Real a) => a -> C Link _s' STM b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer () IO b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Turtle _s' IO b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Patch _s' IO b #-}
+{-# SPECIALIZE random :: (Num b, Real a) => a -> C Link _s' IO b #-}
 -- | If number is positive, reports a random integer greater than or equal to 0, but strictly less than number.
 -- If number is negative, reports a random integer less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0 as well. 
-random :: (Num b, Real a) => a -> C s _s' STM b
+random :: (Num b, Real a) => a -> C s _s' IO b
 random x = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (n, f) = properFraction (realToFrac x :: Double)
   let randRange = if n > 0 
                   then (0, if f == 0 
@@ -633,18 +637,18 @@ random x = do
                         then n+1
                         else n, 0)
   let (v, gen') = TF.randomR randRange gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure (fromIntegral (v :: Int))
 
 -- |  If number is positive, reports a random floating point number greater than or equal to 0 but strictly less than number.
 -- If number is negative, reports a random floating point number less than or equal to 0, but strictly greater than number.
 -- If number is zero, the result is always 0. 
-random_float :: Double -> C s _s' STM Double
+random_float :: Double -> C s _s' IO Double
 random_float x = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v, gen') = randomR (if x > 0 then (0,x) else (x,0)) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure v
 
 {-# WARNING random_exponential "TODO" #-}
@@ -1030,40 +1034,40 @@ position = find
 
 -- |  From an agentset, reports a random agent. If the agentset is empty, reports nobody.
 -- From a list, reports a random list item. It is an error for the list to be empty. 
-one_of :: Foldable t => t a -> C s _s' STM a
+one_of :: Foldable t => t a -> C s _s' IO a
 one_of l | Prelude.null l = error "empty one_of"
          | otherwise = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, Prelude.length l -1) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure $ F.toList l !! v
 
 {-# RULES "one_of/Patches" one_of = one_of_patches #-}
-one_of_patches :: Patches -> C s _s' STM Patch
+one_of_patches :: Patches -> C s _s' IO Patch
 one_of_patches l | V.null l = error "empty one_of"
                  | otherwise = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, V.length l -1) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure $ l `V.unsafeIndex` v
 
 {-# RULES "one_of/Links" one_of = one_of_links #-}
-one_of_links :: Links -> C s _s' STM Link
+one_of_links :: Links -> C s _s' IO Link
 one_of_links l | M.null l = error "empty one_of"
                | otherwise = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, M.size l -1) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   pure $ snd $ M.elemAt v l
 
 -- NOTE: one_of_turtles is probably not possible, because there is no indexing of an IntMap datastructure (elemAt)
 
 -- |  From an agentset, reports an agentset of size size randomly chosen from the input set, with no repeats.
 -- From a list, reports a list of size size randomly chosen from the input set, with no repeats. 
-n_of :: Eq a => Int -> [a] -> C s _s' STM [a]
+n_of :: Eq a => Int -> [a] -> C s _s' IO [a]
 n_of n ls | n == 0     = pure []
           | n < 0     = error "negative index"
           | otherwise = do
@@ -1141,7 +1145,7 @@ sentence = (++)
 
 {-# WARNING shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
 -- | Reports a new list containing the same items as the input list, but in randomized order. 
-shuffle :: Eq a => [a] -> C s _s' STM [a]
+shuffle :: Eq a => [a] -> C s _s' IO [a]
 shuffle [] = pure []
 shuffle [x] = pure [x]
 shuffle l = do 
@@ -1497,11 +1501,11 @@ instance Agent Turtles where
     ask f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         mapM_ (\ (tslice,core,g') -> do
-                 tgen' <- newTVarIO g'
+                 tgen' <- newIORef g'
                  ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s,tgen')) tslice
              ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         ThreadG.wait __tg
@@ -1510,11 +1514,11 @@ instance Agent Turtles where
     of_ f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> ThreadG.forkOn core __tg (IM.elems <$> mapM (\ t -> Reader.runReaderT f (t,s,tgen')) tslice)
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
@@ -1523,11 +1527,11 @@ instance With Turtles where
     with f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> ThreadG.forkOn core __tg (filterM (\ (_,t) -> Reader.runReaderT f (t,s,tgen')) $ IM.toAscList tslice)
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         IM.fromDistinctAscList . concat <$> sequence [Thread.result =<< w | w <- ws]
@@ -1547,11 +1551,11 @@ instance Agent Patches where
     ask f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-              g <- readTVarIO tgen
+              g <- readIORef tgen
               let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-              atomically $ writeTVar tgen $! g0
+              writeIORef tgen $! g0
               mapM_ (\ ((start,size,core),g') -> do
-                      tgen' <- newTVarIO g'
+                      tgen' <- newIORef g'
                       ThreadG.forkOn core __tg $ V.mapM_ (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as)
                    ) (zip (splitPatches (V.length as) numCapabilities) gs)
               ThreadG.wait __tg                               
@@ -1559,11 +1563,11 @@ instance Agent Patches where
     of_ f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ ((start,size,core),g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> Thread.forkOn core (V.toList <$> V.mapM (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as))
                   ) (zip (splitPatches (V.length as) numCapabilities) gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
@@ -1572,11 +1576,11 @@ instance With Patches where
     with f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ ((start,size,core),g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> Thread.forkOn core (V.filterM (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as))
                   ) (zip (splitPatches (V.length as) numCapabilities) gs)
         V.concat <$> sequence [Thread.result =<< w | w <- ws]
@@ -1585,11 +1589,11 @@ instance Agent Links where
     ask f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do 
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         mapM_ (\ ((core, asSection),g') -> do
-                   tgen' <- newTVarIO g'
+                   tgen' <- newIORef g'
                    ThreadG.forkOn core __tg $ mapM_ (\ a -> Reader.runReaderT f (a,s,tgen')) asSection
               ) (zip (splitLinks numCapabilities $ M.elems as) gs)
         ThreadG.wait __tg
@@ -1597,11 +1601,11 @@ instance Agent Links where
     of_ f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ ((core, asi),g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> Thread.forkOn core (mapM (\ a -> Reader.runReaderT f (a,s,tgen')) asi)
                   ) (zip (splitLinks numCapabilities $ M.elems as) gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
@@ -1611,11 +1615,11 @@ instance With Links where
     with f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
-        g <- readTVarIO tgen
+        g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
-        atomically $ writeTVar tgen $! g0
+        writeIORef tgen $! g0
         ws <- mapM (\ ((core, asi),g') -> do
-                     tgen' <- newTVarIO g'
+                     tgen' <- newIORef g'
                      snd <$> Thread.forkOn core (filterM (\ (_,a) -> Reader.runReaderT f (a,s,tgen')) asi)
                   ) (zip (splitLinks numCapabilities $ M.toAscList as) gs)
         M.fromDistinctAscList . concat <$> sequence [Thread.result =<< w | w <- ws]

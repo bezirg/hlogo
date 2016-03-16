@@ -26,9 +26,8 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Vector (Vector)
 import System.Random.TF.Gen (TFGen)
-#ifdef STATS_STM
-import Data.IORef
-#endif
+import Data.IORef (IORef)
+
 
 -- | An agent (subtype of 'Player') can be 'ask'ed to do some work or return a value `of_` his. 
 --
@@ -165,7 +164,7 @@ type Links = M.Map (Int, Int) Link
 -- 
 -- 1) to have at runtime the dynamic information of the this-agent ('self') and its parent caller ('myself').
 -- 2) to restrict the types of the NetLogo primitives to specifc contexts, thus turning the NetLogo dynamic language to a statically type-checked eDSL. 
-type C s s' m a = ReaderT (s,s',TVar TFGen) m a
+type C s s' m a = ReaderT (s,s',IORef TFGen) m a
 
 instance Eq Turtle where
     MkTurtle {who_ = w1} == MkTurtle {who_ = w2} = w1 == w2

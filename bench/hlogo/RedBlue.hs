@@ -9,19 +9,22 @@ import Language.Logo
 args = ["--max-pxcor=100"
        ,"--max-pycor=100"
        ,"--min-pxcor=-100"
-       ,"--min-pycor=-100"]
+       ,"--min-pycor=-100"
+       ,"--horizontal-wrap"
+       ,"--vertical-wrap"
+       ]
 
 run ["setup", "go"]
 
 setup = do
-  ask (atomic $ do
+  ask (do
          c <- one_of [black, black, black, black, black, black, black, black, red, blue]
-         set_pcolor c) =<< patches
+         atomic $ set_pcolor c) =<< patches
   create_turtles NR_TURTLES
-  ask (atomic $ do
+  ask (do
          x <- random_xcor
          y <- random_ycor
-         setxy x y
+         atomic $ setxy x y
       ) =<< turtles
   reset_ticks
 

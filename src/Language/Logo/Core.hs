@@ -115,7 +115,7 @@ __printQueue = unsafePerformIO $ newTQueueIO
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> IO (Observer,a,TVar TFGen)
+cInit :: Int -> IO (Observer,a,IORef TFGen)
 cInit po = do
 
   -- The printer just reads an IO chan for incoming text and outputs it to standard output.
@@ -123,7 +123,7 @@ cInit po = do
 
   (atomically . writeTVar __timer) =<< getCurrentTime
 
-  ogen <- newTVarIO (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
+  ogen <- newIORef (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
 
   return (undefined,undefined,ogen)             -- the initial context
 

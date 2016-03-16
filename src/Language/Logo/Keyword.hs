@@ -38,9 +38,8 @@ import Data.Foldable (foldlM, foldrM)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
-#ifdef STATS_STM
-import Data.IORef (newIORef)
-#endif
+import Data.IORef
+
 
 -- | globals macro takes a list of variable names (as strings) and creates top-level global variables.
 -- Global variables have type 'Double' and are initialized to 0.
@@ -178,10 +177,10 @@ breeds_own p vs = do
                                                                                                                        t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
                                                                                                                        return (i, t)
                                                                                                                      | i <- [w..w+n-1]]
-                                                           oldWho <- lift $ readTVar __who
-                                                           lift $ modifyTVar' __who ($(varE y) +)
+                                                           oldWho <- lift $ readTVarIO __who
+                                                           lift $ atomically $ modifyTVar' __who ($(varE y) +)
                                                            ns <- newTurtles oldWho $(varE y)
-                                                           lift $ modifyTVar' __turtles (`IM.union` ns) 
+                                                           lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
                                                            return ns
                                                          |]) []]
 
@@ -356,7 +355,7 @@ run procs = do
                   lift $ atomically $ modifyTVar' __who ($(varE y) +)
                   let range_ = [oldWho..oldWho + $(varE y)-1]
                   (_,_,ogen_) <- Reader.ask
-                  gen <- lift $ readTVarIO ogen_
+                  gen <- lift $ readIORef ogen_
                   (ns,gen') <- lift $ foldrM (\ i (ts,g) -> do
                          let (rpc,g') = randomR (0,13 :: Int) g
                          let (rih,g'') = randomR (0,360 :: Int) g'
@@ -378,7 +377,7 @@ run procs = do
                            ) ([],gen) range_
                   let ns' = IM.fromDistinctAscList ns
                   lift $ do
-                       atomically $ writeTVar ogen_ $! gen'
+                       writeIORef ogen_ $! gen'
                        atomically $ modifyTVar' __turtles (`IM.union` ns') 
                   return ns' :: C Observer () IO Turtles
                             |]) []]
@@ -409,10 +408,10 @@ run procs = do
                                                                                                                               t <- newSprout i $(tlength) (fromIntegral px) (fromIntegral py)
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
-                                                           oldWho <- lift $ readTVar __who
-                                                           lift $ modifyTVar' __who ($(varE y) +)
+                                                           oldWho <- lift $ readTVarIO __who
+                                                           lift $ atomically $ modifyTVar' __who ($(varE y) +)
                                                            ns <- newTurtles oldWho $(varE y)
-                                                           lift $ modifyTVar' __turtles (`IM.union` ns) 
+                                                           lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
                                                            return ns -- todo: can be optimized
                                                          |]) []]
 
@@ -482,21 +481,21 @@ runT as = cInit 0 >>= Reader.runReaderT as
              
 
 -- | Internal
-random_primary_color :: C s _s' STM Double
+random_primary_color :: C s _s' IO Double
 random_primary_color = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v,gen') = randomR (0,13 :: Int) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   return (primary_colors !! v)
 
 -- | Internal
-random_integer_heading :: C s _s' STM Int
+random_integer_heading :: C s _s' IO Int
 random_integer_heading = do
   (_,_,tgen) <- Reader.ask
-  gen <- lift $ readTVar tgen
+  gen <- lift $ readIORef tgen
   let (v,gen') = randomR (0,360 :: Int) gen
-  lift $ writeTVar tgen $! gen'
+  lift $ writeIORef tgen $! gen'
   return v
 
 {-# INLINE newOrderedBreed #-}
@@ -527,53 +526,51 @@ newOrderedBreed i o b x to = do
 
 
 -- | Internal
-newSprout :: Int -> Int -> Double -> Double -> C Patch _s' STM Turtle
+newSprout :: Int -> Int -> Double -> Double -> C Patch _s' IO Turtle
 newSprout w to x y = do
   rpc <- random_primary_color
   rih <- random_integer_heading
   lift $ MkTurtle <$>
        return w <*>
-       newTVar "turtles" <*>
-       newTVar rpc <*>          --  random primary color
-       newTVar (fromIntegral rih) <*> --  random integer heading
-       newTVar x <*>
-       newTVar y <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up <*>
-       (V.replicateM to (newTVar 0))
+       newTVarIO "turtles" <*>
+       newTVarIO rpc <*>          --  random primary color
+       newTVarIO (fromIntegral rih) <*> --  random integer heading
+       newTVarIO x <*>
+       newTVarIO y <*>
+       newTVarIO "default" <*>
+       newTVarIO "" <*>
+       newTVarIO 9.9 <*>
+       newTVarIO False <*>
+       newTVarIO 1 <*>
+       newTVarIO 1 <*>
+       newTVarIO Up <*>
+       (V.replicateM to (newTVarIO 0))
 #ifdef STATS_STM
-       <*> pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0))
+       <*> newIORef 0 <*> newIORef 0
 #endif
 
 -- | Internal
-newBSprout :: Int -> Int -> Double -> Double -> String -> C Patch _s' STM Turtle
+newBSprout :: Int -> Int -> Double -> Double -> String -> C Patch _s' IO Turtle
 newBSprout w to x y b = do
   rpc <- random_primary_color
   rih <- random_integer_heading
   lift $ MkTurtle <$>
        return w <*>
-       newTVar b <*>
-       newTVar rpc <*>          --  random primary color
-       newTVar (fromIntegral rih) <*> --  random integer heading
-       newTVar x <*>
-       newTVar y <*>
-       newTVar "default" <*>
-       newTVar "" <*>
-       newTVar 9.9 <*>
-       newTVar False <*>
-       newTVar 1 <*>
-       newTVar 1 <*>
-       newTVar Up <*>
-       (V.replicateM to (newTVar 0))
+       newTVarIO b <*>
+       newTVarIO rpc <*>          --  random primary color
+       newTVarIO (fromIntegral rih) <*> --  random integer heading
+       newTVarIO x <*>
+       newTVarIO y <*>
+       newTVarIO "default" <*>
+       newTVarIO "" <*>
+       newTVarIO 9.9 <*>
+       newTVarIO False <*>
+       newTVarIO 1 <*>
+       newTVarIO 1 <*>
+       newTVarIO Up <*>
+       (V.replicateM to (newTVarIO 0))
 #ifdef STATS_STM
-       <*> pure (unsafePerformIO (newIORef 0)) <*>
-       pure (unsafePerformIO (newIORef 0))
+       <*> newIORef 0 <*> newIORef 0
 #endif
 
 
@@ -618,8 +615,8 @@ create_breeds b n to = do
                       -- | Internal
                       newBreed :: Int -> C Observer () IO (Int, Turtle)
                       newBreed x = do
-                          rpc <- atomic random_primary_color
-                          rih <- atomic random_integer_heading
+                          rpc <- random_primary_color
+                          rih <- random_integer_heading
                           (\ j -> (x,j)) <$> (lift $ MkTurtle x <$>
                                newTVarIO b <*>
                                newTVarIO rpc <*>          --  random primary color

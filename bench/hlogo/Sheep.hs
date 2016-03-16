@@ -10,7 +10,7 @@
 import Language.Logo
 
 #ifndef NR_SHEEP
-#define NR_SHEEP 10
+#define NR_SHEEP 100
 #endif
 
 
@@ -27,29 +27,34 @@ sheep_gain_from_food = 4
 args = ["--max-pxcor=100"
        ,"--max-pycor=100"
        ,"--min-pxcor=-100"
-       ,"--min-pycor=-100"]
+       ,"--min-pycor=-100"
+       ,"--horizontal-wrap"
+       ,"--vertical-wrap"
+       ]
 
 run ["setup", "go"]
 
 setup = do
   ask (atomic $ set_pcolor green) =<< patches
-  when grassp $ ask (atomic $ do
+  when grassp $ ask (do
                        r <- random grass_regrowth_time
                        c <- one_of [green, brown]
-                       set_countdown r
-                       set_pcolor c
+                       atomic $ do
+                         set_countdown r
+                         set_pcolor c
                      ) =<< patches
 
   s <- create_sheep initial_number_sheep
-  ask (atomic $ do
+  ask (do
           s <- random (2 * sheep_gain_from_food)
           x <- random_xcor
           y <- random_ycor
-          set_color white
-          set_size 1.5
-          set_label_color (blue -2)
-          set_senergy s
-          setxy x y
+          atomic $ do
+            set_color white
+            set_size 1.5
+            set_label_color (blue -2)
+            set_senergy s
+            setxy x y
        ) s
   reset_ticks
 
@@ -66,12 +71,13 @@ go = forever $ do
   when grassp (ask grow_grass =<< patches)
   tick
 
-move = atomic $ do
+move = do
   r <- random 50
   l <- random 50
-  rt r
-  lt l
-  fd 1
+  atomic $ do
+         rt r
+         lt l
+         fd 1
 
 eat_grass = atomic $ do
   c <- pcolor
