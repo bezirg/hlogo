@@ -1500,7 +1500,7 @@ instance Agent Turtles where
         writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
                      tgen' <- newIORef g'
-                     snd <$> ThreadG.forkOn core __tg (IM.elems <$> mapM (\ t -> Reader.runReaderT f (t,s,tgen')) tslice)
+                     snd <$> Thread.forkOn core (IM.elems <$> mapM (\ t -> Reader.runReaderT f (t,s,tgen')) tslice)
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1513,7 +1513,7 @@ instance With Turtles where
         writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
                      tgen' <- newIORef g'
-                     snd <$> ThreadG.forkOn core __tg (filterM (\ (_,t) -> Reader.runReaderT f (t,s,tgen')) $ IM.toAscList tslice)
+                     snd <$> Thread.forkOn core (filterM (\ (_,t) -> Reader.runReaderT f (t,s,tgen')) $ IM.toAscList tslice)
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         IM.fromDistinctAscList . concat <$> sequence [Thread.result =<< w | w <- ws]
 
