@@ -18,10 +18,6 @@ module Language.Logo.Core
     , __turtles
     , __links
     , __printQueue
-#ifdef STATS_STM
-    , counterSTMLoops
-    , counterSTMCommits
-#endif
     ) where
 
 import Control.Concurrent (forkIO)
@@ -39,14 +35,6 @@ import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 import Data.IORef (IORef, newIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
-#endif
-
-#ifdef STATS_STM
-import Data.Atomics.Counter (newCounter)
-{-# NOINLINE counterSTMLoops #-}
-counterSTMLoops = unsafePerformIO $ newCounter 0
-{-# NOINLINE counterSTMCommits #-}
-counterSTMCommits = unsafePerformIO $ newCounter 0
 #endif
 
 {-# NOINLINE __tick #-}

@@ -92,9 +92,14 @@ import Data.Colour.SRGB (sRGB24)
 
 #ifdef STATS_STM
 import System.IO.Unsafe (unsafePerformIO)
-import Data.Atomics.Counter (incrCounter_, readCounter)
+import Data.Atomics.Counter (newCounter,incrCounter_, readCounter)
+{-# NOINLINE counterSTMLoops #-}
+-- | Internal
+counterSTMLoops = unsafePerformIO $ newCounter 0
+{-# NOINLINE counterSTMCommits #-}
+-- | Internal
+counterSTMCommits = unsafePerformIO $ newCounter 0
 #endif
-
 
 #define todo assert False undefined
 
