@@ -178,9 +178,9 @@ breeds_own p vs = do
                                                                                                                        return (i, t)
                                                                                                                      | i <- [w..w+n-1]]
                                                            oldWho <- lift $ readTVarIO __who
-                                                           lift $ atomically $ modifyTVar' __who ($(varE y) +)
+                                                           atomic $ lift $ modifyTVar' __who ($(varE y) +)
                                                            ns <- newTurtles oldWho $(varE y)
-                                                           lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
+                                                           atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
                                                            return ns
                                                          |]) []]
 
@@ -351,12 +351,12 @@ run procs = do
   mArgs <- lookupValueName "args"
   y <- newName "y"
   cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
-                  oldWho <- lift $ readTVarIO __who
-                  lift $ atomically $ modifyTVar' __who ($(varE y) +)
-                  let range_ = [oldWho..oldWho + $(varE y)-1]
                   (_,_,ogen_) <- Reader.ask
-                  gen <- lift $ readIORef ogen_
-                  (ns,gen') <- lift $ foldrM (\ i (ts,g) -> do
+                  lift (do
+                    oldWho <- readTVarIO __who
+                    atomically $ modifyTVar' __who ($(varE y) +)
+                    gen <- readIORef ogen_
+                    (ns,gen') <- foldrM (\ i (ts,g) -> do
                          let (rpc,g') = randomR (0,13 :: Int) g
                          let (rih,g'') = randomR (0,360 :: Int) g'
                          t <- MkTurtle i <$>
@@ -374,12 +374,11 @@ run procs = do
                              newTVarIO Up <*>
                              (V.replicateM $(tlength) (newTVarIO 0))
                          return ((i,t):ts, g'')
-                           ) ([],gen) range_
-                  let ns' = IM.fromDistinctAscList ns
-                  lift $ do
-                       writeIORef ogen_ $! gen'
-                       atomically $ modifyTVar' __turtles (`IM.union` ns') 
-                  return ns' :: C Observer () IO Turtles
+                           ) ([],gen) [oldWho..oldWho + $(varE y)-1]
+                    let ns' = IM.fromDistinctAscList ns
+                    writeIORef ogen_ $! gen'
+                    atomically $ modifyTVar' __turtles (`IM.union` ns') 
+                    return ns') :: C Observer () IO Turtles
                             |]) []]
 
         -- (_, a, _, _) <- Reader.ask
@@ -409,9 +408,9 @@ run procs = do
                                                                                                                               return (i, t)
                                                                                                                              | i <- [w..w+n-1]]
                                                            oldWho <- lift $ readTVarIO __who
-                                                           lift $ atomically $ modifyTVar' __who ($(varE y) +)
+                                                           atomic $ lift $ modifyTVar' __who ($(varE y) +)
                                                            ns <- newTurtles oldWho $(varE y)
-                                                           lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
+                                                           atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
                                                            return ns -- todo: can be optimized
                                                          |]) []]
 
@@ -519,10 +518,6 @@ newOrderedBreed i o b x to = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (V.replicateM to (newTVarIO 0))
-#ifdef STATS_STM
-       <*> newIORef 0 <*>
-       newIORef 0
-#endif
 
 
 -- | Internal
@@ -545,9 +540,6 @@ newSprout w to x y = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (V.replicateM to (newTVarIO 0))
-#ifdef STATS_STM
-       <*> newIORef 0 <*> newIORef 0
-#endif
 
 -- | Internal
 newBSprout :: Int -> Int -> Double -> Double -> String -> C Patch _s' IO Turtle
@@ -569,9 +561,6 @@ newBSprout w to x y b = do
        newTVarIO 1 <*>
        newTVarIO Up <*>
        (V.replicateM to (newTVarIO 0))
-#ifdef STATS_STM
-       <*> newIORef 0 <*> newIORef 0
-#endif
 
 
 
@@ -596,45 +585,39 @@ newOrderedTurtle i o x to = do
              newTVarIO 1 <*>
              newTVarIO Up <*>
              (V.replicateM to (newTVarIO 0))
-#ifdef STATS_STM
-             <*> newIORef 0 <*>
-             newIORef 0
-#endif
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_breeds :: String -> Int -> Int -> C Observer () IO Turtles -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
 create_breeds b n to = do
-  oldWho <- lift $ readTVarIO __who
-  lift $ atomically $ modifyTVar' __who (n +)
-  let range_ = [oldWho..oldWho+n-1]
-  ns <- IM.fromDistinctAscList <$> mapM newBreed range_
-  lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
-  return ns -- todo: can be optimized
-        where
-                      -- | Internal
-                      newBreed :: Int -> C Observer () IO (Int, Turtle)
-                      newBreed x = do
-                          rpc <- random_primary_color
-                          rih <- random_integer_heading
-                          (\ j -> (x,j)) <$> (lift $ MkTurtle x <$>
-                               newTVarIO b <*>
-                               newTVarIO rpc <*>          --  random primary color
-                               newTVarIO (fromIntegral rih) <*> --  random integer heading
-                               newTVarIO 0 <*>
-                               newTVarIO 0 <*>
-                               newTVarIO "default" <*>
-                               newTVarIO "" <*>
-                               newTVarIO 9.9 <*>
-                               newTVarIO False <*>
-                               newTVarIO 1 <*>
-                               newTVarIO 1 <*>
-                               newTVarIO Up <*>
-                               (V.replicateM to (newTVarIO 0)))
-#ifdef STATS_STM
-                               <*> newIORef 0 <*>
-                               newIORef 0)
-#endif
+  (_,_,ogen_) <- Reader.ask
+  lift (do
+         oldWho <- readTVarIO __who
+         atomically $ modifyTVar' __who (n +)
+         gen <- readIORef ogen_
+         (ns,gen') <- foldrM (\ i (ts,g) -> do
+                         let (rpc,g') = randomR (0,13 :: Int) g
+                         let (rih,g'') = randomR (0,360 :: Int) g'
+                         t <- MkTurtle i <$>
+                             newTVarIO b <*>
+                             newTVarIO (primary_colors !! rpc)  <*>
+                             newTVarIO (fromIntegral rih) <*>
+                             newTVarIO 0 <*>
+                             newTVarIO 0 <*>
+                             newTVarIO "default" <*>
+                             newTVarIO "" <*>
+                             newTVarIO 9.9 <*>
+                             newTVarIO False <*>
+                             newTVarIO 1 <*>
+                             newTVarIO 1 <*>
+                             newTVarIO Up <*>
+                             (V.replicateM to (newTVarIO 0))
+                         return ((i,t):ts, g'')
+                            ) ([],gen) [oldWho..oldWho + n-1]
+         let ns' = IM.fromDistinctAscList ns
+         writeIORef ogen_ $! gen'
+         atomically $ modifyTVar' __turtles (`IM.union` ns') 
+         return ns')
 
 
 -- | Internal, Utility function to make TemplateHaskell easier
@@ -670,10 +653,6 @@ newLink f t ls = MkLink f t <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (V.replicateM ls (newTVar 0))
-#ifdef STATS_STM
-                  <*> pure (unsafePerformIO (newIORef 0)) <*>
-                  pure (unsafePerformIO (newIORef 0))
-#endif
 
 
 -- | Internal
@@ -688,11 +667,6 @@ newLBreed f t d b ls = MkLink f t d <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (V.replicateM ls (newTVar 0))
-#ifdef STATS_STM
-                  <*> pure (unsafePerformIO (newIORef 0)) <*>
-                  pure (unsafePerformIO (newIORef 0))
-#endif
-
 
 
 {-# INLINE create_link_from_ #-}

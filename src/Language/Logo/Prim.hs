@@ -91,8 +91,8 @@ import Data.Colour.SRGB (sRGB24)
 
 
 #ifdef STATS_STM
-import Data.IORef (atomicModifyIORef, newIORef)
 import System.IO.Unsafe (unsafePerformIO)
+import Data.Atomics.Counter (incrCounter_, readCounter)
 #endif
 
 
@@ -1454,28 +1454,9 @@ atomic comms =
 #ifndef STATS_STM
        Reader.mapReaderT atomically comms
 #else
-       do
-         (_, s, _, _) <- RWS.ask 
-         lift $ increaseSuccessfulSTM s
-         Reader.mapReaderT atomically (lift (unsafeIOToSTM $ increaseTotalSTM s) >> comms)
-    where
-        increaseSuccessfulSTM s = case s of
-                                     TurtleRef _ t -> atomicModifyIORef'  (tsuccstm t) (\ x -> (x+1, ()))
-                                     PatchRef _ p -> atomicModifyIORef'  (psuccstm p) (\ x -> (x+1, ()))
-                                     LinkRef _ l -> atomicModifyIORef'  (lsuccstm l) (\ x -> (x+1, ()))
-                                     ObserverRef _ -> pure ()
-                                     Nobody -> throw DevException
-
-{-# NOINLINE increaseTotalSTM #-}
--- | Internal
-increaseTotalSTM :: AgentRef -> IO ()
-increaseTotalSTM s = case s of
-                       TurtleRef _ t -> atomicModifyIORef'  (ttotalstm t) (\ x -> (x+1, ()))
-                       PatchRef _ p -> atomicModifyIORef'  (ptotalstm p) (\ x -> (x+1, ()))
-                       LinkRef _ l -> atomicModifyIORef'  (ltotalstm l) (\ x -> (x+1, ()))
-                       ObserverRef _ -> pure ()
-                       Nobody -> throw DevException
-
+    do
+      lift $ incrCounter_ 1 counterSTMCommits --  it should be run afterwards, but we can assume the transaction will be succesful eventually
+      Reader.mapReaderT (\ stm -> atomically (unsafeIOToSTM (incrCounter_ 1 counterSTMLoops) >> stm)) comms 
 #endif
 
 
@@ -1669,11 +1650,7 @@ is_undirected_linkp (MkLink {directed_ = d}) = pure $ not d
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> C Turtle _s' STM [Turtle]
 hatch n = do
-#ifdef STATS_STM
-    (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr _tt _ts, _,_) <- Reader.ask
-#else
     (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr, _,_) <- Reader.ask
-#endif
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
     let newArray = V.mapM (newTVar <=< readTVar) tarr
     let newTurtles w = pure . IM.fromDistinctAscList =<< sequence [do
@@ -1692,10 +1669,6 @@ hatch n = do
                                                                             (newTVar =<< readTVar ps) <*>
                                                                             (newTVar =<< readTVar pm) <*>
                                                                             newArray
-#ifdef STATS_STM                                                                            
-                                                                            <*> pure (unsafePerformIO (newIORef 0)) <*> 
-                                                                            pure (unsafePerformIO (newIORef 0))
-#endif
                                                                         pure (i, t) | i <- [w..w+n-1]]
     oldWho <- lift $ readTVar __who
     lift $ modifyTVar' __who (n +)
@@ -1743,29 +1716,18 @@ every n a = a >> wait n
 wait :: Double -> C _s _s' IO ()
 wait n = lift $ threadDelay (truncate $ n * 1000000)
 
-stats_stm :: C Observer () IO Double
+stats_stm :: C Observer () IO (String,String,String)
 stats_stm = 
 #ifndef STATS_STM 
    error "library not compiled with stats-stm flag enabled"
 #else
-   do
-    (tw, _, _, _) <- RWS.ask
-    MkWorld wts wls <- lift $ readTVarIO tw
-    (vtt, vts) <- lift $ F.foldlM (\ (acct, accs) (MkTurtle {ttotalstm=tt, tsuccstm=ts}) -> do
-                                  rtt <- readIORef tt
-                                  rts <- readIORef ts
-                                  pure (acct+rtt, accs+rts)) (0,0) wts
-    (vpt, vps) <- lift $ F.foldlM (\ (acct, accs) (MkPatch {ptotalstm=pt, psuccstm=ps}) -> do
-                                  rpt <- readIORef pt
-                                  rps <- readIORef ps
-                                  pure (acct+rpt, accs+rps)) (0,0) __patches
-    (vlt, vls) <- lift $ F.foldlM (\ (acct, accs) (MkLink {ltotalstm=pt, lsuccstm=ps}) -> do
-                                  rlt <- readIORef pt
-                                  rls <- readIORef ps
-                                  pure (acct+rlt, accs+rls)) (0,0) wls
-    let total = fromIntegral $ vtt+vpt+vlt
-    let suc = fromIntegral $ vts+vps+vls
-    pure $ (total - suc) / total
+   lift $ do
+    r <- readCounter counterSTMLoops
+    s <- readCounter counterSTMCommits
+    let retryRatio = fromIntegral (r-s) / fromIntegral s
+    pure ("Number of retries: " ++ Prelude.show (r-s) 
+         ,"\nNumber of commits: " ++ Prelude.show s
+         ,"Retry ratio: " ++ Prelude.show retryRatio)
 #endif
 
 

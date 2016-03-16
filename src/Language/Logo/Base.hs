@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, EmptyDataDecls, TypeFamilies #-}
+{-# LANGUAGE EmptyDataDecls, TypeFamilies #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Base
@@ -88,10 +88,6 @@ data Turtle = MkTurtle {
     , pen_size_ :: TVar Double
     , pen_mode_ :: TVar PenMode
     , tvars_ :: Vector (TVar Double)
-#ifdef STATS_STM
-    , ttotalstm :: IORef Int
-    , tsuccstm :: IORef Int
-#endif
     }
 
 -- | The 'Patch' datatype follows a similar philosophy with the 'Turtle' (ADT).
@@ -104,10 +100,6 @@ data Patch = MkPatch {
     , plabel_ :: TVar String
     , plabel_color_ :: TVar Double
     , pvars_ :: Vector (TVar Double)
-#ifdef STATS_STM
-    , ptotalstm :: IORef Int
-    , psuccstm :: IORef Int
-#endif
     }
 
 -- | The 'Link' datatype follows a similar philosophy with the 'Turtle' (ADT).
@@ -126,10 +118,6 @@ data Link = MkLink {
     , lshape_ :: TVar String
     , tie_mode :: TVar TieMode
     , lvars_ :: Vector (TVar Double)
-#ifdef STATS_STM
-    , ltotalstm :: IORef Int
-    , lsuccstm :: IORef Int
-#endif
     }
 
 -- | Holds the information for the turtle, if it's pen is up or down.

@@ -69,6 +69,7 @@ library
   ghc-options: -Wall -fno-warn-orphans -fno-ignore-asserts
   if flag(stats-stm)
     cpp-options: -DSTATS_STM
+    build-depends: atomic-primops
   hs-source-dirs: src
 
 -- TEST SUITE
