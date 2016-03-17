@@ -1,0 +1,35 @@
+# Hardware
+
+CPU Intel(R) Xeon(R) CPU E5-2698 v3 , 16 core, non-hyperthreaded
+
+128GB RAM
+
+# OS
+
+Ubuntu Trusty 14.04 Server LTS, 64bit
+
+Kernel: Linux ubuntu 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+
+# Software
+
+GHC 7.10.3, 64bit
+
+HLogo models compiled with: -O -fasm -A64m -qa
+
+## Java 8
+openjdk version "1.8.0_72-internal"
+OpenJDK Runtime Environment (build 1.8.0_72-internal-b15)
+OpenJDK 64-Bit Server VM (build 25.72-b15, mixed mode)
+
+## Java 7
+
+java version "1.7.0_95"
+OpenJDK Runtime Environment (IcedTea 2.6.4) (7u95-2.6.4-0ubuntu0.14.04.1)
+OpenJDK 64-Bit Server VM (build 24.95-b01, mixed mode)
+
+NetLogo 5.2.1
+
+
+
+
+
