@@ -59,10 +59,11 @@ import qualified Control.Monad.Trans.Reader as Reader
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
-import Data.List (delete, nub,nubBy, find, sort, sortBy)
-import Control.Monad (forM_, liftM, filterM, forever, when, (<=<))
+import Data.List (delete, nub,nubBy, find, sort, sortBy, foldl')
+import Control.Monad (forM_, liftM, liftM2, filterM, forever, when, (<=<))
 import Data.Word (Word8)
-import qualified Data.Foldable as F (foldl', toList, foldlM)
+import qualified Data.Foldable as F (Foldable, foldl', foldr, toList, foldlM, mapM_)
+import qualified Data.Traversable as T (mapM)
 import Data.Maybe (fromMaybe)
 
 -- concurrency
@@ -89,8 +90,7 @@ import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
 #if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-import Data.Foldable (Foldable)
+import Control.Applicative ((<$>),(<*>))
 #endif
 
 #ifdef STATS_STM
@@ -112,7 +112,7 @@ counterSTMCommits = unsafePerformIO $ newCounter 0
 self :: (STMorIO m, Agent s) => C s _s' m s -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (s,_,_) <- Reader.ask
-  pure s
+  return s
 
 {-# SPECIALIZE  myself :: Agent s => C s s' STM s' #-}
 {-# SPECIALIZE  myself :: Agent s => C s s' IO s' #-}
@@ -122,7 +122,7 @@ self = do
 myself :: (STMorIO m, Agent s) => C s s' m s'
 myself = do
   (_,m,_) <- Reader.ask
-  pure m
+  return m
 
 {-# SPECIALIZE INLINE other :: (Agent s, Eq s) => [s] -> C s _s' STM [s] #-}
 {-# SPECIALIZE INLINE other :: (Agent s, Eq s) => [s] -> C s _s' IO [s] #-}
@@ -131,20 +131,20 @@ myself = do
 other :: (STMorIO m, Agent s, Eq s) => [s] -> C s _s' m [s]
 other as = do
   s <- self
-  pure $ delete s as
+  return $ delete s as
 
 
 {-# SPECIALIZE INLINE  patches :: C _s _s' STM Patches #-}
 {-# SPECIALIZE INLINE  patches :: C _s _s' IO Patches #-}
 -- | Reports the agentset consisting of all patches. 
 patches :: STMorIO m => C _s _s' m Patches
-patches = pure __patches 
+patches = return __patches 
 
 {-# SPECIALIZE INLINE patch :: Double -> Double -> C _s _s' STM Patch #-}
 {-# SPECIALIZE INLINE patch :: Double -> Double -> C _s _s' IO Patch #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: STMorIO m => Double -> Double -> C _s _s' m Patch
-patch x y = pure $ patch' x y
+patch x y = return $ patch' x y
 
 {-# INLINE patch' #-}
 patch' :: Double -> Double -> Patch
@@ -170,7 +170,7 @@ patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m Patch
 patch_at x y = do
   (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
-  pure $ patch' (fromIntegral px + x) (fromIntegral py +y)
+  return $ patch' (fromIntegral px + x) (fromIntegral py +y)
 
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' STM Patch #-}
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' IO Patch #-}
@@ -192,7 +192,7 @@ patch_ahead n = do
   let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ cmdOpt
                                                          then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                                                          else  dy_*n
-  pure $ patch' px_new py_new
+  return $ patch' px_new py_new
 
 {-# INLINE black #-}
 black :: Double
@@ -250,9 +250,15 @@ pink = 135
 {-# SPECIALIZE INLINE count :: Links -> C _s _s' STM Int #-}
 {-# SPECIALIZE INLINE count :: Links -> C _s _s' IO Int #-}
 -- | Reports the number of agents in the given agentset. 
-count :: (STMorIO m, Foldable t, Agent a) => t a -> C _s _s' m Int
+count :: (STMorIO m, F.Foldable t, Agent a) => t a -> C _s _s' m Int
 -- count [Nobody] = throw $ TypeException "agent" Nobody
-count = pure . Prelude.length
+#if __GLASGOW_HASKELL__ < 710
+count = return . F.foldl' (\c _ -> c+1) 0
+#else
+count = return . Prelude.length
+#endif
+
+
 
 {-# SPECIALIZE INLINE anyp :: Patches -> C _s _s' STM Bool #-}
 {-# SPECIALIZE INLINE anyp :: Patches -> C _s _s' IO Bool #-}
@@ -261,19 +267,23 @@ count = pure . Prelude.length
 {-# SPECIALIZE INLINE anyp :: Links -> C _s _s' STM Bool #-}
 {-# SPECIALIZE INLINE anyp :: Links -> C _s _s' IO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
-anyp :: (STMorIO m, Foldable t, Agent (t a)) => t a -> C _s _s' m Bool
+anyp :: (STMorIO m, F.Foldable t, Agent (t a)) => t a -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
-anyp = pure . Prelude.null
+#if __GLASGOW_HASKELL__ < 710
+anyp = return . F.foldr (\_ _ -> False) True
+#else
+anyp = return . Prelude.null
+#endif
 
-allp :: (Foldable t, Agent (t a)) => C (One (t a)) p IO Bool -> t a -> C p p' IO Bool
+allp :: (F.Foldable t, Agent (t a)) => C (One (t a)) p IO Bool -> t a -> C p p' IO Bool
 allp r as = undefined
 -- do
 --   res <- with r as
---   pure $ Prelude.length as == Prelude.length res
+--   return $ Prelude.length as == Prelude.length res
 
 {-# INLINE length #-}
 length :: (STMorIO m) => [a] -> C _s _s' m Int
-length = pure . Prelude.length
+length = return . Prelude.length
 
 -- | The turtle moves forward by number units all at once (rather than one step at a time as with the forward command). 
 jump :: Double -> C Turtle _s' STM ()
@@ -382,7 +392,7 @@ class Agent s => TurtlePatch s where
     patch_on_ :: STMorIO m => s -> C s _s' m Patch
 
 instance TurtlePatch Patch where
-    patch_on_ = pure
+    patch_on_ = return
 
 instance TurtlePatch Turtle where
     patch_on_ (MkTurtle {xcor_=tx,ycor_=ty}) = do
@@ -398,28 +408,28 @@ instance TurtlePatch Turtle where
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 --  NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: STMorIO m => [C _s _s' m Turtle] -> C _s _s' m Turtles
-turtle_set ts = liftM (foldr (\ t@(MkTurtle {who_=w}) acc -> 
+turtle_set = liftM (foldr (\ t@(MkTurtle {who_=w}) acc -> 
                                   -- if x == Nobody -- filter Nobody
                                   -- then acc
                                   -- else case x of -- type check
                                   --        TurtleRef _ _ -> 
                                   IM.insert w t acc
                                          -- _ -> throw $ TypeException "turtle" x
-                             ) IM.empty) (sequence ts)
+                          ) IM.empty) . sequence
 
 {-# SPECIALIZE  patch_set :: [C _s _s' STM Patch] -> C _s _s' STM Patches #-}
 {-# SPECIALIZE  patch_set :: [C _s _s' IO Patch] -> C _s _s' IO Patches #-}
 -- | Reports an agentset containing all of the patches anywhere in any of the inputs.
 --  NB: HLogo no support for nested patch_set concatenation/flattening
 patch_set :: STMorIO m => [C _s _s' m Patch] -> C _s _s' m Patches
-patch_set = fmap V.fromList . sequence
+patch_set = liftM V.fromList . sequence
 
 {-# SPECIALIZE  link_set :: [C _s _s' STM Link] -> C _s _s' STM Links #-}
 {-# SPECIALIZE  link_set :: [C _s _s' IO Link] -> C _s _s' IO Links #-}
 -- | Reports an agentset containing all of the links anywhere in any of the inputs.
 --  NB: HLogo no support for nested turtle_set concatenation/flattening
 link_set :: STMorIO m => [C _s _s' m Link] -> C _s _s' m Links
-link_set = fmap (foldr (\ l@(MkLink {end1_=f,end2_=t}) acc -> -- if x == Nobody -- filter Nobody
+link_set = liftM (foldr (\ l@(MkLink {end1_=f,end2_=t}) acc -> -- if x == Nobody -- filter Nobody
                                       -- then acc
                                       -- else case x of -- type check
                                       --        LinkRef _ _ -> 
@@ -448,7 +458,7 @@ can_movep n = do
   let py_new = round $ y + if vertical_wrap_ cmdOpt
                            then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                            else  dy_*n
-  pure (not (not (horizontal_wrap_ cmdOpt) && (px_new > max || px_new < min_pxcor_ cmdOpt)) 
+  return (not (not (horizontal_wrap_ cmdOpt) && (px_new > max || px_new < min_pxcor_ cmdOpt)) 
        || (not (vertical_wrap_ cmdOpt) && (py_new > may || py_new < min_pycor_ cmdOpt)))
 
 set_heading :: Double -> C Turtle _s' STM ()
@@ -462,7 +472,7 @@ set_heading v = do
 pxcor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pxcor = do
   (s,_,_) <- Reader.ask
-  pxcor_ <$> patch_on_ s
+  liftM pxcor_ $ patch_on_ s
 
 {-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' STM Int #-}
 {-# SPECIALIZE  pycor :: TurtlePatch s => C s _s' IO Int #-}
@@ -470,7 +480,7 @@ pxcor = do
 pycor :: (TurtlePatch s, STMorIO m) => C s _s' m Int
 pycor = do
   (s,_,_) <- Reader.ask
-  pycor_ <$> patch_on_ s
+  liftM pycor_ $ patch_on_ s
 
 {-# SPECIALIZE  set_plabel :: String -> C Turtle _s' STM () #-}
 {-# SPECIALIZE  set_plabel :: String -> C Patch _s' STM () #-}
@@ -551,20 +561,20 @@ set_ycor y' = do
 who :: STMorIO m => C Turtle _s' m Int
 who = do
   (MkTurtle {who_=tw},_,_) <- Reader.ask
-  pure tw
+  return tw
 
 
 {-# SPECIALIZE  dx :: C Turtle _s' STM Double #-}
 {-# SPECIALIZE  dx :: C Turtle _s' IO Double #-}
 -- | Reports the x-increment (the amount by which the turtle's xcor would change) if the turtle were to take one step forward in its current heading. 
 dx :: STMorIO m => C Turtle _s' m Double
-dx = sin_ <$> heading
+dx = liftM sin_ $ heading
 
 {-# SPECIALIZE  dy :: C Turtle _s' STM Double #-}
 {-# SPECIALIZE  dy :: C Turtle _s' IO Double #-}
 -- | Reports the y-increment (the amount by which the turtle's ycor would change) if the turtle were to take one step forward in its current heading. 
 dy :: STMorIO m => C Turtle _s' m Double
-dy = cos_ <$> heading
+dy = liftM cos_ $ heading
 
 -- | Reports a number suitable for seeding the random number generator.
 -- The numbers reported by new-seed are based on the current date and time in milliseconds. 
@@ -575,13 +585,13 @@ new_seed :: C _s _s' STM Int
 new_seed = do
     cpt <- lift $ unsafeIOToSTM getCPUTime
     (sec, psec) <- lift $ unsafeIOToSTM getTime
-    pure $ fromIntegral (sec * 12345 + psec + cpt)
+    return $ fromIntegral (sec * 12345 + psec + cpt)
         where
           getTime :: IO (Integer, Integer)
           getTime = do
              utc <- getCurrentTime
              let daytime = toRational $ utctDayTime utc
-             pure $ numerator daytime `quotRem` denominator daytime
+             return $ numerator daytime `quotRem` denominator daytime
 
 random_seed :: Int -> C s _s' IO ()
 random_seed i = do
@@ -595,7 +605,7 @@ random_xcor = do
   gen <- lift $ readIORef tgen
   let (v, gen') = randomR (fromIntegral (min_pxcor_ cmdOpt) :: Double, fromIntegral $ max_pxcor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
-  pure v
+  return v
 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, y. 
 random_ycor :: C s _s' IO Double
@@ -604,7 +614,7 @@ random_ycor = do
   gen <- lift $ readIORef tgen
   let (v, gen') = randomR (fromIntegral (min_pycor_ cmdOpt) :: Double, fromIntegral $ max_pycor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
-  pure v
+  return v
 
 -- | Reports a random integer ranging from min-pxcor to max-pxcor inclusive. 
 random_pxcor :: C s _s' IO Int
@@ -613,7 +623,7 @@ random_pxcor = do
   gen <- lift $ readIORef tgen
   let (v, gen') = TF.randomR (min_pxcor_ cmdOpt, max_pxcor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
-  pure v
+  return v
 
 -- | Reports a random integer ranging from min-pycor to max-pycor inclusive. 
 random_pycor :: C s _s' IO Int
@@ -622,7 +632,7 @@ random_pycor = do
   gen <- lift $ readIORef tgen
   let (v, gen') = TF.randomR (min_pycor_ cmdOpt, max_pycor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
-  pure v
+  return v
 
 {-# WARNING random "maybe it can become faster with some small fraction added to the input or subtracted and then floored" #-}
 {-# SPECIALIZE random :: (Num b, Real a) => a -> C Observer () IO b #-}
@@ -646,7 +656,7 @@ random x = do
                         else n, 0)
   let (v, gen') = TF.randomR randRange gen
   lift $ writeIORef tgen $! gen'
-  pure (fromIntegral (v :: Int))
+  return (fromIntegral (v :: Int))
 
 -- |  If number is positive, reports a random floating point number greater than or equal to 0 but strictly less than number.
 -- If number is negative, reports a random floating point number less than or equal to 0, but strictly greater than number.
@@ -657,7 +667,7 @@ random_float x = do
   gen <- lift $ readIORef tgen
   let (v, gen') = randomR (if x > 0 then (0,x) else (x,0)) gen
   lift $ writeIORef tgen $! gen'
-  pure v
+  return v
 
 {-# WARNING random_exponential "TODO" #-}
 -- | random-exponential reports an exponentially distributed random floating point number. 
@@ -820,19 +830,19 @@ in_cone = todo
 {-# SPECIALIZE  no_turtles :: C _s _s' IO Turtles #-}
 -- | Reports an empty turtle agentset. 
 no_turtles :: STMorIO m => C _s _s' m Turtles
-no_turtles = pure IM.empty
+no_turtles = return IM.empty
 
 {-# SPECIALIZE  no_patches :: C _s _s' STM Patches #-}
 {-# SPECIALIZE  no_patches :: C _s _s' IO Patches #-}
 -- | Reports an empty patch agentset. 
 no_patches :: STMorIO m => C _s _s' m Patches
-no_patches = pure V.empty
+no_patches = return V.empty
 
 {-# SPECIALIZE  no_links :: C _s _s' STM Links #-}
 {-# SPECIALIZE  no_links :: C _s _s' IO Links #-}
 -- | Reports an empty link agentset. 
 no_links :: STMorIO m => C _s _s' m Links
-no_links = pure M.empty
+no_links = return M.empty
 
 
 -- | Reports true if either boolean1 or boolean2 is true, but not when both are true. 
@@ -843,43 +853,43 @@ xor p q = (p || q) && not (p && q)
 {-# SPECIALIZE  patch_size :: C _s _s' STM Int #-}
 {-# SPECIALIZE  patch_size :: C _s _s' IO Int #-}
 patch_size :: STMorIO m => C _s _s' m Int
-patch_size = pure $ patch_size_ cmdOpt
+patch_size = return $ patch_size_ cmdOpt
 
 {-# SPECIALIZE  max_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum x-coordinate for patches, which determines the size of the world. 
 max_pxcor :: STMorIO m => C _s _s' m Int
-max_pxcor = pure $ max_pxcor_ cmdOpt
+max_pxcor = return $ max_pxcor_ cmdOpt
 
 {-# SPECIALIZE  max_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  max_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 max_pycor :: STMorIO m => C _s _s' m Int
-max_pycor = pure $ max_pycor_ cmdOpt
+max_pycor = return $ max_pycor_ cmdOpt
 
 {-# SPECIALIZE  min_pxcor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pxcor :: C _s _s' IO Int #-}
 -- | This reporter gives the minimum x-coordinate for patches, which determines the size of the world. 
 min_pxcor :: STMorIO m => C _s _s' m Int
-min_pxcor = pure $ min_pxcor_ cmdOpt
+min_pxcor = return $ min_pxcor_ cmdOpt
 
 {-# SPECIALIZE  min_pycor :: C _s _s' STM Int #-}
 {-# SPECIALIZE  min_pycor :: C _s _s' IO Int #-}
 -- | This reporter gives the maximum y-coordinate for patches, which determines the size of the world. 
 min_pycor :: STMorIO m => C _s _s' m Int
-min_pycor = pure $ min_pycor_ cmdOpt
+min_pycor = return $ min_pycor_ cmdOpt
 
 {-# SPECIALIZE  world_width :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_width :: C _s _s' IO Int #-}
 -- | This reporter gives the total width of the NetLogo world. 
 world_width :: STMorIO m => C _s _s' m Int
-world_width = pure $ max_pxcor_ cmdOpt - min_pxcor_ cmdOpt + 1
+world_width = return $ max_pxcor_ cmdOpt - min_pxcor_ cmdOpt + 1
 
 {-# SPECIALIZE  world_height :: C _s _s' STM Int #-}
 {-# SPECIALIZE  world_height :: C _s _s' IO Int #-}
 -- | This reporter gives the total height of the NetLogo world. 
 world_height :: STMorIO m => C _s _s' m Int
-world_height = pure $ max_pycor_ cmdOpt - min_pycor_ cmdOpt + 1
+world_height = return $ max_pycor_ cmdOpt - min_pycor_ cmdOpt + 1
 
 
 {-# WARNING clear_all_plots "TODO" #-}
@@ -995,14 +1005,14 @@ histogram = todo
 
 -- | Runs commands number times. 
 repeat_ :: STMorIO m => Int -> C _s _s' m a -> C _s _s' m ()
-repeat_ 0 _ = pure ()
+repeat_ 0 _ = return ()
 repeat_ n c = c >> repeat_ (n-1) c
 
 {-# INLINE report #-}
 -- | Immediately exits from the current to-report procedure and reports value as the result of that procedure. report and to-report are always used in conjunction with each other. 
 -- | NB: IN HLogo, It does not exit the procedure, but it will if the report primitive happens to be the last statement called from the procedure
 report :: STMorIO m => a -> C _s _s' m a
-report = pure
+report = return
 
 
 {-# INLINE item #-}
@@ -1028,11 +1038,11 @@ memberp = elem
 
 -- | Reports a list of length size containing values computed by repeatedly running the task. 
 n_values :: (Eq a, STMorIO m, Num a) => a -> (a -> C _s _s' m t) -> C _s _s' m [t]
-n_values 0 _ = pure []
+n_values 0 _ = return []
 n_values s f = do
     h <- f s 
     t <- n_values (s-1) f
-    pure (h:t)
+    return (h:t)
 
 {-# WARNING position "TODO: requires dynamic typing" #-}
 {-# INLINE position #-}
@@ -1042,14 +1052,25 @@ position = find
 
 -- |  From an agentset, reports a random agent. If the agentset is empty, reports nobody.
 -- From a list, reports a random list item. It is an error for the list to be empty. 
-one_of :: Foldable t => t a -> C s _s' IO a
+one_of :: F.Foldable t => t a -> C s _s' IO a
+#if __GLASGOW_HASKELL__ < 710
+one_of l = F.foldr (\_ _ ->  do
+                      (_,_,tgen) <- Reader.ask
+                      gen <- lift $ readIORef tgen
+                      let (v,gen') = TF.randomR (0, F.foldl' (\c _ -> c+1) (-1) l) gen
+                      lift $ writeIORef tgen $! gen'
+                      return $ F.toList l !! v
+                   ) (error "empty one_of") l
+#else
 one_of l | Prelude.null l = error "empty one_of"
          | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, Prelude.length l -1) gen
   lift $ writeIORef tgen $! gen'
-  pure $ F.toList l !! v
+  return $ F.toList l !! v
+#endif
+
 
 {-# RULES "one_of/Patches" one_of = one_of_patches #-}
 one_of_patches :: Patches -> C s _s' IO Patch
@@ -1059,7 +1080,7 @@ one_of_patches l | V.null l = error "empty one_of"
   gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, V.length l -1) gen
   lift $ writeIORef tgen $! gen'
-  pure $ l `V.unsafeIndex` v
+  return $ l `V.unsafeIndex` v
 
 {-# RULES "one_of/Links" one_of = one_of_links #-}
 one_of_links :: Links -> C s _s' IO Link
@@ -1069,30 +1090,30 @@ one_of_links l | M.null l = error "empty one_of"
   gen <- lift $ readIORef tgen
   let (v,gen') = TF.randomR (0, M.size l -1) gen
   lift $ writeIORef tgen $! gen'
-  pure $ snd $ M.elemAt v l
+  return $ snd $ M.elemAt v l
 
 -- NOTE: one_of_turtles is probably not possible, because there is no indexing of an IntMap datastructure (elemAt)
 
 -- |  From an agentset, reports an agentset of size size randomly chosen from the input set, with no repeats.
 -- From a list, reports a list of size size randomly chosen from the input set, with no repeats. 
 n_of :: Eq a => Int -> [a] -> C s _s' IO [a]
-n_of n ls | n == 0     = pure []
+n_of n ls | n == 0     = return []
           | n < 0     = error "negative index"
           | otherwise = do
   o <- one_of ls
   ns <- n_of (n-1) (delete o ls)
-  pure (o:ns)
+  return (o:ns)
 
 -- -- Uses instead agent_one_of when types match
 -- -- {-# RULES "n_of/AgentRef" n_of = agent_n_of #-}
 -- agent_n_of :: (Agent a) => Int -> [a] -> C s _s' STM [a]
--- agent_n_of n ls | n == 0     = pure []
+-- agent_n_of n ls | n == 0     = return []
 --                 | n < 0     = error "negative index"
 --                 | otherwise = do
 --   o <- agent_one_of ls
 --   -- when (o == Nobody) $ error "empty agentset"
 --   ns <- n_of (n-1) (delete o ls)
---   pure (o:ns)
+--   return (o:ns)
 
 
 {-# WARNING min_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
@@ -1100,7 +1121,7 @@ n_of n ls | n == 0     = pure []
 --min_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
 min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
-                                    pure $ case mv1 of
+                                    return $ case mv1 of
                                              Nothing -> (Just v2,a2)
                                              Just v1 -> if v2 < v1
                                                        then (Just v2,a2)
@@ -1112,7 +1133,7 @@ min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
 --max_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
 max_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
-                                    pure $ case mv1 of
+                                    return $ case mv1 of
                                              Nothing -> (Just v2,a2)
                                              Just v1 -> if v2 > v1
                                                        then (Just v2,a2)
@@ -1133,7 +1154,7 @@ remove = todo
 {-# INLINE remove_duplicates #-}
 -- | Reports a copy of list with all duplicate items removed. The first of each item remains in place. 
 remove_duplicates :: (STMorIO m, Eq a) => [a] -> C _s _s' m [a]
-remove_duplicates = pure . nub
+remove_duplicates = return . nub
 
 {-# WARNING remove_item "TODO" #-}
 -- | For a list, reports a copy of list with the item at the given index removed. 
@@ -1154,22 +1175,22 @@ sentence = (++)
 {-# WARNING shuffle "TODO: make it tail-recursive, optimize with arrays <http://www.haskell.org/haskellwiki/Random_shuffle>" #-}
 -- | Reports a new list containing the same items as the input list, but in randomized order. 
 shuffle :: Eq a => [a] -> C s _s' IO [a]
-shuffle [] = pure []
-shuffle [x] = pure [x]
+shuffle [] = return []
+shuffle [x] = return [x]
 shuffle l = do 
   x <- one_of l
-  (x:) <$> shuffle (delete x l)
+  liftM (x:) $ shuffle (delete x l)
 
 {-# INLINE sort_ #-}
 -- | Reports a sorted list of numbers, strings, or agents. 
 sort_ :: (STMorIO m, Ord a) => [a] -> C _s _s' m [a]
-sort_ = pure . sort
+sort_ = return . sort
 
 {-# WARNING sort_by "TODO: requires dynamic_typing" #-}
 {-# INLINE sort_by #-}
 -- | If the input is a list, reports a new list containing the same items as the input list, in a sorted order defined by the boolean reporter task. 
 sort_by :: STMorIO m => (a -> a -> Ordering) -> [a] -> C _s _s' m [a]
-sort_by c l = pure $ sortBy c l
+sort_by c l = return $ sortBy c l
 
 -- | Reports a list of agents, sorted according to each agent's value for reporter. Ties are broken randomly. 
 -- sort_on :: Ord a => CSTM a -> [AgentRef] -> CSTM [AgentRef]
@@ -1178,7 +1199,7 @@ sort_on = todo
 --   (s,_,_) <- RWS.ask
 --   xs <- lift . sequence $ [Reader.runReaderT rep (a,s) | a <- as]
 --   let rs = zip xs as
---   pure $ map snd $ sortBy (compare `on` fst) rs where
+--   return $ map snd $ sortBy (compare `on` fst) rs where
 
 
 -- | Reports just a section of the given list or string, ranging between the first position (inclusive) and the second position (exclusive). 
@@ -1203,7 +1224,7 @@ word = concatMap Prelude.show
 {-# INLINE abs_ #-}
 -- | Reports the absolute value of number. 
 abs_ :: (STMorIO m, Num a) => a -> C _s _s' m a
-abs_ = pure . abs
+abs_ = return . abs
 
 {-# INLINE e #-}
 -- | Mathematical Constant
@@ -1276,7 +1297,7 @@ min_ = minimum
 
 -- | Reports the statistical mean of the numeric items in the given list.
 mean :: [Double] -> Double
-mean l = let (t,n) = F.foldl' (\(b,c) a -> (a+b,c+1)) (0,0) l 
+mean l = let (t,n) = foldl' (\(b,c) a -> (a+b,c+1)) (0,0) l 
          in t / n
 
 -- | Reports the statistical median of the numeric items of the given list.
@@ -1319,7 +1340,7 @@ subtract_headings h1 h2 = let
           then (h2 `mod_` 360 + 360) `mod_` 360
           else h2
     diff = h1' - h2'
-                           in pure $
+                           in return $
                              if diff > -180 && diff <= 180
                              then diff
                              else if diff > 0
@@ -1356,7 +1377,7 @@ link_length = do
     y <- lift $ readTVar fy
     x' <- lift $ readTVar tx
     y' <- lift $ readTVar ty
-    pure $ sqrt (delta x x' (max_pxcor_ cmdOpt) ^ (2 :: Int) + 
+    return $ sqrt (delta x x' (max_pxcor_ cmdOpt) ^ (2 :: Int) + 
                 delta y y' (max_pycor_ cmdOpt) ^ (2 :: Int))
 
 
@@ -1367,7 +1388,7 @@ link_length = do
 --    (MkTurtle {who_=y},_) <- RWS.ask
 --    lxy <- link x y
 --    lyx <- link y x
---    pure $ case (lxy,lyx) of
+--    return $ case (lxy,lyx) of
 --               ([Nobody], [Nobody]) -> [Nobody]
 --               ([Nobody], _) -> error "directed link"
 --               ([LinkRef _ _], [LinkRef _ _]) -> lxy -- return arbitrary 1 of the two link positions
@@ -1476,13 +1497,13 @@ numBits = ceiling ((logBase 2 $ fromIntegral $ numCapabilities + 1) :: Double)
 
 -- same implementations
 instance Agent Turtle where
-    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> pure ()
+    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 instance Agent Patch where
-    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> pure ()
+    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 instance Agent Link where
-    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> pure ()
+    ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 
 
@@ -1495,7 +1516,7 @@ instance Agent Turtles where
         writeIORef tgen $! g0
         mapM_ (\ (tslice,core,g') -> do
                  tgen' <- newIORef g'
-                 ThreadG.forkOn core __tg $ mapM_ (\ t -> Reader.runReaderT f (t,s,tgen')) tslice
+                 ThreadG.forkOn core __tg $ F.mapM_ (\ t -> Reader.runReaderT f (t,s,tgen')) tslice
              ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         ThreadG.wait __tg
 
@@ -1508,7 +1529,7 @@ instance Agent Turtles where
         writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
                      tgen' <- newIORef g'
-                     snd <$> Thread.forkOn core (IM.elems <$> mapM (\ t -> Reader.runReaderT f (t,s,tgen')) tslice)
+                     snd <$> Thread.forkOn core (IM.elems <$> T.mapM (\ t -> Reader.runReaderT f (t,s,tgen')) tslice)
                   ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         concat <$> sequence [Thread.result =<< w | w <- ws]
 
@@ -1533,7 +1554,7 @@ splitPatches :: Int -> Int -> [(Int,Int,Int)]
 splitPatches width n = let (q,r) = width `quotRem` n
                            splitPatches' (0,s,l) c = (0, q+s, (s,q,c):l)
                            splitPatches' (r',s,l) c = (r'-1, q+s+1, (s,q+1,c):l)
-                       in  case (F.foldl' splitPatches' (r,0,[]) ([1..n] :: [Int])) of
+                       in  case (foldl' splitPatches' (r,0,[]) ([1..n] :: [Int])) of
                              (_,_,res) -> res
 
 instance Agent Patches where
@@ -1647,13 +1668,13 @@ stop = throw StopException
 -- using exceptions and exceptions don't work the same in STM. Also
 -- it avoids common over-logging that can happen in STM.
 while :: C _s _s' IO Bool -> C _s _s' IO a -> C _s _s' IO ()
-while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopException -> pure ())
+while r c = r >>= \ res -> when res $ (c >> while r c) `catchIO` (\ StopException -> return ())
 
 is_directed_linkp :: STMorIO m => Link -> C _s _s' m Bool
-is_directed_linkp (MkLink {directed_ = d}) = pure d
+is_directed_linkp (MkLink {directed_ = d}) = return d
 
 is_undirected_linkp :: STMorIO m => Link -> C _s _s' m Bool
-is_undirected_linkp (MkLink {directed_ = d}) = pure $ not d
+is_undirected_linkp (MkLink {directed_ = d}) = return $ not d
 
 -- | This turtle creates number new turtles. Each new turtle inherits of all its variables, including its location, from its parent. (Exceptions: each new turtle will have a new who number)
 hatch :: Int -> C Turtle _s' STM [Turtle]
@@ -1661,9 +1682,9 @@ hatch n = do
     (MkTurtle _w bd c h x y s l lc hp sz ps pm tarr, _,_) <- Reader.ask
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
     let newArray = V.mapM (newTVar <=< readTVar) tarr
-    let newTurtles w = pure . IM.fromDistinctAscList =<< sequence [do
+    let newTurtles w = return . IM.fromDistinctAscList =<< sequence [do
                                                                         t <- MkTurtle <$>
-                                                                            pure i <*>
+                                                                            return i <*>
                                                                             (newTVar =<< readTVar bd) <*>
                                                                             (newTVar =<< readTVar c) <*>
                                                                             (newTVar =<< readTVar h) <*>
@@ -1677,12 +1698,12 @@ hatch n = do
                                                                             (newTVar =<< readTVar ps) <*>
                                                                             (newTVar =<< readTVar pm) <*>
                                                                             newArray
-                                                                        pure (i, t) | i <- [w..w+n-1]]
+                                                                        return (i, t) | i <- [w..w+n-1]]
     oldWho <- lift $ readTVar __who
     lift $ modifyTVar' __who (n +)
     ns <- lift $ newTurtles oldWho
     lift $ modifyTVar' __turtles (`IM.union` ns) 
-    pure $ IM.elems ns -- todo: can be optimized
+    return $ IM.elems ns -- todo: can be optimized
 
 -- | The turtle sets its x and y coordinates to be the same as the given agent's.
 -- (If that agent is a patch, the effect is to move the turtle to the center of that patch.) 
@@ -1702,7 +1723,7 @@ turtles_on as = IM.unions <$> turtles_here `of_` as
 -- If the caller is the observer, then the points are measured relative to the origin, in other words, the points are taken as absolute patch coordinates.
 -- If the caller is a turtle, the points are measured relative to the turtle's exact location, and not from the center of the patch under the turtle. 
 at_points :: (TurtlePatch a) => [a] -> [(Double, Double)] -> C Turtle _s' STM [a]
-at_points [] _ = pure []
+at_points [] _ = return []
 at_points (_a:_as) _ds = todo
   -- do
   -- (_,_,s,_,_) <- RWS.ask
@@ -1733,7 +1754,7 @@ stats_stm =
     r <- readCounter counterSTMLoops
     s <- readCounter counterSTMCommits
     let retryRatio = fromIntegral (r-s) / fromIntegral s
-    pure ("Number of retries: " ++ Prelude.show (r-s) 
+    return ("Number of retries: " ++ Prelude.show (r-s) 
          ,"\nNumber of commits: " ++ Prelude.show s
          ,"Retry ratio: " ++ Prelude.show retryRatio)
 #endif
@@ -1801,21 +1822,21 @@ snapshot = do
              let sizeSpec = Diag.mkWidth (fromIntegral (ps * (max_x + abs min_x + 1)))
              let output = "snapshot" ++ Prelude.show (round ticksNow :: Int) ++ ".eps"
              prs <- patches
-             diagPatches <- lift $ mapM (\ (MkPatch {pxcor_ = px, pycor_ = py, pcolor_ = pc, plabel_ = pl}) -> do 
+             diagPatches <- lift $ T.mapM (\ (MkPatch {pxcor_ = px, pycor_ = py, pcolor_ = pc, plabel_ = pl}) -> do 
                                    c <- readTVarIO pc
                                    t <- readTVarIO pl
                                    let [r,g,b] = extract_rgb c
-                                   pure (Diag.p2 (fromIntegral px, fromIntegral py), Diag.text t Diag.# Diag.fc (sRGB24 255 255 255) Diag.<> Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript)
+                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.text t Diag.# Diag.fc (sRGB24 255 255 255) Diag.<> Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript)
                                 ) prs 
              trs <- turtles
-             diagTurtles <- lift $ mapM (\ (MkTurtle {xcor_ = tx, ycor_ = ty, tcolor_ = tc, heading_ = th, size_ = ts}) -> do 
+             diagTurtles <- lift $ T.mapM (\ (MkTurtle {xcor_ = tx, ycor_ = ty, tcolor_ = tc, heading_ = th, size_ = ts}) -> do 
                                           x <- readTVarIO tx
                                           y <- readTVarIO ty
                                           c <- readTVarIO tc
                                           h <- readTVarIO th
                                           s <- readTVarIO ts
                                           let [r,g,b] = extract_rgb c
-                                          pure (Diag.p2 (x, y), Diag.eqTriangle s Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (-h Diag.@@ Diag.deg) :: Diag.Diagram Postscript)
+                                          return (Diag.p2 (x, y), Diag.eqTriangle s Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (-h Diag.@@ Diag.deg) :: Diag.Diagram Postscript)
                                 ) trs
 
              
@@ -1862,7 +1883,7 @@ neighbors :: (STMorIO m, TurtlePatch s) => C s _s' m Patches
 neighbors = do
     (s,_,_) <- Reader.ask
     MkPatch {pxcor_ = x, pycor_ = y} <- patch_on_ s
-    pure $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
+    return $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
                       | (x',y') <- [ (x-1,y-1)
                                   , (x-1,y)
                                   , (x-1, y+1)
@@ -1880,7 +1901,7 @@ neighbors4 :: (STMorIO m, TurtlePatch s) => C s _s' m Patches
 neighbors4 = do
     (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = x, pycor_ = y}) <- patch_on_ s
-    pure $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
+    return $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
                       | (x',y') <- [ (x-1,y)
                                   , (x+1, y)
                                   , (x, y-1)
@@ -1898,11 +1919,11 @@ turtles_here :: (TurtlePatch s, STMorIO m) => C s _s' m Turtles
 turtles_here = do
     (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ s
-    IM.fromDistinctAscList <$> (filterM (\ (_, MkTurtle {xcor_ = x, ycor_ = y}) -> do 
+    liftM IM.fromDistinctAscList $ filterM (\ (_, MkTurtle {xcor_ = x, ycor_ = y}) -> do 
                                   x' <- readTVarSI x
                                   y' <- readTVarSI y
-                                  pure $ round x' == px && round y' == py
-                                ) =<< (IM.toAscList <$> turtles))
+                                  return $ round x' == px && round y' == py
+                                            ) =<< (liftM IM.toAscList $ turtles)
 
 {-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' STM Turtles #-}
 {-# SPECIALIZE  turtles_at :: TurtlePatch s => Double -> Double -> C s _s' IO Turtles #-}
@@ -1911,11 +1932,11 @@ turtles_here = do
 turtles_at :: (TurtlePatch s, STMorIO m) => Double -> Double -> C s _s' m Turtles -- ^ dx -> dy -> CSTM (Set AgentRef)
 turtles_at x y = do
     MkPatch {pxcor_=px, pycor_=py} <- patch_at x y
-    IM.fromDistinctAscList <$> (filterM (\ (_, MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
+    liftM IM.fromDistinctAscList $ filterM (\ (_, MkTurtle {xcor_ = tx, ycor_ = ty}) -> do 
                                    x' <- readTVarSI tx
                                    y' <- readTVarSI ty
-                                   pure $ round x' == px && round y' == py
-                                ) =<< (IM.toAscList <$> turtles))
+                                   return $ round x' == px && round y' == py
+                                           ) =<< (liftM IM.toAscList $ turtles)
 
 {-# SPECIALIZE INLINE patch_here :: C Turtle _s' STM Patch #-}
 {-# SPECIALIZE INLINE patch_here :: C Turtle _s' IO Patch #-}
@@ -1923,7 +1944,7 @@ turtles_at x y = do
 patch_here :: STMorIO m => C Turtle _s' m Patch
 patch_here = do
     (MkTurtle {xcor_ = x, ycor_ = y},_,_) <- Reader.ask
-    patch' <$> readTVarSI x <*> readTVarSI y
+    liftM2 patch' (readTVarSI x) (readTVarSI y)
 
 
 {-# SPECIALIZE INLINE turtles :: C _s _s' STM Turtles #-}
@@ -1938,7 +1959,7 @@ turtles = readTVarSI __turtles
 turtle :: STMorIO m => Int -> C _s _s' m Turtle
 turtle n = do
     ts <- readTVarSI __turtles
-    maybe nobody pure $ IM.lookup n ts
+    maybe nobody return $ IM.lookup n ts
 
 
 {-# SPECIALIZE INLINE heading :: C Turtle _s' STM Double #-}
@@ -1973,7 +1994,7 @@ ycor = do
 pcolor :: STMorIO m => TurtlePatch s => C s _s' m Double
 pcolor = do
     (s,_,_) <- Reader.ask
-    readTVarSI =<< pcolor_ <$> patch_on_ s
+    readTVarSI =<< (liftM pcolor_ $ patch_on_ s)
 
 {-# SPECIALIZE INLINE plabel :: C Turtle _s' STM String #-}
 {-# SPECIALIZE INLINE plabel :: C Turtle _s' IO String #-}
@@ -1982,7 +2003,7 @@ pcolor = do
 plabel :: STMorIO m => TurtlePatch s => C s _s' m String
 plabel = do
     (s,_,_) <- Reader.ask
-    readTVarSI =<< plabel_ <$> patch_on_ s
+    readTVarSI =<< (liftM plabel_ $ patch_on_ s)
 
 
 {-# SPECIALIZE INLINE color :: TurtleLink s => C s _s' STM Double #-}
@@ -2019,13 +2040,13 @@ towards = todo
 {-# SPECIALIZE INLINE link :: Int -> Int -> C _s _s' IO Link #-}
 -- | Given the who numbers of the endpoints, reports the link connecting the turtles. If there is no such link reports nobody. To refer to breeded links you must use the singular breed form with the endpoints. 
 link :: STMorIO m => Int -> Int -> C _s _s' m Link
-link f t = (fromMaybe (error "nobody") . M.lookup (f,t)) <$> readTVarSI __links
+link f t = liftM (fromMaybe (error "nobody") . M.lookup (f,t)) $ readTVarSI __links
 
 {-# SPECIALIZE  links :: C _s _s' STM Links #-}
 {-# SPECIALIZE  links :: C _s _s' IO Links #-}
 -- | Reports the agentset consisting of all links. 
 links :: STMorIO m => C _s _s' m Links
-links = M.fromDistinctAscList . nubBy checkForUndirected <$> (M.toAscList <$> readTVarSI __links)
+links = liftM (M.fromDistinctAscList . nubBy checkForUndirected) $ (liftM M.toAscList $ readTVarSI __links)
         where
           checkForUndirected (_,(MkLink {end1_ = e1, end2_ = e2, directed_ = False})) (_,(MkLink {end1_ = e1', end2_ = e2', directed_ = False})) = (e1 == e2' && e1' == e2) || (e1==e1' && e2==e2')
           checkForUndirected _ _ = False
@@ -2184,7 +2205,7 @@ scale_color c v minArg maxArg = do
            | var > maxArg =1 
            | var < minArg = 0
            | otherwise = (var - minArg) / (maxArg - minArg)
-  pure $ c' + let perc' = perc * 10
+  return $ c' + let perc' = perc * 10
                 in if perc' >= 9.9999
                    then 9.9999
                    else if perc' < 0
@@ -2245,7 +2266,7 @@ scale_color c v minArg maxArg = do
 --
 -- Mostly applies to Observer and IO-related commands. Also the implementation takes advantage of the faster 'readTVarIO'. 
 -- The correct lifting (STM or IO) is left to type inference.
-class (Monad m, Applicative m) => STMorIO m where
+class Monad m => STMorIO m where
     readTVarSI :: TVar a -> C s _s' m a
     -- | Reports the current value of the tick counter. The result is always a number and never negative. 
     ticks :: C _s _s' m Double

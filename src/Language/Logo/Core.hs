@@ -34,7 +34,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 import Data.IORef (IORef, newIORef)
 #if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
+import Control.Applicative ((<$>),(<*>))
 #endif
 
 {-# NOINLINE __tick #-}

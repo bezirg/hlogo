@@ -36,7 +36,7 @@ import System.Random.TF.Instances (randomR)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Foldable (foldlM, foldrM)
 #if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
+import Control.Applicative ((<$>),(<*>))
 #endif
 import Data.IORef
 
@@ -173,7 +173,7 @@ breeds_own p vs = do
                                                 (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   sp <- funD (mkName ("sprout_" ++ p)) [clause [varP y] (normalB [| do
                                                            (MkPatch {pxcor_=px,pycor_=py}, _,_) <- Reader.ask
-                                                           let  newTurtles w n = IM.fromDistinctAscList <$> sequence [do
+                                                           let  newTurtles w n = liftM IM.fromDistinctAscList $ sequence [do
                                                                                                                        t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
                                                                                                                        return (i, t)
                                                                                                                      | i <- [w..w+n-1]]
@@ -244,9 +244,9 @@ link_breeds_own p vs = do
 breeds :: [String] -> Q [Dec]
 breeds [plural,singular] = do
   sp' <- sigD (mkName plural) [t| forall _s _s' m. STMorIO m => C _s _s' m Turtles |]
-  sp <- valD (varP (mkName plural)) (normalB [| IM.fromDistinctAscList <$> (filterM (\ (_,MkTurtle {tbreed_ = tb}) -> do
+  sp <- valD (varP (mkName plural)) (normalB [| liftM IM.fromDistinctAscList $ (filterM (\ (_,MkTurtle {tbreed_ = tb}) -> do
                                                                                      b <- readTVarSI tb
-                                                                                     return $ b == $(litE (stringL plural))) =<< (IM.toAscList <$> turtles))
+                                                                                     return $ b == $(litE (stringL plural))) =<< (liftM IM.toAscList $ turtles))
                                         |]) []
   up <- valD (varP (mkName ("unsafe_" ++ plural))) (normalB [| with (breed >>= \ b -> return (b == $(litE (stringL plural)))) =<< turtles |]) []
   x <- newName "x"
