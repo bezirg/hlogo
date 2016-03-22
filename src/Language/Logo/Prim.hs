@@ -83,12 +83,14 @@ import System.CPUTime (getCPUTime)
 import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
 import Data.Ratio (numerator, denominator)
 
-
 -- For diagrams
 import qualified Diagrams.Prelude as Diag
 import Diagrams.Backend.Postscript
 import Data.Colour.SRGB (sRGB24)
 
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative
+#endif
 
 #ifdef STATS_STM
 import System.IO.Unsafe (unsafePerformIO)
