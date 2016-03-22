@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- | 
 -- Module      :  Language.Logo.Exception
@@ -61,7 +62,7 @@ data StopException = StopException
                    deriving (Eq, Typeable)
 
 data DevException = DevException
-                  deriving (Eq,Typeable)
+                  deriving (Eq, Typeable)
 
 instance Exception StopException
 instance Exception DevException
