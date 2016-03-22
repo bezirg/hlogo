@@ -2245,7 +2245,7 @@ scale_color c v minArg maxArg = do
 --
 -- Mostly applies to Observer and IO-related commands. Also the implementation takes advantage of the faster 'readTVarIO'. 
 -- The correct lifting (STM or IO) is left to type inference.
-class Monad m => STMorIO m where
+class (Monad m, Applicative m) => STMorIO m where
     readTVarSI :: TVar a -> C s _s' m a
     -- | Reports the current value of the tick counter. The result is always a number and never negative. 
     ticks :: C _s _s' m Double
