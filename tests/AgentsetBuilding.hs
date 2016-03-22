@@ -2,15 +2,12 @@
 
 module AgentsetBuilding (agentsetbuildingTestGroup) where
 
-import Test.Framework.TH
-import Test.Framework.Providers.HUnit
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.HUnit
 import Utility
 
 import Language.Logo
 import Control.Monad.Trans.Class (lift)
-
-
 
 globals ["glob1"]
 breeds ["frogs", "frog"]
@@ -19,8 +16,8 @@ breeds_own "frogs" []
 breeds_own "mice" []
 run [] -- workaround for tests
 
-agentsetbuildingTestGroup = $(testGroupGenerator)
-case_TurtleSet_2D = runT $ do 
+agentsetbuildingTestGroup = 
+ [testCase "case_TurtleSet_2D" $ runT $ do 
                crt 1
                       
                e1 <- of_ (atomic $ turtle_set [self]) =<< turtle 0
@@ -54,21 +51,21 @@ case_TurtleSet_2D = runT $ do
                -- a7 <- count =<< turtle_set [unsafe_frogs, unsafe_mice]
                -- lift $ e7 @=? a7
 
-case_TurtleSet_3D = assertFailure "HLogo does not currently support 3D lattices"
+ ,testCase "case_TurtleSet_3D" $ assertFailure "HLogo does not currently support 3D lattices"
 
-case_EmptyTurtleSet = runT $ do
-   a1 <- atomic $ turtle_set []                     
-   e1 <- atomic $ no_turtles
-   lift $ e1 @=? a1
+ ,testCase "case_EmptyTurtleSet" $ runT $ do
+      a1 <- atomic $ turtle_set []                     
+      e1 <- atomic $ no_turtles
+      lift $ e1 @=? a1
 
-   a2 <- atomic $ turtle_set [nobody, nobody]
-   e2 <- atomic $ no_turtles
-   
-   lift $ a2 @=? e2
+      a2 <- atomic $ turtle_set [nobody, nobody]
+      e2 <- atomic $ no_turtles
+           
+      lift $ a2 @=? e2
 
-case_TurtleSetNestedLists = assertFailure "HLogo currently does not support flattening deeply nested agentsets"
+ ,testCase "case_TurtleSetNestedLists" $ assertFailure "HLogo currently does not support flattening deeply nested agentsets"
 
-case_PatchSet2_2D = runT $ do
+ ,testCase "case_PatchSet2_2D" $ runT $ do
    crt 1
 
    ask (atomic $ set_glob1 3) =<< patch 0 0
@@ -76,7 +73,7 @@ case_PatchSet2_2D = runT $ do
    let e2 = 3
    lift $ e2 @=? a2
    
-   a3 <- atomic $ one_of =<< patch_set [patch 0 0]
+   a3 <- one_of =<< patch_set [patch 0 0]
    e3 <- atomic $ patch 0 0
    lift $ e3 @=? a3
 
@@ -100,9 +97,9 @@ case_PatchSet2_2D = runT $ do
    let e8 = 1
    lift $ e8 @=? a8
 
-case_PatchSet2_3D = assertFailure "HLogo does not currently support 3D lattices"
+ ,testCase "case_PatchSet2_3D" $ assertFailure "HLogo does not currently support 3D lattices"
 
-case_EmptyPatchSet = runT $ do
+ ,testCase "case_EmptyPatchSet" $ runT $ do
    a1 <- atomic $ patch_set []
    e1 <- atomic $ no_patches
    lift $ e1 @=? a1
@@ -112,11 +109,11 @@ case_EmptyPatchSet = runT $ do
    lift $ e2 @=? a2
 
    
-case_PatchSetNestedLists_2D = assertFailure "HLogo currently does not support flattening deeply nested agentsets"
+ ,testCase "case_PatchSetNestedLists_2D" $ assertFailure "HLogo currently does not support flattening deeply nested agentsets"
 
-case_PatchSetNestedLists_3D = assertFailure "HLogo does not currently support 3D lattices"
+ ,testCase "case_PatchSetNestedLists_3D" $ assertFailure "HLogo does not currently support 3D lattices"
 
-case_LinkSet_2D = runT $ do
+ ,testCase "case_LinkSet_2D" $ runT $ do
    crt 3
    ask (atomic $ create_link_with =<< turtle 1) =<< turtle 0
    
@@ -143,9 +140,9 @@ case_LinkSet_2D = runT $ do
    -- lift $ e7 @=? a7
 
 
-case_LinkSet_3D = assertFailure "HLogo does not currently support 3D lattices"
+ ,testCase "case_LinkSet_3D" $ assertFailure "HLogo does not currently support 3D lattices"
 
-case_EmptyLinkSet = runT $ do
+ ,testCase "case_EmptyLinkSet" $ runT $ do
    a1 <- atomic $ link_set []
    e1 <- atomic $ no_links
    lift $ e1 @=? a1
@@ -154,5 +151,6 @@ case_EmptyLinkSet = runT $ do
    e2 <- atomic $ no_links
    lift $ e2 @=? a2
 
-case_LinkSetNestedLists =  assertFailure "HLogo currently does not support flattening deeply nested agentsets"
+ ,testCase "case_LinkSetNestedLists" $  assertFailure "HLogo currently does not support flattening deeply nested agentsets"
                             
+ ]

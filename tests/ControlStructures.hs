@@ -2,9 +2,9 @@
 
 module ControlStructures (controlstructuresTestGroup) where
 
-import Test.Framework.TH
-import Test.Framework.Providers.HUnit
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.HUnit
+import Utility
 
 import Language.Logo
 import Control.Monad.Trans.Class (lift)
@@ -16,43 +16,43 @@ breeds_own "frogs" []
 breeds_own "mice" []
 run [] -- workaround for tests
 
-controlstructuresTestGroup = $(testGroupGenerator)
-case_Loop1 = let
-    foo = loop (do
+controlstructuresTestGroup =
+ [testCase "case_Loop1" $ let
+       foo = loop (do
                  g <- glob1
                  when (g == 10) stop
                  atomic $ set_glob1 (g + 1))
-             in runT $ do
+   in runT $ do
                   foo
                   a1 <- glob1
                   let e1 = 10
                   lift $ e1 @=? a1
 
-case_Foreach1 = runT $ do
-  ca
-  foreach [1,2,3] (\ x -> crt x)
-  a1 <- count =<< turtles
-  let e1 = 6
-  lift $ e1 @=? a1
+ ,testCase "case_Foreach1" $ runT $ do
+    ca
+    foreach [1,2,3] (\ x -> crt x)
+    a1 <- count =<< turtles
+    let e1 = 6
+    lift $ e1 @=? a1
 
-case_While = runT $ do
-  atomic $ random_seed 272
-  crt 10
-  while (anyp =<< turtles) (ask (atomic $ die) =<< atomic (one_of =<< turtles))
+ ,testCase "case_While" $ runT $ do
+    random_seed 272
+    crt 10
+    while (anyp =<< turtles) (ask (atomic $ die) =<< (one_of =<< turtles))
 
-  a1 <- anyp =<< turtles
-  let e1 = False
-  lift $ e1 @=? a1
+    a1 <- anyp =<< turtles
+    let e1 = False
+    lift $ e1 @=? a1
   
-caseIfElse = runT $ do
-  if (2+2 == 4) then crt 10 else crt 20
-  if (2+2 == 5) then crt 3 else crt 4
+ ,testCase "caseIfElse" $ runT $ do
+    if (2+2 == 4) then crt 10 else crt 20
+    if (2+2 == 5) then crt 3 else crt 4
   
-  a1 <- count =<< turtles
-  let e1 = 14
-  lift $ e1 @=? a1
+    a1 <- count =<< turtles
+    let e1 = 14
+    lift $ e1 @=? a1
 
-case_RecursiveReporter1 = let
+ ,testCase "case_RecursiveReporter1" $ let
     fact n = if n == 0
              then return 1
              else liftM (n *) $ fact (n-1)
@@ -80,4 +80,4 @@ case_RecursiveReporter1 = let
                             a6 <- fact 5
                             let e6 = 120
                             lift $ e6 @=? a6
-                            
+ ]

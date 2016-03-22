@@ -1,6 +1,8 @@
 module Main where
 
-import Test.Framework
+import Test.Tasty
+import Test.Tasty.Runners.Html
+import System.Environment (getArgs, withArgs)
 
 import AgentsetBuilding
 -- import Interaction
@@ -74,23 +76,28 @@ import  Timer
 -- import  InRadius
 -- import  RandomCors
 
-
-main = defaultMainWithArgs [
-       agentsetbuildingTestGroup, --         interactionTestGroup,  randomOrderInitializationTestGroup,
-       agentsetsTestGroup, --                layoutsTestGroup,      repeatTestGroup,
-       anyallTestGroup, --                   letTestGroup,          reportertasksTestGroup,
-       -- askTestGroup , --                      linksTestGroup,        resizeworldTestGroup,
-       booleanoperatorsTestGroup ,--         listsTestGroup,        rgbTestGroup,
-       breedsTestGroup , --                   mathTestGroup,         runTestGroup,
-       canmoveTestGroup , --                  memberTestGroup,       selfmyselfTestGroup,
+main :: IO ()
+main = do
+  args <- getArgs -- append to stdin args
+  withArgs ("-j1":args) $ -- don't run tests in parallel because it messes globals
+   defaultMainWithIngredients (htmlRunner:defaultIngredients)(
+    localOption (mkTimeout 1000000) $ -- timeouts any test at 1s
+    testGroup "hlogo"
+      [ testGroup "agentsetbuildingTestGroup" agentsetbuildingTestGroup --         interactionTestGroup,  randomOrderInitializationTestGroup,
+      , testGroup "agentsetsTestGroup" agentsetsTestGroup --                layoutsTestGroup,      repeatTestGroup,
+      , testGroup "anyallTestGroup" anyallTestGroup --                   letTestGroup,          reportertasksTestGroup,
+       -- , testGroup "askTestGroup" askTestGroup --                      linksTestGroup,        resizeworldTestGroup,
+      , testGroup "booleanoperatorsTestGroup" booleanoperatorsTestGroup --         listsTestGroup,        rgbTestGroup,
+      , testGroup "breedsTestGroup" breedsTestGroup --                   mathTestGroup,         runTestGroup,
+      , testGroup "canmoveTestGroup" canmoveTestGroup --                  memberTestGroup,       selfmyselfTestGroup,
        --  commandtasksTestGroup,             minmaxnofTestGroup,    sortTestGroup,
-       comparingagentsTestGroup ,--          movetoTestGroup,       stacktracesTestGroup,
-       controlstructuresTestGroup, --,        neighborsTestGroup,    stopTestGroup,
+      , testGroup "comparingagentsTestGroup" comparingagentsTestGroup--          movetoTestGroup,       stacktracesTestGroup,
+      , testGroup "controlstructuresTestGroup" controlstructuresTestGroup --,        neighborsTestGroup,    stopTestGroup,
        --  deadturtlesTestGroup,              noagentsTestGroup,     sumTestGroup,
        --  diffuseTestGroup,                  nsumTestGroup,         ticksTestGroup,
        --  distanceTestGroup,                 observerTestGroup,     tieTestGroup,
        --  equalityTestGroup,                 oneofTestGroup,        tiltTestGroup,
-       timerTestGroup
+      , testGroup "timerTestGroup" timerTestGroup
        --  errorsTestGroup,                   patchTestGroup,        ,
        --  faceTestGroup,                     patchaheadTestGroup,   turtlesTestGroup,
        --  fileTestGroup,                     patchatTestGroup,      turtleshereTestGroup,
@@ -101,5 +108,5 @@ main = defaultMainWithArgs [
        --  inconeTestGroup,                   proceduresTestGroup,   withlocalrandomnessTestGroup,
        --  initializationTestGroup,           randomTestGroup,       wordTestGroup,
        --  inradiusTestGroup,                 randomcorsTestGroup
-       ] ["-j","1"]
+       ])
         

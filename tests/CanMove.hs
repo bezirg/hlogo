@@ -2,9 +2,9 @@
 
 module CanMove (canmoveTestGroup) where
 
-import Test.Framework.TH
-import Test.Framework.Providers.HUnit
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.HUnit
+import Utility
 
 import Language.Logo
 import Control.Monad.Trans.Class (lift)
@@ -16,8 +16,7 @@ breeds_own "frogs" []
 breeds_own "mice" []
 run [] -- workaround for tests
 
-canmoveTestGroup = $(testGroupGenerator)
-case_CanMove2Box_2D = runT $ do
+canmoveTestGroup = [testCase "case_CanMove2Box_2D" $ runT $ do
   -- box topology
   crt 1
   ask (atomic $ set_heading 0 >> fd 5.1) =<< turtle 0
@@ -37,3 +36,4 @@ case_CanMove2Box_2D = runT $ do
   a3 <- of_ (atomic $ can_movep 11.3) =<< turtle 0
   let e3 = True
   lift $ e3 @=? a3
+                   ]

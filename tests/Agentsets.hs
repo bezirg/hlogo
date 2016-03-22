@@ -2,9 +2,8 @@
 
 module Agentsets (agentsetsTestGroup) where
 
-import Test.Framework.TH
-import Test.Framework.Providers.HUnit
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.HUnit
 import Utility
 
 import Language.Logo
@@ -19,8 +18,8 @@ breeds_own "frogs" []
 breeds_own "mice" []
 run [] -- workaround for tests
 
-agentsetsTestGroup = $(testGroupGenerator)
-case_Agentsets1 = runT $ do 
+agentsetsTestGroup = 
+ [testCase "case_Agentsets1" $ runT $ do 
 
    crt 10
    a1 <- atomic $ anyp =<< turtles
@@ -68,26 +67,26 @@ case_Agentsets1 = runT $ do
    let e9 = False
    lift $ e9 @=? a9
 
-case_Agentsets2 = runT $ do
-  let a1 = ask (atomic $ die) =<< atomic (one_of =<< turtles)
+ ,testCase "case_Agentsets2" $ runT $ do
+    let a1 = ask (atomic $ die) =<< one_of =<< turtles
   
-  assertTypeException (lift . evaluate =<< a1)
+    assertTypeException (lift . evaluate =<< a1)
 
-  crt 10
-  a2' <- atomic $ turtles
-  a2 <- of_ (atomic $ who) =<< min_one_of a2' (atomic $ who)
-  let e2 = 0
-  lift $ e2 @=? a2
+    crt 10
+    a2' <- atomic $ turtles
+    a2 <- of_ (atomic $ who) =<< min_one_of a2' (atomic $ who)
+    let e2 = 0
+    lift $ e2 @=? a2
 
-  ask (atomic $ die) =<< with (liftM (<5) who) =<< turtles
-  a3' <- atomic $ turtles
-  a3 <- of_ (atomic $ who) =<< min_one_of a3' (atomic $ who)
-  let e3 = 5
-  lift $ e3 @=? a3
+    ask (atomic $ die) =<< with (liftM (<5) who) =<< turtles
+    a3' <- atomic $ turtles
+    a3 <- of_ (atomic $ who) =<< min_one_of a3' (atomic $ who)
+    let e3 = 5
+    lift $ e3 @=? a3
 
-  a4 <- of_ (atomic $ count =<< turtles_here) =<< turtle 7
-  let e4 = 5
-  lift $ e4 @=? a4
+    a4 <- of_ (atomic $ count =<< turtles_here) =<< turtle 7
+    let e4 = 5
+    lift $ e4 @=? a4
 
   -- a5 <- of_ (atomic $ count =<< other =<< turtles_here) =<< turtle 7
   -- let e5 = 4
@@ -101,11 +100,11 @@ case_Agentsets2 = runT $ do
   -- let e7 = 0
   -- lift $ e7 @=? a7
 
-  ask (atomic $ set_breed "mice") =<< turtle 7
-  ask (atomic $ set_breed "mice") =<< turtle 8
-  a8 <- of_ (atomic $ count =<< mice_here) =<< turtle 7
-  let e8 = 2
-  lift $ e8 @=? a8
+    ask (atomic $ set_breed "mice") =<< turtle 7
+    ask (atomic $ set_breed "mice") =<< turtle 8
+    a8 <- of_ (atomic $ count =<< mice_here) =<< turtle 7
+    let e8 = 2
+    lift $ e8 @=? a8
 
   -- a9 <- of_ (atomic $ count =<< other =<< mice_here) =<< turtle 7
   -- let e9 = 1
@@ -143,19 +142,19 @@ case_Agentsets2 = runT $ do
 --   lift $ e7 @=? a7
 --   lift $ e8 @=? a8
 
-case_Agentsets4_2D = runT $ do
-  ca
-  atomic $ random_seed 29020
-  crt 100
-  ask (atomic $ fd 3) =<< turtles
-  ask (atomic . create_links_with =<< with (do
+ ,testCase "case_Agentsets4_2D" $ runT $ do
+   ca
+   random_seed 29020
+   crt 100
+   ask (atomic $ fd 3) =<< turtles
+   ask (atomic . create_links_with =<< with (do
                                               w1 <- who
                                               w2 <- of_ who =<< myself
                                               return $ w1 > w2)  =<< turtles)
       =<< turtles
-  a1 <- atomic $ count =<< links
-  let e1 = 4950
-  lift $ e1 @=? a1
+   a1 <- atomic $ count =<< links
+   let e1 = 4950
+   lift $ e1 @=? a1
 
   -- a2 <- atomic $ count =<< turtles
   -- e2 <- count =<< turtle_set [of_ self =<< turtles]
@@ -230,11 +229,11 @@ case_Agentsets4_2D = runT $ do
   -- let e19 = False
   -- lift $ e19 @=? a19
 
-case_Agentsets5Box_2D = runT $ do
-  atomic $ random_seed 3782
+ ,testCase "case_Agentsets5Box_2D" $ runT $ do
+   random_seed 3782
   -- requires at_points
 
-case_AgentSetEquality = runT $ do
+ ,testCase "case_AgentSetEquality" $ runT $ do
    ca                       
    a1 <- atomic turtles
    e1 <- atomic turtles
@@ -329,29 +328,29 @@ case_AgentSetEquality = runT $ do
    lift $ [e21] @=? a21
 
    
-case_SimpleLinkAgentset = runT $ do
-  ca
-  crt 2
-  ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
-  ask (atomic $ create_link_from =<< turtle 1) =<< turtle 0
-  ask (atomic die) =<< link 0 1
+ ,testCase "case_SimpleLinkAgentset" $ runT $ do
+   ca
+   crt 2
+   ask (atomic $ create_link_to =<< turtle 1) =<< turtle 0
+   ask (atomic $ create_link_from =<< turtle 1) =<< turtle 0
+   ask (atomic die) =<< link 0 1
 
-  a22 <- of_ (do
+   a22 <- of_ (do
               w1 <- of_ who =<< atomic end1
               w2 <- of_ who =<< atomic end2
               return [w1,w2])
-             =<< atomic (one_of =<< links)
-  let e22 = [1,0]
-  lift $ e22 @=? a22
+             =<< one_of =<< links
+   let e22 = [1,0]
+   lift $ e22 @=? a22
 
-case_CountTurtlesOptimization = runT $ do
-  ca                                
-  a1 <- count =<< with (return True) =<< turtles                             
-  lift $ False @=? a1 > 0
+ ,testCase "case_CountTurtlesOptimization" $ runT $ do
+   ca                                
+   a1 <- count =<< with (return True) =<< turtles                             
+   lift $ False @=? a1 > 0
 
-  crt 1
-  a2 <- count =<< with (return True) =<< turtles                             
-  lift $ True @=? a2 > 0
+   crt 1
+   a2 <- count =<< with (return True) =<< turtles                             
+   lift $ True @=? a2 > 0
   
 -- case_LinkAgentsetDeadLinks = runT $ do
 --   crt 10
@@ -361,3 +360,4 @@ case_CountTurtlesOptimization = runT $ do
 --   a1 <- count =<< links
 --   let e1 = 0
 --   lift $ e1 @=? a1
+ ]

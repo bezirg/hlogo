@@ -14,7 +14,7 @@ tested-with: GHC == 7.10.1, GHC == 7.10.2, GHC == 7.10.3
 build-type: Simple
 cabal-version: >= 1.8
 
-category: Simulation, Concurrency
+category: Simulation
 synopsis: HLogo, a simulation framework in Haskell
 description: Input programs are written in a dialect of Logo, as an embedded DSL of Haskell.
 
@@ -78,7 +78,14 @@ library
 test-suite unit
   type: exitcode-stdio-1.0
   main-is: unit.hs
-  build-depends: base, hlogo, transformers>=0.4, test-framework, test-framework-hunit, test-framework-th, HUnit
+  build-depends: 
+    base, 
+    hlogo, 
+    HUnit,
+    tasty, 
+    tasty-hunit, 
+    tasty-html, 
+    transformers
   ghc-options: -fno-ignore-asserts -threaded "-with-rtsopts=-N2"
   hs-source-dirs: tests                        
 
