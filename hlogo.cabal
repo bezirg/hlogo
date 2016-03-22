@@ -14,7 +14,7 @@ tested-with: GHC == 7.10.1, GHC == 7.10.2, GHC == 7.10.3
 build-type: Simple
 cabal-version: >= 1.8
 
-category: Language, Concurrency
+category: Simulation, Concurrency
 synopsis: HLogo, a simulation framework in Haskell
 description: Input programs are written in a dialect of Logo, as an embedded DSL of Haskell.
 
@@ -222,7 +222,7 @@ benchmark redblue30000
   hs-source-dirs: bench/hlogo
 
 -- IMPLEMENTATION DECISION MICROBENCHMARKS 
--- turned off, only for testing
+-- turned off, only for experimenting
 
 -- benchmark createTurtles
 --   type: exitcode-stdio-1.0

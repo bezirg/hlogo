@@ -1,4 +1,10 @@
-# Prerequisites
+# HLogo: parallel NetLogo variant done in Haskell
+
+[![Build Status](https://travis-ci.org/bezirg/hlogo.svg)](https://travis-ci.org/bezirg/hlog) [![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD--3-blue.svg?style=flat)](http://opensource.org/licenses/BSD-3-Clause)
+ ([online API docs](http://bezirg.github.io/hlogo)) ([testing results](http://bezirg.github.io/hlogo/test-results.html))
+
+
+## Prerequisites
 
 Requires:
 
@@ -7,7 +13,7 @@ Requires:
 
 Tested with GHC 7.6.3, 7.8.4, 7.10.2.
 
-# Installing
+## Installing
 
 ```bash
 cabal sandbox init  # optional but recommended for installing any needed dependencies only-locally
@@ -16,7 +22,7 @@ cabal install --enable-tests
 
 This will automatically fetch any needed dependencies and install the HLogo library.
 
-# Updating
+## Updating
 
 ```bash
 git pull
@@ -25,7 +31,7 @@ cabal install --enable-tests
 
 This will automatically fetch&update any needed dependencies and update the HLogo library.
 
-# Example: Running an HLogo program
+## Example: Running an HLogo program
 
 There are many HLogo examples under `bench/hlogo/` directory.
 To compile an example, open a bash shell and run:
@@ -40,19 +46,19 @@ To run the generated code:
 ./bench/hlogo/Termites --max-pxcor=10 --min-pxcor=-10 --max-pycor=10 --min-pycor=-10 +RTS -N2 # e.g. -N2 is for running on 2 cores
 ```
 
-# Optional: Running tests
+## Optional: Running tests
 
 ```bash
 cabal test
 ```
 
-# Optional: Running benchmarks
+## Optional: Running benchmarks
 
 ```bash
 cabal bench
 ```
 
-# Comparing with a NetLogo program
+## Comparing with a NetLogo program
 
 Assuming that the netlogo executables are in your `$PATH`, open a shell and run:
 
