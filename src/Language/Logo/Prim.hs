@@ -90,6 +90,7 @@ import Data.Colour.SRGB (sRGB24)
 
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
+import Data.Foldable (Foldable)
 #endif
 
 #ifdef STATS_STM
