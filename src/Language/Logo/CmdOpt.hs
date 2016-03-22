@@ -32,7 +32,7 @@ data CmdOpt = CmdOpt {
     , vertical_wrap_ :: Bool
     , split_ :: Split
     , patch_size_ :: Int
-  } deriving (Show, Data)
+  } deriving (Show, Data, Typeable)
 
 -- | Where lies the origin location (0,0) in the 2d-space
 data Origin = Center
@@ -45,7 +45,7 @@ data Origin = Center
             | TopLeftCorner
             | TopRightCorner
             | Custom
-            deriving (Show, Eq, Data,Enum)
+            deriving (Show, Eq, Data, Typeable, Enum)
 
 -- | This declares the strategy of spatially slicing an agentset (that is passed to 'ask'/'of_'/'with')
 -- and giving a piece of the agentset to a different thread.
@@ -58,7 +58,7 @@ data Split = HorizontalSplit
            | VerticalSplit
            | ChunkSplit
            | RoundRobinSplit
-           deriving (Show, Data, Enum)
+           deriving (Show, Data, Typeable, Enum)
 
 -- | Internal
 --

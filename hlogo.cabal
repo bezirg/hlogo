@@ -102,21 +102,21 @@ benchmark fwdback
   ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
   hs-source-dirs: bench/hlogo
 
-benchmark termites
-  type: exitcode-stdio-1.0
-  main-is: Termites.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  hs-source-dirs: bench/hlogo
+-- benchmark termites
+--   type: exitcode-stdio-1.0
+--   main-is: Termites.hs
+--   build-depends: base, hlogo
+--   extensions: TemplateHaskell, NoImplicitPrelude
+--   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+--   hs-source-dirs: bench/hlogo
 
-benchmark fire
-  type: exitcode-stdio-1.0
-  main-is: Fire.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  hs-source-dirs: bench/hlogo
+-- benchmark fire
+--   type: exitcode-stdio-1.0
+--   main-is: Fire.hs
+--   build-depends: base, hlogo
+--   extensions: TemplateHaskell, NoImplicitPrelude
+--   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+--   hs-source-dirs: bench/hlogo
 
 -- benchmark heatbugs
 --   type:           exitcode-stdio-1.0
