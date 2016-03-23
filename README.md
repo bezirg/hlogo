@@ -4,20 +4,18 @@
  ([online API docs](http://bezirg.github.io/hlogo)) ([testing results](http://bezirg.github.io/hlogo/test-results.html))
 
 
-## Prerequisites
+## Software Requirements
 
-Requires:
-
-- [GHC](https://www.haskell.org/ghc/)>=7.6.1  and [cabal-install](http://hackage.haskell.org/package/cabal-install)>=1.18
-- or [GHC platform](https://www.haskell.org/platform/)>=2013.2.0.0
-
-Tested with GHC 7.6.3, 7.8.4, 7.10.2.
+- [GHC](https://www.haskell.org/ghc/)>=7.8.1  and [cabal-install](http://hackage.haskell.org/package/cabal-install)>=1.18
+- or [GHC platform](https://www.haskell.org/platform/)>=2014.2.0.0
 
 ## Installing
 
+Run inside your shell:
+
 ```bash
 cabal sandbox init  # optional but recommended for installing any needed dependencies only-locally
-cabal install --enable-tests
+cabal install
 ```
 
 This will automatically fetch any needed dependencies and install the HLogo library.
@@ -26,7 +24,7 @@ This will automatically fetch any needed dependencies and install the HLogo libr
 
 ```bash
 git pull
-cabal install --enable-tests
+cabal install
 ```
 
 This will automatically fetch&update any needed dependencies and update the HLogo library.
@@ -34,35 +32,25 @@ This will automatically fetch&update any needed dependencies and update the HLog
 ## Example: Running an HLogo program
 
 There are many HLogo examples under `bench/hlogo/` directory.
-To compile an example, open a bash shell and run:
+To compile an HLogo model (e.g. RedBlue), open a shell and run:
 
 ```bash
-cabal exec ghc -- --make -O -XTemplateHaskell -XNoImplicitPrelude -cpp -threaded bench/hlogo/Termites.hs
+cabal exec ghc -- --make -O -XTemplateHaskell -XNoImplicitPrelude -cpp -threaded bench/hlogo/RedBlue.hs
 ```
 
 To run the generated code:
 
 ```bash
-./bench/hlogo/Termites --max-pxcor=10 --min-pxcor=-10 --max-pycor=10 --min-pycor=-10 +RTS -N2 # e.g. -N2 is for running on 2 cores
-```
-
-## Optional: Running tests
-
-```bash
-cabal test
-```
-
-## Optional: Running benchmarks
-
-```bash
-cabal bench
+./bench/hlogo/RedBlue --max-pxcor=10 --min-pxcor=-10 --max-pycor=10 --min-pycor=-10 +RTS -N2 
+# e.g. -N2 is for running on 2 cores
 ```
 
 ## Comparing with a NetLogo program
 
-Assuming that the netlogo executables are in your `$PATH`, open a shell and run:
+If you haven't add `NetLogo.jar` to your `CLASSPATH`, you have to locate its path in the filesystem. 
+After that run:
 
 ```bash
-time netlogo-headless.sh --experiment experiment1 --model /PATH/TO/hlogo/bench/nlogo/Termites.nlogo 
+java -Xmx1024m -cp PATH/TO/NetLogo.jar org.nlogo.headless.Main --model bench/nlogo/RedBlue.nlogo  
 ```
 
