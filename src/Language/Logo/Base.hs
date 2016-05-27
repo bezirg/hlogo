@@ -36,6 +36,11 @@ import Data.IORef (IORef)
 class Agent s where      
     -- | The specified agent or agentset runs the given commands. 
     ask :: C (One s) p IO _b -> s -> C p p' IO ()
+    -- | A variation of ask where the caller does not wait for the callee-agents to finish
+    --
+    -- NB: the caller may run in parallel with the callees, and this may lead to race-condition issues
+    -- e.g. Observer's 'tick' may not be seen by all agents 
+    ask_async :: C (One s) p IO _b -> s -> C p p' IO ()
     of_ :: C (One s) p IO b -> s -> C p p' IO (Many s b)
 
 class With s where

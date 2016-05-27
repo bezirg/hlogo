@@ -1498,12 +1498,15 @@ numBits = ceiling ((logBase 2 $ fromIntegral $ numCapabilities + 1) :: Double)
 -- same implementations
 instance Agent Turtle where
     ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
+    ask_async f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return () -- same as ask. actually ask_async on single-agent is a misnomer because it is not asynchronous
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 instance Agent Patch where
     ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
+    ask_async f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return () -- same as ask. actually ask_async on single-agent is a misnomer because it is not asynchronous
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 instance Agent Link where
     ask f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return ()
+    ask_async f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f >> return () -- same as ask. actually ask_async on single-agent is a misnomer because it is not asynchronous
     of_ f a = Reader.withReaderT (\ (s,_,rng) -> (a,s,rng)) f
 
 
@@ -1520,6 +1523,17 @@ instance Agent Turtles where
              ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
         ThreadG.wait __tg
 
+    ask_async f as = do
+      (s,_,tgen) <- Reader.ask
+      lift $ do
+        g <- readIORef tgen
+        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        writeIORef tgen $! g0
+        mapM_ (\ (tslice,core,g') -> do
+                 tgen' <- newIORef g'
+                 Thread.forkOn core $ F.mapM_ (\ t -> Reader.runReaderT f (t,s,tgen')) tslice
+             ) (zip3 (splitTurtles numCapabilities [as]) [1..numCapabilities] gs)
+        -- does not wait
 
     of_ f as = do
       (s,_,tgen) <- Reader.ask
@@ -1570,6 +1584,18 @@ instance Agent Patches where
                    ) (zip (splitPatches (V.length as) numCapabilities) gs)
               ThreadG.wait __tg                               
 
+    ask_async f as = do
+      (s,_,tgen) <- Reader.ask
+      lift $ do
+              g <- readIORef tgen
+              let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+              writeIORef tgen $! g0
+              mapM_ (\ ((start,size,core),g') -> do
+                      tgen' <- newIORef g'
+                      Thread.forkOn core $ V.mapM_ (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as)
+                   ) (zip (splitPatches (V.length as) numCapabilities) gs)
+              -- does not wait
+
     of_ f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
@@ -1607,6 +1633,18 @@ instance Agent Links where
                    ThreadG.forkOn core __tg $ mapM_ (\ a -> Reader.runReaderT f (a,s,tgen')) asSection
               ) (zip (splitLinks numCapabilities $ M.elems as) gs)
         ThreadG.wait __tg
+
+    ask_async f as = do
+      (s,_,tgen) <- Reader.ask
+      lift $ do 
+        g <- readIORef tgen
+        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        writeIORef tgen $! g0
+        mapM_ (\ ((core, asSection),g') -> do
+                   tgen' <- newIORef g'
+                   Thread.forkOn core $ mapM_ (\ a -> Reader.runReaderT f (a,s,tgen')) asSection
+              ) (zip (splitLinks numCapabilities $ M.elems as) gs)
+        -- does not wait
 
     of_ f as = do
       (s,_,tgen) <- Reader.ask
