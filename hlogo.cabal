@@ -41,8 +41,6 @@ library
     vector,
     -- for adding a context (self,myself) reader ontop of stm
     transformers>=0.4, 
-    -- needed because of cabal hell conflicts
-    transformers-compat<0.5,
     -- for random-related functions of stdlib
     random, tf-random,
     -- for timer functions of stdlib

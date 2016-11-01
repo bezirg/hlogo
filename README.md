@@ -15,6 +15,7 @@ Run inside your shell:
 
 ```bash
 cabal sandbox init  # optional but recommended for installing any needed dependencies only-locally
+cabal update
 cabal install
 ```
 
@@ -24,6 +25,7 @@ This will automatically fetch any needed dependencies and install the HLogo libr
 
 ```bash
 git pull
+cabal update
 cabal install
 ```
 
@@ -32,7 +34,7 @@ This will automatically fetch&update any needed dependencies and update the HLog
 ## Example: Running an HLogo program
 
 There are many HLogo examples under `bench/hlogo/` directory.
-To compile an HLogo model (e.g. RedBlue), open a shell and run:
+To compile an HLogo model (e.g. RedBlue), inside the repository's directory open a shell and run:
 
 ```bash
 cabal exec ghc -- --make -O -XTemplateHaskell -XNoImplicitPrelude -cpp -threaded bench/hlogo/RedBlue.hs
