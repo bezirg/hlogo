@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP #-}
--- Options: hwrap, vwrap
+{-# LANGUAGE CPP, TemplateHaskell, NoImplicitPrelude #-}
 -- turtles: sheep
 -- patches: grass
 -- sheep moves forward 1, eats grass
@@ -28,8 +27,8 @@ args = ["--max-pxcor=100"
        ,"--max-pycor=100"
        ,"--min-pxcor=-100"
        ,"--min-pycor=-100"
-       ,"--horizontal-wrap"
-       ,"--vertical-wrap"
+       ,"--horizontal-wrap=True"
+       ,"--vertical-wrap=True"
        ]
 
 run ["setup", "go"]

@@ -1,4 +1,4 @@
--- Options: max-pxcor: 25, max-pycor: 25, hwrap, vwrap
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 -- patches: grass that regrows over time
 -- breed sheep: eats grass moves around
 -- breed wolves: eats sheep moves around
@@ -26,6 +26,13 @@ wolf_gain_from_food = 20
 sheep_reproduce = 4
 wolf_reproduce = 5
 
+args = ["--max-pxcor=25"
+       ,"--max-pycor=25"
+       ,"--min-pxcor=-25"
+       ,"--min-pycor=-25"
+       ,"--horizontal-wrap=True"
+       ,"--vertical-wrap=True"
+       ]
 run ["setup", "go"]
 
 setup = do

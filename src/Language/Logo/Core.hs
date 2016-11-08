@@ -13,7 +13,6 @@ module Language.Logo.Core
     , __tick
     , __who
     , __timer 
-    , __tg
     , __patches
     , __turtles
     , __links
@@ -31,7 +30,6 @@ import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
 import System.Random.TF.Gen (TFGen,seedTFGen)
 import System.IO.Unsafe (unsafePerformIO)
-import qualified Control.Concurrent.Thread.Group as ThreadG (ThreadGroup, new)
 import Data.IORef (IORef, newIORef)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>),(<*>))
@@ -53,11 +51,6 @@ __who = unsafePerformIO $ newTVarIO 0
 -- | The global (atomically-modifiable) timer variable
 __timer :: TVar UTCTime
 __timer = unsafePerformIO $ newTVarIO undefined
-
-{-# NOINLINE __tg #-}
--- | The global group of running threads. Observer uses this ThreadGroup in 'ask', as a synchronization point to wait until all of them are finished.
-__tg :: ThreadG.ThreadGroup
-__tg = unsafePerformIO $ ThreadG.new
 
 {-# NOINLINE __patches #-}
 -- | The global turtles vector

@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 -- | Imagine an N-by-N grid of office desks and a bureaucrat sitting at each. A folder
 -- is randomly assigned to one desk. The bureaucrat does nothing until four or more folders are
 -- on his desk at which time he sends one to each of his four nearest neighbors. Any bureaucrat
@@ -12,49 +13,69 @@
 -- Options: max-pxcor: 99, max-pycor: 99, no-hwrap,no-vwrap
 -- Adapted from Bureaucrats-fast.nlogo
 import Language.Logo
+import qualified Data.Vector as V (singleton,concat, toList, fromList)
 import Data.List (nub)
 
---globals ["total"]
+globals ["total"]
 patches_own ["n"]
 
+
+args = ["--max-pxcor=50"
+       ,"--max-pycor=50"
+       ,"--min-pxcor=-50"
+       ,"--min-pycor=-50"
+       ,"--horizontal-wrap=False"
+       ,"--vertical-wrap=False"
+       ]
 run ["setup", "go"]
 
 setup = do
-  ask (atomic $ set_n 2 >> colorize) =<< patches
+  ask (atomic $ do
+    set_n 2
+    colorize) =<< patches
   c <- count =<< patches
-  --atomic $ set_total $ 2 * fromIntegral c
+  atomic $ set_total $ 2 * fromIntegral c
   reset_ticks
 
 go = forever $ do
   ts <- ticks
-  when (ts > 5000) $ stop
-  active_patches <- unsafe_one_of =<< patches
+  when (ts > 5000) $ do
+    -- print =<< count =<< with (liftM (== 0) n) =<< patches
+    -- print =<< count =<< with (liftM (== 1) n) =<< patches
+    -- print =<< count =<< with (liftM (== 2) n) =<< patches
+    -- print =<< count =<< with (liftM (== 3) n) =<< patches
+    -- print =<< count =<< with (liftM (> 3) n) =<< patches
+    print =<< total
+    --snapshot
+    stop
+  active_patches <- one_of =<< patches
+  -- add a folder in every go
   ask (atomic $ do
          with_n (+1)
-         --with_total (+1)
+         with_total (+1)
          colorize) active_patches
-  recurs active_patches
+  -- maybe forward, RIPPLE EFFECT
+  recurse $ V.singleton active_patches
+  
   tick
 
 
-recurs ap = do
-        t <- anyp ap
-        if t 
-           then do
-             overloaded_patches <- with (liftM (> 3) n) ap
-             ask (do
-                   atomic $ do
-                     with_n ((-) 4)
-                     --with_total (-4)
-                     colorize
-                   ask (atomic $ do
-                         with_n (+1)
-                         --with_total (+1)
-                         colorize) =<< neighbors4
-                 ) overloaded_patches
-             r <- (liftM (nub . concat) $ neighbors4 `of_` overloaded_patches)
-             recurs r
-           else return ()
+recurse ap = do
+  t <- anyp ap
+  when t $ do
+    overloaded_patches <- with (liftM (> 3) n) ap
+    --print =<< count overloaded_patches
+    ask (do
+      atomic $ do
+          with_n (subtract 4)
+          with_total (subtract 4)
+          colorize
+      ask (atomic $ do
+                with_n (+1)
+                with_total (+1)
+                colorize) =<< neighbors4
+      ) overloaded_patches
+    recurse =<< liftM patch_set_ (neighbors4 `of_` overloaded_patches)
   
 colorize = do
   n_ <- n
@@ -65,3 +86,8 @@ colorize = do
                    then item (truncate n_) [83,54,45,25]
                    else red
    
+-- this operation is the most expensive and makes it slow
+patch_set_ lps = V.fromList . nub . V.toList $ V.concat lps
+-- nub is O(n^2)
+
+--patch_set_ lps = V.fromList . nub . concat $ map V.toList lps

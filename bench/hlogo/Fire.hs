@@ -1,8 +1,15 @@
--- | Options: max-pxcor: 125, max-pycor: 125, no-hwrap,no-vwrap
--- TODO: the stop condition should be that they are no turtles (fires&embers) left.
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 import Language.Logo
 
-density = 99                    -- forest density
+args = ["--max-pxcor=100"
+       ,"--max-pycor=100"
+       ,"--min-pxcor=-100"
+       ,"--min-pycor=-100"
+       ,"--horizontal-wrap=False"
+       ,"--vertical-wrap=False"
+       ]
+
+density = 70                    -- forest density
                                 -- green patches are trees (black patches are rocks)
 
 globals ["initial_trees", "burned_trees"]
@@ -14,7 +21,7 @@ breeds_own "embers" []
 run ["setup", "go"]
 
 setup = do
-  ask (atomic $ set_pcolor green) =<< (with (liftM (< density) (atomic $ random_float 100)) =<< patches)
+  ask (atomic $ set_pcolor green) =<< (with (liftM (< density) (random_float 100)) =<< patches)
   ask ignite =<< (with (liftM2 (==) pxcor min_pxcor ) =<< patches) -- make an initial left column of burning trees
   sit <- count =<< (with (liftM (== green) pcolor) =<< patches)
   atomic $ set_initial_trees (fromIntegral sit)
@@ -23,7 +30,9 @@ setup = do
 
 go = forever $ do
   ts <- ticks
-  when (ts > 500) (stats_stm >>= print >> stop)
+  when (ts > 100) $ do
+    --snapshot
+    stop
   -- at each round, all current fires become embers and ask their green neighbour patches to ignite (create new fires)
   ask (do
          ask ignite =<< (with (liftM (== green) pcolor) =<< atomic neighbors4)
@@ -33,7 +42,7 @@ go = forever $ do
   tick
 
 ignite = do
-  s <- atomic $ sprout_fires 1
+  s <- sprout_fires 1
   ask (atomic $ set_color red) s
   atomic $ set_pcolor black
   atomic $ with_burned_trees (+1)

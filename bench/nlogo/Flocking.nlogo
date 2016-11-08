@@ -4,8 +4,8 @@ turtles-own [
 ]
 
 to setup
-  reset-timer
   clear-all
+  reset-timer
   crt population
     [ set color yellow - 2 + random 7  ;; random shades look nice
       set size 1.5  ;; easier to see
@@ -18,10 +18,10 @@ to go
   ask turtles [ flock ]
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
-  repeat 5 [ ask turtles [ fd 0.2 ] ]
+  ;;repeat 5 [ ask turtles [ fd 0.2 ] ]
   ;; for greater efficiency, at the expense of smooth
   ;; animation, substitute the following line instead:
-  ;;   ask turtles [ fd 1 ]
+  ask turtles [ fd 1 ]
   tick
 end
 
@@ -639,7 +639,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.3.1
 @#$#@#$#@
 set population 200
 setup
@@ -674,9 +674,9 @@ repeat 200 [ go ]
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0

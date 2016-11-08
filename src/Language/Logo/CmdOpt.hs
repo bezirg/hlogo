@@ -89,14 +89,14 @@ cmdOptSpec = CmdOpt {
                                &= explicit 
                                &= name "origin-location" 
                                &= help "Setting the origin location"
-          , horizontal_wrap_ = False 
+          , horizontal_wrap_ = True 
                                &= explicit 
                                &= name "horizontal-wrap" 
-                               &= help "When set, enables world horizontal wrapping"
-          , vertical_wrap_ = False 
+                               &= help "Set to False to disable world horizontal wrapping (default=True)"
+          , vertical_wrap_ = True 
                              &= explicit 
                              &= name "vertical-wrap" 
-                             &= help "When set, enables world vertical wrapping"
+                             &= help "Set to False to disable world vertical wrapping (default=True)"
           , split_ = ChunkSplit 
                      &= explicit 
                      &= name "split" 
@@ -110,6 +110,6 @@ cmdOptSpec = CmdOpt {
           &= program "hlogo" 
           &= help "HLogo framework" 
           &= helpArg [explicit, name "h", name "help"]
-          &= summary ("model compiled with HLogo v0.1.9, (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou") -- summary is --version
+          &= summary ("model compiled with HLogo v0.2.0, (C) Nikolaos Bezirgiannis, Wishnu Prasetya, Ilias Sakellariou") -- summary is --version
 
 

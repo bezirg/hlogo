@@ -9,13 +9,11 @@ patches-own [
 ]
 
 to setup
-  reset-timer
   clear-all
+  reset-timer
   ask patches
-    [ ifelse -1 = 0
-        [ set spin one-of [-1 1] ]
-        [ set spin -1 ]
-      recolor ]
+        [ set spin one-of [-1 1]
+          recolor]
   set sum-of-spins sum [spin] of patches
   reset-ticks
 end
@@ -559,7 +557,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.3.1
 @#$#@#$#@
 setup 0
 repeat 100000 [ go ]

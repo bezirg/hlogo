@@ -1,6 +1,13 @@
--- Options: max-pxcor: 100 , max-pycor: 100, no-hwrap, no-vwrap
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 import Language.Logo
 
+args = ["--max-pxcor=100"
+       ,"--max-pycor=100"
+       ,"--min-pxcor=-100"
+       ,"--min-pycor=-100"
+       ,"--horizontal-wrap=False"
+       ,"--vertical-wrap=False"
+       ]
 run ["setup", "go"]
 
 setup = do

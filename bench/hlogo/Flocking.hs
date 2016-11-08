@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
+
 import Language.Logo
 
 turtles_own ["flockmates", "nearest_neighbor"]
@@ -9,16 +11,23 @@ max_align_turn = 5
 max_cohere_turn = 3
 max_separate_turn = 1.5
 
+args = ["--max-pxcor=35"
+       ,"--max-pycor=35"
+       ,"--min-pxcor=-35"
+       ,"--min-pycor=-35"
+       ,"--horizontal-wrap=True"
+       ,"--vertical-wrap=True"
+       ]
 run ["setup", "go"]
 
 setup = do
-  ts <- atomic $ crt population
+  ts <- crt population
   ask (do
-          r <- unsafe_random 7
+          r <- random 7
           atomic $ set_color $ yellow - 2 + r
           atomic $ set_size 1.5
-          x <- unsafe_random_xcor
-          y <- unsafe_random_ycor
+          x <- random_xcor
+          y <- random_ycor
           atomic $ setxy x y
        ) ts
   reset_ticks
@@ -27,7 +36,8 @@ go = forever $ do
   t <- ticks
   when (t > 10000) stop
   ask flock =<< turtles
-  repeat_ 5 (ask (atomic $ fd 0.2) =<< turtles)
+  --repeat_ 5 (ask (atomic $ fd 0.2) =<< turtles)
+  ask (atomic $ fd 1) =<< turtles
   tick
 
 flock = do

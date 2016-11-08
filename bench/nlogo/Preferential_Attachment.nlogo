@@ -3,8 +3,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 to setup
-  reset-timer
   clear-all
+  reset-timer
   set-default-shape turtles "circle"
   ;; make the initial network of two turtles and an edge
   make-node nobody        ;; first node, unattached
@@ -357,17 +357,17 @@ See also Network Example, in the Code Examples section.
 
 ## CREDITS AND REFERENCES
 
-This model is based on:  
+This model is based on:
 Albert-László Barabási. Linked: The New Science of Networks, Perseus Publishing, Cambridge, Massachusetts, pages 79-92.
 
-For a more technical treatment, see:  
+For a more technical treatment, see:
 Albert-László Barabási & Reka Albert. Emergence of Scaling in Random Networks, Science, Vol 286, Issue 5439, 15 October 1999, pages 509-512.
 
 Barabási's webpage has additional information at: http://www.nd.edu/~alb/
 
 The layout algorithm is based on the Fruchterman-Reingold layout algorithm.  More information about this algorithm can be obtained at: http://citeseer.ist.psu.edu/fruchterman91graph.html.
 
-For a model similar to the one described in the first extension, please consult:  
+For a model similar to the one described in the first extension, please consult:
 W. Brian Arthur, "Urban Systems and Historical Path-Dependence", Chapt. 4 in Urban systems and Infrastructure, J. Ausubel and R. Herman (eds.), National Academy of Sciences, Washington, D.C., 1988.
 
 
@@ -671,7 +671,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.3.1
 @#$#@#$#@
 set layout? false
 set plot? false

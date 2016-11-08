@@ -1,5 +1,4 @@
--- | Options: max-pxcor: 30, max-pycor: 30, no-hwrap, no-vwrap
-
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 import Language.Logo
 
 patches_own ["exit_distance"]
@@ -10,6 +9,13 @@ breeds_own "lights" []
 
 number_of_pedestrians = 1250
 
+args = ["--max-pxcor=30"
+       ,"--max-pycor=30"
+       ,"--min-pxcor=-30"
+       ,"--min-pycor=-30"
+       ,"--horizontal-wrap=False"
+       ,"--vertical-wrap=False"
+       ]
 run ["setup"]
 
 setup = do

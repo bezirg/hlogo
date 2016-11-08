@@ -43,7 +43,7 @@ module Language.Logo.Prim (
                             -- * IO Operations
                             atomic, ask, of_, snapshot, 
 
-                            -- * Internal (needed for Keyword module)
+                            -- * move_to & Internal (needed for Keyword module)
                             TurtlePatch (..), STMorIO, readTVarSI,
  ) where
 
@@ -64,7 +64,7 @@ import Control.Monad (forM_, liftM, liftM2, filterM, forever, when, (<=<))
 import Data.Word (Word8)
 import qualified Data.Foldable as F (Foldable, foldl', foldr, toList, foldlM, mapM_)
 import qualified Data.Traversable as T (mapM)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 
 -- concurrency
 import Control.Concurrent.STM
@@ -72,7 +72,7 @@ import GHC.Conc.Sync (unsafeIOToSTM)
 import GHC.Conc (numCapabilities)
 import Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Thread as Thread (forkOn, result)
-import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, wait)
+import qualified Control.Concurrent.Thread.Group as ThreadG (forkOn, new, wait)
 import Data.IORef (writeIORef, readIORef, modifyIORef', newIORef)
 
 
@@ -144,10 +144,10 @@ patches = return __patches
 {-# SPECIALIZE INLINE patch :: Double -> Double -> C _s _s' IO Patch #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: STMorIO m => Double -> Double -> C _s _s' m Patch
-patch x y = return $ patch' x y
+patch x y = maybe nobody pure $ patch' x y
 
 {-# INLINE patch' #-}
-patch' :: Double -> Double -> Patch
+patch' :: Double -> Double -> Maybe Patch
 patch' x y = let mix = min_pxcor_ cmdOpt
                  miy = min_pycor_ cmdOpt
                  max = max_pxcor_ cmdOpt
@@ -155,8 +155,8 @@ patch' x y = let mix = min_pxcor_ cmdOpt
                  norm_x = if horizontal_wrap_ cmdOpt then ((round x + max) `mod` (max-mix+1)) + mix else round x
                  norm_y = if vertical_wrap_ cmdOpt then ((round y + may) `mod` (may-miy+1)) + miy else round y
              in if mix <= norm_x && norm_x <= max && miy <= norm_y && norm_y <= may
-                then __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
-                else error "nobody" -- i cannot put nobody here because this function is pure
+                then Just $ __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
+                else Nothing -- i cannot put nobody here because this function is pure
     
 {-# WARNING carefully "TODO" #-}
 -- | Runs commands1. If a runtime error occurs inside commands1, NetLogo won't stop and alert the user that an error occurred. It will suppress the error and run commands2 instead. 
@@ -170,7 +170,7 @@ patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m Patch
 patch_at x y = do
   (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
-  return $ patch' (fromIntegral px + x) (fromIntegral py +y)
+  maybe nobody pure $ patch' (fromIntegral px + x) (fromIntegral py +y)
 
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' STM Patch #-}
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' IO Patch #-}
@@ -192,7 +192,7 @@ patch_ahead n = do
   let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ cmdOpt
                                                          then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                                                          else  dy_*n
-  return $ patch' px_new py_new
+  maybe nobody pure $ patch' px_new py_new
 
 {-# INLINE black #-}
 black :: Double
@@ -270,9 +270,9 @@ count = return . Prelude.length
 anyp :: (STMorIO m, F.Foldable t, Agent (t a)) => t a -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
 #if __GLASGOW_HASKELL__ < 710
-anyp = return . F.foldr (\_ _ -> False) True
+anyp = return . F.foldr (\_ _ -> True) False
 #else
-anyp = return . Prelude.null
+anyp = pure . not . Prelude.null
 #endif
 
 allp :: (F.Foldable t, Agent (t a)) => C (One (t a)) p IO Bool -> t a -> C p p' IO Bool
@@ -390,21 +390,36 @@ instance TurtleLink Link where
                                            ))
 class Agent s => TurtlePatch s where
     patch_on_ :: STMorIO m => s -> C s _s' m Patch
+    -- | The turtle sets its x and y coordinates to be the same as the given agent's.
+    -- (If that agent is a patch, the effect is to move the turtle to the center of that patch.) 
+    move_to :: s -> C Turtle _s' STM ()
 
 instance TurtlePatch Patch where
     patch_on_ = return
+    move_to (MkPatch {pxcor_ = x, pycor_ = y}) = do
+      set_xcor (fromIntegral x)
+      set_ycor (fromIntegral y)
 
 instance TurtlePatch Turtle where
     patch_on_ (MkTurtle {xcor_=tx,ycor_=ty}) = do
                  x <- readTVarSI tx
                  y <- readTVarSI ty
                  patch x y
+    move_to (MkTurtle {xcor_=tx,ycor_=ty}) = do
+                 x <- lift $ readTVar tx
+                 set_xcor x
+                 y <- lift $ readTVar ty
+                 set_ycor y
 
 {-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' IO Patch #-}
 {-# SPECIALIZE  patch_on_ :: TurtlePatch s => s -> C s _s' STM Patch #-}
 
+
 {-# SPECIALIZE  turtle_set :: [C _s _s' STM Turtle] -> C _s _s' STM Turtles #-}
 {-# SPECIALIZE  turtle_set :: [C _s _s' IO Turtle] -> C _s _s' IO Turtles #-}
+
+
+
 -- | Reports an agentset containing all of the turtles anywhere in any of the inputs.
 --  NB: HLogo no support for nested turtle_set concatenation/flattening
 turtle_set :: STMorIO m => [C _s _s' m Turtle] -> C _s _s' m Turtles
@@ -1096,13 +1111,45 @@ one_of_links l | M.null l = error "empty one_of"
 
 -- |  From an agentset, reports an agentset of size size randomly chosen from the input set, with no repeats.
 -- From a list, reports a list of size size randomly chosen from the input set, with no repeats. 
-n_of :: Eq a => Int -> [a] -> C s _s' IO [a]
-n_of n ls | n == 0     = return []
-          | n < 0     = error "negative index"
-          | otherwise = do
-  o <- one_of ls
-  ns <- n_of (n-1) (delete o ls)
-  return (o:ns)
+-- n_of :: Eq a => Int -> [a] -> C s _s' IO [a]
+-- n_of n ls | n == 0     = return []
+--           | n < 0     = error "negative index"
+--           | otherwise = do
+--   o <- one_of ls
+--   ns <- n_of (n-1) (delete o ls)
+--   return (o:ns)
+
+-- adapted from the NetLogo code
+-- TODO: generalization for lists, links. Turtles is difficult because IntMap does not provide indexing
+n_of :: Int -> Patches -> C s _s' IO Patches
+n_of n ps = let l = V.length ps
+                go i j acc gen | n==j = (acc,gen)
+                               | otherwise = 
+                                  let (v,gen') = TF.randomR (0,l-i) gen
+                                  in if v < n - j
+                                     then go (i+1) (j+1) (ps `V.unsafeIndex` (i-1):acc) gen'
+                                     else go (i+1) j acc gen' 
+            in do
+              (_,_,tgen) <- Reader.ask
+              gen <- lift $ readIORef tgen
+              let (ps',gen') = go 1 0 [] gen 
+              lift $ writeIORef tgen $! gen'
+              return $ V.fromList ps'
+
+-- n_of :: Indexable f => Int -> f a -> C s _s' IO (f a)
+-- n_of 0 _ = mempty
+-- n_of n f = liftM2 mappend (one_of f
+--   ` n_of (n-1) f
+-- class Foldable f => Indexable f where
+--   index :: f a -> Int -> a
+--   index f x = F.toList f !! x -- default (for turtles)
+-- instance Indexable [] where -- lists
+--   index = (!!)
+-- instance Indexable V.Vector where -- patches
+--   index = V.unsafeIndex
+-- instance Indexable (M.Map k) where -- links
+--   index f x = snd $ M.elemAt x f 
+
 
 -- -- Uses instead agent_one_of when types match
 -- -- {-# RULES "n_of/AgentRef" n_of = agent_n_of #-}
@@ -1128,7 +1175,7 @@ min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                                        else acc) (Nothing, error "nobody") as
   
 
-{-# WARNING max_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
+{-# WARNING max_one_of "TODO: currently deterministic and no randomness on tie breaking. Can be improved by using minBound instead of Maybe" #-}
 -- | Reports the agent in the agentset that has the highest value for the given reporter. If there is a tie this command reports one random agent with the highest value. If you want all such agents, use with-max instead. 
 --max_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
 max_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
@@ -1517,6 +1564,7 @@ instance Agent Turtles where
         g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
         writeIORef tgen $! g0
+        __tg <- ThreadG.new
         mapM_ (\ (tslice,core,g') -> do
                  tgen' <- newIORef g'
                  ThreadG.forkOn core __tg $ F.mapM_ (\ t -> Reader.runReaderT f (t,s,tgen')) tslice
@@ -1578,6 +1626,7 @@ instance Agent Patches where
               g <- readIORef tgen
               let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
               writeIORef tgen $! g0
+              __tg <- ThreadG.new
               mapM_ (\ ((start,size,core),g') -> do
                       tgen' <- newIORef g'
                       ThreadG.forkOn core __tg $ V.mapM_ (\ p -> Reader.runReaderT f (p,s,tgen')) (V.unsafeSlice start size as)
@@ -1628,6 +1677,7 @@ instance Agent Links where
         g <- readIORef tgen
         let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
         writeIORef tgen $! g0
+        __tg <- ThreadG.new
         mapM_ (\ ((core, asSection),g') -> do
                    tgen' <- newIORef g'
                    ThreadG.forkOn core __tg $ mapM_ (\ a -> Reader.runReaderT f (a,s,tgen')) asSection
@@ -1743,15 +1793,6 @@ hatch n = do
     lift $ modifyTVar' __turtles (`IM.union` ns) 
     return $ IM.elems ns -- todo: can be optimized
 
--- | The turtle sets its x and y coordinates to be the same as the given agent's.
--- (If that agent is a patch, the effect is to move the turtle to the center of that patch.) 
--- move_to :: TurtlePatch a => [a] -> C Turtle _s' STM ()
--- move_to [a] = do
---   (MkTurtle {xcor_ = tx, ycor_ = ty},_) <- RWS.ask
---   (MkPatch {pxcor_ = px, pycor_ = py}) <- patch_on_ a
---   lift $ writeTVar tx (fromIntegral px) >> writeTVar ty (fromIntegral py)
--- move_to _ = throw $ TypeException "single turtle or patch"
-
 {-# INLINE turtles_on #-}
 -- | Reports an agentset containing all the turtles that are on the given patch or patches, or standing on the same patch as the given turtle or turtles. 
 turtles_on as = IM.unions <$> turtles_here `of_` as
@@ -1860,11 +1901,11 @@ snapshot = do
              let sizeSpec = Diag.mkWidth (fromIntegral (ps * (max_x + abs min_x + 1)))
              let output = "snapshot" ++ Prelude.show (round ticksNow :: Int) ++ ".eps"
              prs <- patches
-             diagPatches <- lift $ T.mapM (\ (MkPatch {pxcor_ = px, pycor_ = py, pcolor_ = pc, plabel_ = pl}) -> do 
+             diagPatches <- lift $ V.mapM (\ (MkPatch {pxcor_ = px, pycor_ = py, pcolor_ = pc, plabel_ = pl}) -> do 
                                    c <- readTVarIO pc
-                                   t <- readTVarIO pl
+                                   --t <- readTVarIO pl
                                    let [r,g,b] = extract_rgb c
-                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.text t Diag.# Diag.fc (sRGB24 255 255 255) Diag.<> Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) :: Diag.Diagram Postscript)
+                                   return (Diag.p2 (fromIntegral px, fromIntegral py), Diag.square 1 Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.lw Diag.none :: Diag.Diagram Postscript)
                                 ) prs 
              trs <- turtles
              diagTurtles <- lift $ T.mapM (\ (MkTurtle {xcor_ = tx, ycor_ = ty, tcolor_ = tc, heading_ = th, size_ = ts}) -> do 
@@ -1877,8 +1918,8 @@ snapshot = do
                                           return (Diag.p2 (x, y), Diag.eqTriangle s Diag.# Diag.fc (sRGB24 r g b) Diag.# Diag.scaleX 0.5 Diag.# Diag.rotate (-h Diag.@@ Diag.deg) :: Diag.Diagram Postscript)
                                 ) trs
 
-             
              lift $ Diag.renderDia Postscript (PostscriptOptions output sizeSpec EPS) (Diag.position (IM.elems diagTurtles) `Diag.atop` Diag.position (V.toList diagPatches))
+    
 
 extract_rgb :: Double -> [Word8]
 extract_rgb c | c == 0 = [0,0,0]
@@ -1921,33 +1962,30 @@ neighbors :: (STMorIO m, TurtlePatch s) => C s _s' m Patches
 neighbors = do
     (s,_,_) <- Reader.ask
     MkPatch {pxcor_ = x, pycor_ = y} <- patch_on_ s
-    return $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
-                      | (x',y') <- [ (x-1,y-1)
-                                  , (x-1,y)
-                                  , (x-1, y+1)
-                                  , (x, y-1)
-                                  , (x, y+1)
-                                  , (x+1, y-1)
-                                  , (x+1, y)
-                                  , (x+1, y+1)
-                                  ]
-                      , (horizontal_wrap_ cmdOpt || (x' <= max_pxcor_ cmdOpt && x' >= min_pxcor_ cmdOpt)) 
-                      && (vertical_wrap_ cmdOpt || (y' <= max_pycor_ cmdOpt || y' >=  min_pycor_ cmdOpt))]
-
+    return $ V.fromList $ catMaybes [patch' (fromIntegral x') (fromIntegral y')
+                                    | (x',y') <- [ (x-1,y-1)
+                                                 , (x-1,y)
+                                                 , (x-1, y+1)
+                                                 , (x, y-1)
+                                                 , (x, y+1)
+                                                 , (x+1, y-1)
+                                                 , (x+1, y)
+                                                 , (x+1, y+1)
+                                                 ]
+                                    ]
+                      
 -- | Reports an agentset containing the 4 surrounding patches
 neighbors4 :: (STMorIO m, TurtlePatch s) => C s _s' m Patches
 neighbors4 = do
     (s,_,_) <- Reader.ask
     (MkPatch {pxcor_ = x, pycor_ = y}) <- patch_on_ s
-    return $ V.fromList [patch' (fromIntegral x') (fromIntegral y')
-                      | (x',y') <- [ (x-1,y)
-                                  , (x+1, y)
-                                  , (x, y-1)
-                                  , (x, y+1)
-                                  ]
-                      , (horizontal_wrap_ cmdOpt || (x' <= max_pxcor_ cmdOpt && x' >= min_pxcor_ cmdOpt)) 
-                      && (vertical_wrap_ cmdOpt || (y' <= max_pycor_ cmdOpt || y' >=  min_pycor_ cmdOpt))]
-
+    return $ V.fromList $ catMaybes [patch' (fromIntegral x') (fromIntegral y')
+                                    | (x',y') <- [ (x-1,y)
+                                                 , (x+1, y)
+                                                 , (x, y-1)
+                                                 , (x, y+1)
+                                                 ]
+                                    ]
 
 {-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' STM Turtles #-}
 {-# SPECIALIZE  turtles_here :: TurtlePatch s => C s _s' IO Turtles #-}
@@ -1982,7 +2020,7 @@ turtles_at x y = do
 patch_here :: STMorIO m => C Turtle _s' m Patch
 patch_here = do
     (MkTurtle {xcor_ = x, ycor_ = y},_,_) <- Reader.ask
-    liftM2 patch' (readTVarSI x) (readTVarSI y)
+    fromMaybe (error "nobody") <$> liftM2 patch' (readTVarSI x) (readTVarSI y) -- TODO: it cannot return nobody, it should be reworked wo patch'
 
 
 {-# SPECIALIZE INLINE turtles :: C _s _s' STM Turtles #-}
@@ -1997,7 +2035,7 @@ turtles = readTVarSI __turtles
 turtle :: STMorIO m => Int -> C _s _s' m Turtle
 turtle n = do
     ts <- readTVarSI __turtles
-    maybe nobody return $ IM.lookup n ts
+    maybe nobody pure $ IM.lookup n ts
 
 
 {-# SPECIALIZE INLINE heading :: C Turtle _s' STM Double #-}

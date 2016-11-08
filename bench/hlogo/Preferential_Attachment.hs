@@ -1,7 +1,14 @@
--- Options: max-pxcor:45, max-pycor:45, no-hwrap, no-vwrap
+{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
 -- no patches, but uses links (thus also turtles)
 import Language.Logo
 
+args = ["--max-pxcor=45"
+       ,"--max-pycor=45"
+       ,"--min-pxcor=-45"
+       ,"--min-pycor=-45"
+       ,"--horizontal-wrap=False"
+       ,"--vertical-wrap=False"
+       ]
 run ["setup","go"]
 
 setup = do

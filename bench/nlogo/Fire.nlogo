@@ -7,8 +7,8 @@ breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
 breed [embers ember]  ;; turtles gradually fading from red to near black
 
 to setup
-  reset-timer 
   clear-all
+  reset-timer
   ;set-default-shape turtles "square"
   ;; make some green trees
   ask patches with [(random-float 100) < density]
@@ -505,7 +505,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.3
+NetLogo 5.3.1
 @#$#@#$#@
 set density 60.0
 setup
