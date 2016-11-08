@@ -144,7 +144,7 @@ patches = return __patches
 {-# SPECIALIZE INLINE patch :: Double -> Double -> C _s _s' IO Patch #-}
 -- | Given the x and y coordinates of a point, reports the patch containing that point. 
 patch :: STMorIO m => Double -> Double -> C _s _s' m Patch
-patch x y = maybe nobody pure $ patch' x y
+patch x y = maybe nobody return $ patch' x y
 
 {-# INLINE patch' #-}
 patch' :: Double -> Double -> Maybe Patch
@@ -170,7 +170,7 @@ patch_at :: (STMorIO m, TurtlePatch s) => Double -> Double -> C s _s' m Patch
 patch_at x y = do
   (s,_,_) <- Reader.ask
   (MkPatch {pxcor_ = px, pycor_=py}) <- patch_on_ s
-  maybe nobody pure $ patch' (fromIntegral px + x) (fromIntegral py +y)
+  maybe nobody return $ patch' (fromIntegral px + x) (fromIntegral py +y)
 
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' STM Patch #-}
 {-# SPECIALIZE  patch_ahead :: Double -> C Turtle _s' IO Patch #-}
@@ -192,7 +192,7 @@ patch_ahead n = do
   let py_new = (fromIntegral (round y :: Int) :: Double) + if vertical_wrap_ cmdOpt
                                                          then (dy_*n + fromIntegral may) `mod_` (may - miy + 1) + fromIntegral miy
                                                          else  dy_*n
-  maybe nobody pure $ patch' px_new py_new
+  maybe nobody return $ patch' px_new py_new
 
 {-# INLINE black #-}
 black :: Double
@@ -2035,7 +2035,7 @@ turtles = readTVarSI __turtles
 turtle :: STMorIO m => Int -> C _s _s' m Turtle
 turtle n = do
     ts <- readTVarSI __turtles
-    maybe nobody pure $ IM.lookup n ts
+    maybe nobody return $ IM.lookup n ts
 
 
 {-# SPECIALIZE INLINE heading :: C Turtle _s' STM Double #-}

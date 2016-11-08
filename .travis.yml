@@ -97,6 +97,5 @@ notifications:
   email:
     on_success: never
     on_failure: change
-  slack: envisage:Y39mhzPxnESyhZUwrPXeJzij
 
 # EOF
