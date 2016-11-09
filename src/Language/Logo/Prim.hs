@@ -60,9 +60,9 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 import Data.List (delete, nub,nubBy, find, sort, sortBy, foldl')
-import Control.Monad (forM_, liftM, liftM2, filterM, forever, when, (<=<))
+import Control.Monad (forM_, liftM, filterM, forever, when, (<=<))
 import Data.Word (Word8)
-import qualified Data.Foldable as F (Foldable, foldl', foldr, toList, foldlM, mapM_)
+import qualified Data.Foldable as F (Foldable, toList, foldlM, mapM_)
 import qualified Data.Traversable as T (mapM)
 import Data.Maybe (fromMaybe, catMaybes)
 
@@ -106,29 +106,29 @@ counterSTMCommits = unsafePerformIO $ newCounter 0
 
 #define todo assert False undefined
 
-{-# SPECIALIZE  self :: Agent s => C s _s' STM s #-}
-{-# SPECIALIZE  self :: Agent s => C s _s' IO s #-}
+{-# SPECIALIZE  self :: C s _s' STM s #-}
+{-# SPECIALIZE  self :: C s _s' IO s #-}
 -- |  Reports this turtle or patch. 
-self :: (STMorIO m, Agent s) => C s _s' m s -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
+self :: STMorIO m => C s _s' m s -- ^ returns a list (set) of agentrefs to be compatible with the 'turtle-set' function
 self = do
   (s,_,_) <- Reader.ask
   return s
 
-{-# SPECIALIZE  myself :: Agent s => C s s' STM s' #-}
-{-# SPECIALIZE  myself :: Agent s => C s s' IO s' #-}
+{-# SPECIALIZE  myself :: C s s' STM s' #-}
+{-# SPECIALIZE  myself :: C s s' IO s' #-}
 -- | "self" and "myself" are very different. "self" is simple; it means "me". "myself" means "the turtle or patch who asked me to do what I'm doing right now."
 -- When an agent has been asked to run some code, using myself in that code reports the agent (turtle or patch) that did the asking. 
 -- NB: Implemented for ask, of, with
-myself :: (STMorIO m, Agent s) => C s s' m s'
+myself :: STMorIO m => C s s' m s'
 myself = do
   (_,m,_) <- Reader.ask
   return m
 
-{-# SPECIALIZE INLINE other :: (Agent s, Eq s) => [s] -> C s _s' STM [s] #-}
-{-# SPECIALIZE INLINE other :: (Agent s, Eq s) => [s] -> C s _s' IO [s] #-}
+{-# SPECIALIZE INLINE other :: Eq s => [s] -> C s _s' STM [s] #-}
+{-# SPECIALIZE INLINE other :: Eq s => [s] -> C s _s' IO [s] #-}
 {-# WARNING other "TODO: not yet working for the new specialized agentsets" #-}
 -- |  Reports an agentset which is the same as the input agentset but omits this agent. 
-other :: (STMorIO m, Agent s, Eq s) => [s] -> C s _s' m [s]
+other :: (STMorIO m, Eq s) => [s] -> C s _s' m [s]
 other as = do
   s <- self
   return $ delete s as
@@ -250,7 +250,7 @@ pink = 135
 {-# SPECIALIZE INLINE count :: Links -> C _s _s' STM Int #-}
 {-# SPECIALIZE INLINE count :: Links -> C _s _s' IO Int #-}
 -- | Reports the number of agents in the given agentset. 
-count :: (STMorIO m, F.Foldable t, Agent a) => t a -> C _s _s' m Int
+count :: (STMorIO m, F.Foldable t) => t a -> C _s _s' m Int
 -- count [Nobody] = throw $ TypeException "agent" Nobody
 #if __GLASGOW_HASKELL__ < 710
 count = return . F.foldl' (\c _ -> c+1) 0
@@ -267,7 +267,7 @@ count = return . Prelude.length
 {-# SPECIALIZE INLINE anyp :: Links -> C _s _s' STM Bool #-}
 {-# SPECIALIZE INLINE anyp :: Links -> C _s _s' IO Bool #-}
 -- | Reports true if the given agentset is non-empty, false otherwise. 
-anyp :: (STMorIO m, F.Foldable t, Agent (t a)) => t a -> C _s _s' m Bool
+anyp :: (STMorIO m, F.Foldable t) => t a -> C _s _s' m Bool
 -- anyp [Nobody] = throw $ TypeException "agent" Nobody
 #if __GLASGOW_HASKELL__ < 710
 anyp = return . F.foldr (\_ _ -> True) False
@@ -294,13 +294,13 @@ jump n = do
        x' <- liftM ((sin_ h * n) +) $ readTVar tx
        y' <- liftM ((cos_ h * n) +) $ readTVar ty
        let max_x = max_pxcor_ cmdOpt
-       let dmax_x = fromIntegral max_x
-       let min_x = min_pxcor_ cmdOpt
-       let dmin_x = fromIntegral min_x
-       let max_y = max_pycor_ cmdOpt
-       let dmax_y = fromIntegral max_y
-       let min_y = min_pycor_ cmdOpt
-       let dmin_y = fromIntegral min_y
+           dmax_x = fromIntegral max_x
+           min_x = min_pxcor_ cmdOpt
+           dmin_x = fromIntegral min_x
+           max_y = max_pycor_ cmdOpt
+           dmax_y = fromIntegral max_y
+           min_y = min_pycor_ cmdOpt
+           dmin_y = fromIntegral min_y
        if horizontal_wrap_ cmdOpt
          then
            writeTVar tx $! ((x' + dmax_x) `mod_` (max_x - min_x +1)) + dmin_x
@@ -2019,9 +2019,16 @@ turtles_at x y = do
 -- | patch-here reports the patch under the turtle. 
 patch_here :: STMorIO m => C Turtle _s' m Patch
 patch_here = do
-    (MkTurtle {xcor_ = x, ycor_ = y},_,_) <- Reader.ask
-    fromMaybe (error "nobody") <$> liftM2 patch' (readTVarSI x) (readTVarSI y) -- TODO: it cannot return nobody, it should be reworked wo patch'
-
+    (MkTurtle {xcor_ = tx, ycor_ = ty},_,_) <- Reader.ask
+    x <- readTVarSI tx
+    y <- readTVarSI ty
+    let mix = min_pxcor_ cmdOpt
+        miy = min_pycor_ cmdOpt
+        max = max_pxcor_ cmdOpt
+        may = max_pycor_ cmdOpt
+        norm_x = if horizontal_wrap_ cmdOpt then ((round x + max) `mod` (max-mix+1)) + mix else round x
+        norm_y = if vertical_wrap_ cmdOpt then ((round y + may) `mod` (may-miy+1)) + miy else round y
+    return $ __patches `V.unsafeIndex` (((norm_x-mix)*(may-miy+1))+(norm_y-miy))
 
 {-# SPECIALIZE INLINE turtles :: C _s _s' STM Turtles #-}
 {-# SPECIALIZE INLINE turtles :: C _s _s' IO Turtles #-}
