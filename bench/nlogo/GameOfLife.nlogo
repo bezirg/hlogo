@@ -24,7 +24,7 @@ to cell-death
 end
 
 to go
-  if ticks > 3000 [print timer stop]
+  if ticks > 300 [print timer stop]
   ask patches
     [ set live-neighbors count neighbors with [living?] ]
   ;; Starting a new "ask patches" here ensures that all the patches
