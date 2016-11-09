@@ -62,7 +62,7 @@ import qualified Data.Vector as V
 import Data.List (delete, nub,nubBy, find, sort, sortBy, foldl')
 import Control.Monad (forM_, liftM, filterM, forever, when, (<=<))
 import Data.Word (Word8)
-import qualified Data.Foldable as F (Foldable, toList, foldlM, mapM_)
+import qualified Data.Foldable as F (Foldable, toList, foldl', foldr, foldlM, mapM_)
 import qualified Data.Traversable as T (mapM)
 import Data.Maybe (fromMaybe, catMaybes)
 
