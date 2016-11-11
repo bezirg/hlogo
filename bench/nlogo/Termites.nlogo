@@ -516,11 +516,66 @@ ask turtles [ repeat 150 [ go ] ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="100" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <enumeratedValueSet variable="number">
-      <value value="400"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="density">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="250" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="number">
+      <value value="250"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="density">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="500" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="number">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="density">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="1000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="number">
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="density">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="2000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="number">
+      <value value="2000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="density">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="3000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="number">
+      <value value="3000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="density">
       <value value="20"/>

@@ -1,8 +1,9 @@
 
 
 to setup
-   ca
-  create-turtles 1000 [
+  ca
+  reset-timer
+  create-turtles NR_TURTLES [
      setxy random-xcor random-ycor
     ]
 
@@ -10,16 +11,10 @@ to setup
 end
 
 to go
+  if  ticks = 1000 [print timer stop]
   ask turtles [move]
   tick
-end
 
-to go-forever
-  while [ticks < 1000]
-  [
-  ask turtles [move]
-  tick
-  ]
 
 end
 
@@ -81,7 +76,7 @@ BUTTON
 119
 NIL
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -91,22 +86,20 @@ NIL
 NIL
 1
 
-BUTTON
-22
-127
-85
-160
-NIL
-go
-T
+SLIDER
+25
+156
+197
+189
+NR_TURTLES
+NR_TURTLES
+1000
+30000
+1000
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
 1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -455,6 +448,12 @@ NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default

@@ -27,8 +27,8 @@ setup = do
 
 go = forever $ do
   t <- ticks
-  when (t > 100000) $ stop
-  ask update =<< one_of =<< patches
+  when (t > 50) $ stop
+  ask update =<< n_of 2000 =<< patches
   tick
 
 update = do

@@ -52,10 +52,10 @@ end
 GRAPHICS-WINDOW
 315
 10
-730
-446
-40
-40
+830
+546
+50
+50
 5.0
 1
 10
@@ -66,10 +66,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--40
-40
--40
-40
+-50
+50
+-50
+50
 1
 1
 1
@@ -564,9 +564,87 @@ repeat 100000 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="10" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="temperature">
+      <value value="2.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="plotting-interval">
+      <value value="100"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="25" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="temperature">
+      <value value="2.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="plotting-interval">
+      <value value="100"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="50" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="temperature">
+      <value value="2.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="plotting-interval">
+      <value value="100"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="100" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-100"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="temperature">
       <value value="2.24"/>
     </enumeratedValueSet>

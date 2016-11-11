@@ -1,11 +1,14 @@
-{-# LANGUAGE TemplateHaskell, NoImplicitPrelude #-}
+{-# LANGUAGE CPP, TemplateHaskell, NoImplicitPrelude #-}
 
 -- turtles: termites
 -- patches: wood chips
 import Language.Logo
 
+#ifndef number
+#define number 400
+#endif
+
 density = 20
-number = 400
 
 args = ["--max-pxcor=100"
        ,"--max-pycor=100"

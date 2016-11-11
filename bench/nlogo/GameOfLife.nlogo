@@ -616,9 +616,96 @@ setup-random repeat 20 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="50" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fgcolor">
+      <value value="123"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-density">
+      <value value="35"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bgcolor">
+      <value value="79"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="100" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fgcolor">
+      <value value="123"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-density">
+      <value value="35"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bgcolor">
+      <value value="79"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="25" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fgcolor">
+      <value value="123"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-density">
+      <value value="35"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bgcolor">
+      <value value="79"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="10" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="max-pxcor">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-pycor">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pxcor">
+      <value value="-10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="min-pycor">
+      <value value="-10"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="fgcolor">
       <value value="123"/>
     </enumeratedValueSet>
