@@ -449,9 +449,47 @@ NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment1" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="1000" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="1000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="2500" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="2500"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="5000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="5000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="10000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="10000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="20000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="20000"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="30000" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="NR_TURTLES">
+      <value value="30000"/>
+    </enumeratedValueSet>
   </experiment>
 </experiments>
 @#$#@#$#@
