@@ -113,7 +113,7 @@ cInit po = do
 
   (atomically . writeTVar __timer) =<< getCurrentTime
 
-  ogen <- newIORef (seedTFGen (40, 0, 0, 0))   -- default StdGen seed equals 0
+  ogen <- newIORef (seedTFGen (fromIntegral $ random_seed_ cmdOpt, 0, 0, 0))   -- default StdGen seed equals 0
 
   return (undefined,undefined,ogen)             -- the initial context
 

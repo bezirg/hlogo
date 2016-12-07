@@ -32,6 +32,7 @@ data CmdOpt = CmdOpt {
     , vertical_wrap_ :: Bool
     , split_ :: Split
     , patch_size_ :: Int
+    , random_seed_ :: Int
   } deriving (Show, Data, Typeable)
 
 -- | Where lies the origin location (0,0) in the 2d-space
@@ -106,6 +107,11 @@ cmdOptSpec = CmdOpt {
                           &= name "patch-size" 
                           &= typ "NUM" 
                           &= help "Set the size of the patch in pixels (Visualization-related-only, does not affect the model's execution)"
+          , random_seed_ = 40 
+                         &= explicit 
+                         &= name "random-seed"  
+                         &= typ "NUM" 
+                         &= help "Setting the initial main random seed"
           } 
           &= program "hlogo" 
           &= help "HLogo framework" 
