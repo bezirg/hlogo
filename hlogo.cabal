@@ -92,140 +92,106 @@ test-suite unit
 -- BENCHMARKS
 -------------
 
+benchmark bureaucrats
+  type: exitcode-stdio-1.0
+  main-is: Bureaucrats.hs
+  build-depends: base, hlogo, vector
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
+  hs-source-dirs: bench/hlogo
+
+benchmark dummy
+  type: exitcode-stdio-1.0
+  main-is: Dummy.hs
+  build-depends: base, hlogo
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
+  hs-source-dirs: bench/hlogo
+
+-- benchmark evacuation
+--   type: exitcode-stdio-1.0
+--   main-is: Evacuation.hs
+--   build-depends: base, hlogo
+--   ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
+--   hs-source-dirs: bench/hlogo
+
+benchmark fire
+  type: exitcode-stdio-1.0
+  main-is: Fire.hs
+  build-depends: base, hlogo
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: bench/hlogo
+
+-- benchmark flocking
+--   type: exitcode-stdio-1.0
+--   main-is: Flocking.hs
+--   build-depends: base, hlogo
+--   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+--   hs-source-dirs: bench/hlogo
+
 benchmark fwdback
   type: exitcode-stdio-1.0
   main-is: FwdBack.hs
   build-depends: base, hlogo
-  extensions: TemplateHaskell, NoImplicitPrelude
   ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
   hs-source-dirs: bench/hlogo
 
--- benchmark termites
---   type: exitcode-stdio-1.0
---   main-is: Termites.hs
---   build-depends: base, hlogo
---   extensions: TemplateHaskell, NoImplicitPrelude
---   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
---   hs-source-dirs: bench/hlogo
+benchmark gameoflife
+  type: exitcode-stdio-1.0
+  main-is: GameOfLife.hs
+  build-depends: base, hlogo
+  extensions: DoAndIfThenElse
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable"
+  hs-source-dirs: bench/hlogo
 
--- benchmark fire
---   type: exitcode-stdio-1.0
---   main-is: Fire.hs
---   build-depends: base, hlogo
---   extensions: TemplateHaskell, NoImplicitPrelude
---   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
---   hs-source-dirs: bench/hlogo
+benchmark termites
+  type: exitcode-stdio-1.0
+  main-is: Termites.hs
+  build-depends: base, hlogo
+  extensions: DoAndIfThenElse
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: bench/hlogo
 
 -- benchmark heatbugs
 --   type:           exitcode-stdio-1.0
 --   main-is:        Heatbugs.hs
 --   build-depends:  base, hlogo
---   extensions:     TemplateHaskell, NoImplicitPrelude                                                
 --   ghc-options:    -threaded "-with-rtsopts=-t --machine-readable" 
 --   hs-source-dirs: bench/hlogo
 
--- SHEEP BENCHMARK
--------------------
-
-benchmark sheep100
+benchmark ising
   type: exitcode-stdio-1.0
-  main-is: Sheep.hs
+  main-is: Ising.hs
   build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude                                                
   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=100
-  hs-source-dirs: bench/hlogo
-benchmark sheep250
-  type: exitcode-stdio-1.0
-  main-is: Sheep.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=250
-  hs-source-dirs: bench/hlogo
-benchmark sheep500
-  type: exitcode-stdio-1.0
-  main-is: Sheep.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=500
-  hs-source-dirs: bench/hlogo
-benchmark sheep1000
-  type: exitcode-stdio-1.0
-  main-is: Sheep.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=1000
-  hs-source-dirs: bench/hlogo
-benchmark sheep2000
-  type: exitcode-stdio-1.0
-  main-is: Sheep.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=2000
-  hs-source-dirs: bench/hlogo
-benchmark sheep3000
-  type: exitcode-stdio-1.0
-  main-is: Sheep.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_SHEEP=3000
   hs-source-dirs: bench/hlogo
 
--- REDBLUE BENCHMARK
---------------------
+benchmark isingpar
+  type: exitcode-stdio-1.0
+  main-is: IsingPar.hs
+  build-depends: base, hlogo
+  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+  hs-source-dirs: bench/hlogo
 
-benchmark redblue1000
+-- benchmark pa
+--   type: exitcode-stdio-1.0
+--   main-is: Preferential_Attachment.hs
+--   build-depends: base, hlogo
+--   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
+--   hs-source-dirs: bench/hlogo
+
+benchmark redblue
   type: exitcode-stdio-1.0
   main-is: RedBlue.hs
   build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=1000
+  --cpp-options: -DNR_TURTLES=1000
   hs-source-dirs: bench/hlogo
-benchmark redblue2500
+
+benchmark sheep
   type: exitcode-stdio-1.0
-  main-is: RedBlue.hs
+  main-is: Sheep.hs
   build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
   ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=2500
-  hs-source-dirs: bench/hlogo
-benchmark redblue5000
-  type: exitcode-stdio-1.0
-  main-is: RedBlue.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=5000
-  hs-source-dirs: bench/hlogo
-benchmark redblue10000
-  type: exitcode-stdio-1.0
-  main-is: RedBlue.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=10000
-  hs-source-dirs: bench/hlogo
-benchmark redblue20000
-  type: exitcode-stdio-1.0
-  main-is: RedBlue.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=20000
-  hs-source-dirs: bench/hlogo
-benchmark redblue30000
-  type: exitcode-stdio-1.0
-  main-is: RedBlue.hs
-  build-depends: base, hlogo
-  extensions: TemplateHaskell, CPP, NoImplicitPrelude
-  ghc-options: -threaded "-with-rtsopts=-t --machine-readable" 
-  cpp-options: -DNR_TURTLES=30000
+  --cpp-options: -DNR_SHEEP=100
   hs-source-dirs: bench/hlogo
 
 -- IMPLEMENTATION DECISION MICROBENCHMARKS 
