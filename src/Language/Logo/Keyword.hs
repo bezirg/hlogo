@@ -30,7 +30,7 @@ import qualified Data.Vector as V ((!), replicateM)
 import Data.List (genericLength)
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
-import System.Environment (withArgs)
+import System.Environment (withArgs, getArgs)
 import Control.Monad (liftM, filterM)
 import System.Random.TF.Instances (randomR)
 import System.IO.Unsafe (unsafePerformIO)
@@ -49,7 +49,7 @@ globals vs  = do
                 (normalB $ if null vs
                            then [| return () :: C Observer () IO () |]
                            else [| lift $(doE $ map (\ v -> noBindS [| atomically (writeTVar $(varE (mkName ("__" ++ v))) 0) |]) vs ) :: C Observer () IO ()  |]) []
-    -- create 2 getters (1 prim and 1 unsafe) per global variable
+    -- create 1 getter (no unsafe) per global variable
     settersGetters <- liftM concat $ mapM (\ v -> do
                       noInline <- pragInlD (mkName ("__" ++ v)) NoInline FunLike AllPhases                 
                       topLevelVar <- valD (varP (mkName ("__" ++ v)))
@@ -465,7 +465,9 @@ run procs = do
                                Reader.runReaderT (sequence_ ($(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as)) :: [C Observer () IO ()]))
                   |]
-        Just args -> [d| main = withArgs $(varE args) $ runInUnboundThread $
+        Just args -> [d| main = do
+                          args' <- getArgs
+                          withArgs ($(varE args)++args') $ runInUnboundThread $
                                cInit $(plength) >>=
                                Reader.runReaderT (sequence_ ($(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as)) :: [C Observer () IO ()]))
