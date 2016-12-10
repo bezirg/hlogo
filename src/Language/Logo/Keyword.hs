@@ -580,7 +580,7 @@ run procs = do
                  
 -- | Internal, used only in Test code.
 runT :: C Observer () IO b -> IO b
-runT as = cInit 0 >>= Reader.runReaderT as
+runT as = withArgs [] $ cInit 0 >>= Reader.runReaderT as
              
 
 {-# INLINE newOrderedTurtle #-}

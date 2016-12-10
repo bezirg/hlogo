@@ -2,7 +2,6 @@ module Main where
 
 import Test.Tasty
 import Test.Tasty.Runners.Html
-import System.Environment (getArgs, withArgs)
 
 import AgentsetBuilding
 -- import Interaction
@@ -77,9 +76,7 @@ import  Timer
 -- import  RandomCors
 
 main :: IO ()
-main = do
-  args <- getArgs -- append to stdin args
-  withArgs ("-j1":args) $ -- don't run tests in parallel because it messes globals
+main =
    defaultMainWithIngredients (htmlRunner:defaultIngredients)(
     localOption (mkTimeout 1000000) $ -- timeouts any test at 1s
     testGroup "hlogo"

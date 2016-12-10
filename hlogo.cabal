@@ -10,7 +10,7 @@ homepage: http://bezirg.github.io/hlogo
 bug-reports: https://github.com/bezirg/hlogo/issues
 
 stability: provisional
-tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
+tested-with: GHC == 8.0.1
 build-type: Simple
 cabal-version: >= 1.8
 
@@ -32,8 +32,8 @@ Flag stats-stm
 
 library
   build-depends:      
-    -- supporting GHC>=7.8
-    base>=4.7.0.0 && <5, 
+    -- supporting GHC>=8.0
+    base>=4.9.0.0 && <5, 
     -- link-set are a Map (Int,Int), world-turtle-set are IntMap                             
     containers>=0.5.0.0, 
     -- for now: turtles-own, patches-own,links-own stored in a static (=fixed at compile-time) array

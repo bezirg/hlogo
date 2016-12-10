@@ -6,8 +6,8 @@
 
 ## Software Requirements
 
-- [GHC](https://www.haskell.org/ghc/)>=7.8.1  and [cabal-install](http://hackage.haskell.org/package/cabal-install)>=1.18
-- or [GHC platform](https://www.haskell.org/platform/)>=2014.2.0.0
+- [GHC](https://www.haskell.org/ghc/)>=8.0.1  and [cabal-install](http://hackage.haskell.org/package/cabal-install)>=1.24
+- or the latest [Haskell platform](https://www.haskell.org/platform/)
 
 ## Installing
 
