@@ -276,7 +276,7 @@ anyp = pure . not . Prelude.null
 #endif
 
 allp :: (F.Foldable t, Agent (t a)) => C (One (t a)) p IO Bool -> t a -> C p p' IO Bool
-allp r as = undefined
+allp r as = todo
 -- do
 --   res <- with r as
 --   return $ Prelude.length as == Prelude.length res
@@ -1165,7 +1165,7 @@ n_of n ps = let l = V.length ps
 
 {-# WARNING min_one_of "TODO: currently deterministic and no randomness on tie breaking" #-}
 -- | Reports a random agent in the agentset that reports the lowest value for the given reporter. If there is a tie, this command reports one random agent that meets the condition.
---min_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
+--min_one_of :: (Agent b, Foldable t, Ord (Many b b1)) => t b -> C (One b) p IO b1 -> C p p' IO b
 min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
                                     return $ case mv1 of
@@ -1177,7 +1177,7 @@ min_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
 
 {-# WARNING max_one_of "TODO: currently deterministic and no randomness on tie breaking. Can be improved by using minBound instead of Maybe" #-}
 -- | Reports the agent in the agentset that has the highest value for the given reporter. If there is a tie this command reports one random agent with the highest value. If you want all such agents, use with-max instead. 
---max_one_of :: (Ord b, Ord s, Agent [s]) => [s] -> C s s' IO b -> C s' s'' IO s
+--max_one_of :: (Agent b, Foldable t, Ord (Many b b1)) => t b -> C (One b) p IO b1 -> C p p' IO b
 max_one_of as r = snd <$> F.foldlM (\ acc@(mv1,_) a2 -> do
                                     v2 <- r `of_` a2
                                     return $ case mv1 of
@@ -1771,8 +1771,7 @@ hatch n = do
     -- todo: this whole code could be made faster by readTVar of the attributes only once and then newTVar multiple times from the 1 read
     let newArray = V.mapM (newTVar <=< readTVar) tarr
     let newTurtles w = return . IM.fromDistinctAscList =<< sequence [do
-                                                                        t <- MkTurtle <$>
-                                                                            return i <*>
+                                                                        t <- MkTurtle i <$>
                                                                             (newTVar =<< readTVar bd) <*>
                                                                             (newTVar =<< readTVar c) <*>
                                                                             (newTVar =<< readTVar h) <*>

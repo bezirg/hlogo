@@ -45,18 +45,15 @@ import Data.IORef
 -- Global variables have type 'Double' and are initialized to 0.
 globals :: [String] -> Q [Dec]
 globals vs  = do
-    clear_globals <- valD (varP $ mkName "clear_globals") 
-                (normalB $ if null vs
-                           then [| return () :: C Observer () IO () |]
-                           else [| lift $(doE $ map (\ v -> noBindS [| atomically (writeTVar $(varE (mkName ("__" ++ v))) 0) |]) vs ) :: C Observer () IO ()  |]) []
+    clear_globals <- [d|clear_globals :: C Observer () IO () 
+                        clear_globals =
+                         $(if null vs then [| return ()|] else [| lift $(doE $ map (\ v -> noBindS [| atomically (writeTVar $(varE (mkName ("__" ++ v))) 0) |]) vs )|])|]
     -- create 1 getter (no unsafe) per global variable
     settersGetters <- liftM concat $ mapM (\ v -> do
                       noInline <- pragInlD (mkName ("__" ++ v)) NoInline FunLike AllPhases                 
-                      topLevelVar <- valD (varP (mkName ("__" ++ v)))
-                                                   (normalB [| unsafePerformIO $ newTVarIO 0 :: TVar Double |]) []
+                      topLevelVar <- [d|$(varP $ mkName ("__" ++ v)) = unsafePerformIO $ newTVarIO 0 :: TVar Double |]
                       getVarSig <- sigD (mkName v) [t| forall _s _s' m. STMorIO m => C _s _s' m Double|] -- cannot infer the STMOrIO otherwise
-                      getVar <- valD (varP (mkName v)) 
-                               (normalB [| readTVarSI $(varE (mkName ("__" ++v))) |]) []
+                      getVar <- [d|$(varP $ mkName v) = readTVarSI $(varE (mkName ("__"++v))) |]
 
                       y <- newName "y"
                       setVar <- funD (mkName ("set_" ++ v)) [clause [varP y] 
@@ -64,9 +61,9 @@ globals vs  = do
                       withVar <- funD (mkName ("with_" ++ v)) [clause [varP y] 
                                                               (normalB [| lift $ modifyTVar' $(varE (mkName ("__" ++ v))) $(varE y) |]) []]
 
-                      return [noInline, topLevelVar, getVar, getVarSig, setVar, withVar]
+                      return $ topLevelVar ++ getVar ++ [noInline, getVarSig, setVar, withVar]
                                          )  vs
-    return $ clear_globals: settersGetters
+    return $ clear_globals ++ settersGetters
 
 -- | turtles_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __turtle agent__.
 -- This user-declared turtle-field variables have type 'Double' and are initialized to 0.
@@ -74,15 +71,16 @@ globals vs  = do
 -- NB: turtle fields are inherited to all __turtle-like__ agents, i.e. both the turtle agents as well as all any-breed agents.
 turtles_own :: [String] -> Q [Dec]
 turtles_own vs = do
-  tlInline <- pragInlD (mkName "turtles_length") Inline FunLike AllPhases
-  tl <- valD (varP (mkName "turtles_length")) (normalB (litE (integerL (genericLength vs)))) []
+  tl <- [d|{-# INLINE turtles_length #-}
+           turtles_length = $(litE $ integerL $ genericLength vs)
+          |]
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Turtle _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| do
-                                                 (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv V.! $(litE (integerL i)))
-                                              |]) []
+          p <- [d|$(varP $ mkName v) = do
+                      (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
+                      readTVarSI (pv V.! $(litE $ integerL i))
+               |]
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
@@ -93,25 +91,26 @@ turtles_own vs = do
                                                                        lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
 
-          return [p',p,w,x]
+          return $ p':p++[w,x]
             ) (zip vs [0..])
-  return $ tlInline: tl : concat pg
+  return $ tl ++ concat pg
 
 
 -- | patches_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __patch agent__.
 -- This user-declared patch-field variables have type 'Double' and are initialized to 0.
 patches_own :: [String] -> Q [Dec]
 patches_own vs = do
-  plInline <- pragInlD (mkName "patches_length") Inline FunLike AllPhases
-  pl <- valD (varP (mkName "patches_length")) (normalB (litE (integerL (genericLength vs)))) []
+  pl <- [d|{-# INLINE patches_length #-}
+           patches_length = $(litE $ integerL $ genericLength vs)
+          |]
   -- Variables setters/getters
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| forall s _s' m. (TurtlePatch s, STMorIO m) => C s _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| do
-                                                 (s,_,_) <- Reader.ask
-                                                 (MkPatch {pvars_ = pv}) <- patch_on_ s
-                                                 readTVarSI $ pv V.! $(litE (integerL i))
-                                                 |]) []
+          p <- [d|$(varP $ mkName v) = do
+                          (s,_,_) <- Reader.ask
+                          (MkPatch {pvars_ = pv}) <- patch_on_ s
+                          readTVarSI $ pv V.! $(litE $ integerL i)
+                 |]
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                  (s,_,_) <- Reader.ask
@@ -123,9 +122,9 @@ patches_own vs = do
                                                  (MkPatch {pvars_ = pv}) <- patch_on_ s
                                                  lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y)
                                                                      |]) []]
-          return [p',p,w,x]
+          return $ p':p ++[w,x]
             ) (zip vs [0..])
-  return $ plInline: pl : concat pg
+  return $ pl ++ concat pg
 
 
 -- | links_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __link agent__.
@@ -134,15 +133,15 @@ patches_own vs = do
 -- NB: link fields are inherited to all __link-like__ agents, i.e. both the link agents as well as all any-linkbreed agents.
 links_own :: [String] -> Q [Dec]
 links_own vs = do
-  llInline <- pragInlD (mkName "links_length") Inline FunLike AllPhases
-  ll <- valD (varP (mkName "links_length")) (normalB (litE (integerL (genericLength vs)))) []
-
+  ll <- [d|{-# INLINE links_length #-}
+           links_length = $(litE $ integerL $ genericLength vs)
+          |]
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Link _s' m Double|]
-          p <- valD (varP (mkName v)) (normalB [| do
-                                                 (MkLink {lvars_ = pv},_,_) <- Reader.ask
-                                                 readTVarSI (pv V.! $(litE (integerL i)))
-                                              |]) []
+          p <- [d|$(varP $ mkName v) = do
+                      (MkLink {lvars_ = pv},_,_) <- Reader.ask
+                      readTVarSI (pv V.! $(litE (integerL i)))
+               |]
           y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkLink {lvars_ = pv},_,_) <- Reader.ask
@@ -153,9 +152,9 @@ links_own vs = do
                                                                        lift $ modifyTVar' (pv V.! $(litE (integerL i))) $(varE y) 
                                                                      |]) []]
 
-          return [p',p,w,x]
+          return $ p':p ++[w,x]
             ) (zip vs [0..])
-  return $ llInline: ll: concat pg
+  return $ ll ++ concat pg
 
 
 -- | breeds_own macro takes a list of variable names (as strings) and creates corresponding field variables for each __breed-exact agent__.
@@ -172,16 +171,36 @@ breeds_own p vs = do
   cob <- funD (mkName ("create_ordered_" ++ p)) [clause [varP y]
                                                 (normalB [| create_ordered_breeds $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
   sp <- funD (mkName ("sprout_" ++ p)) [clause [varP y] (normalB [| do
-                                                           (MkPatch {pxcor_=px,pycor_=py}, _,_) <- Reader.ask
-                                                           let  newTurtles w n = liftM IM.fromDistinctAscList $ sequence [do
-                                                                                                                       t <- newBSprout i $(litE (integerL (genericLength vs))) (fromIntegral px) (fromIntegral py) $(litE (stringL p))
-                                                                                                                       return (i, t)
-                                                                                                                     | i <- [w..w+n-1]]
-                                                           oldWho <- lift $ readTVarIO __who
-                                                           atomic $ lift $ modifyTVar' __who ($(varE y) +)
-                                                           ns <- newTurtles oldWho $(varE y)
-                                                           atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
-                                                           return ns
+                                                           (MkPatch {pxcor_=px,pycor_=py}, _,ogen_) <- Reader.ask
+                                                           lift $ do
+                                                              oldWho <- atomically $ do
+                                                                                      x <- readTVar __who
+                                                                                      writeTVar __who $! ($(varE y) +x)
+                                                                                      return x
+                                                              gen <- readIORef ogen_
+                                                              (ns,gen') <- foldrM (\ i (ts,g) -> do
+                                                                let (rpc,g') = randomR (0,13 :: Int) g
+                                                                let (rih,g'') = randomR (0,360 :: Int) g'
+                                                                t <- MkTurtle i <$>
+                                                                    newTVarIO $(litE (stringL p)) <*>
+                                                                    newTVarIO (primary_colors !! rpc)  <*>
+                                                                    newTVarIO (fromIntegral rih) <*>
+                                                                    newTVarIO (fromIntegral px) <*>
+                                                                    newTVarIO (fromIntegral py) <*>
+                                                                    newTVarIO "default" <*>
+                                                                    newTVarIO "" <*>
+                                                                    newTVarIO 9.9 <*>
+                                                                    newTVarIO False <*>
+                                                                    newTVarIO 1 <*>
+                                                                    newTVarIO 1 <*>
+                                                                    newTVarIO Up <*>
+                                                                    (V.replicateM $(litE (integerL (genericLength vs))) (newTVarIO 0))
+                                                                return ((i,t):ts, g'')
+                                                                  ) ([],gen) [oldWho..oldWho + $(varE y)-1]
+                                                              let ns' = IM.fromDistinctAscList ns
+                                                              writeIORef ogen_ $! gen'
+                                                              atomically $ modifyTVar' __turtles (`IM.union` ns') 
+                                                              return ns'
                                                          |]) []]
 
 
@@ -194,7 +213,6 @@ breeds_own p vs = do
                                                  (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
                                                  readTVarSI (pv V.! $(litE (integerL i)))
                                               |]) []
-          y <- newName "y"
           w <- funD (mkName ("set_" ++ v)) [clause [varP y] (normalB [| do 
                                                                        (MkTurtle {tvars_ = pv},_,_) <- Reader.ask
                                                                        lift $ writeTVar (pv V.! $(litE (integerL i))) $! $(varE y)
@@ -212,9 +230,37 @@ breeds_own p vs = do
 link_breeds_own :: String -> [String] -> Q [Dec]
 link_breeds_own p vs = do
   y <- newName "y"
-  cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB [| create_breeded_links_with $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB [| create_breeded_links_to $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
-  cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB [| create_breeded_links_from $(litE (stringL p)) $(varE y) $(litE (integerL (genericLength vs))) |]) []]
+  cls <- funD (mkName $ "create_" ++ p ++ "_with") [clause [varP y] (normalB 
+          [|do
+            (MkTurtle {who_=x},_,_) <- Reader.ask
+            ls <- lift $ readTVar __links
+            let insertLink t x s =  do
+                       n <- newLBreed x t False $(litE (stringL p)) $(litE (integerL (genericLength vs)))
+                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
+            ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems $(varE y))
+            lift $ writeTVar __links $! ls' :: C Turtle _s' STM ()
+          |]) []]
+  cts <- funD (mkName $ "create_" ++ p ++ "_to") [clause [varP y] (normalB 
+          [|do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls <- lift $ readTVar __links
+              let insertLink t x s =  do
+                       n <- newLBreed x t True $(litE (stringL p)) $(litE (integerL (genericLength vs)))
+                       return $ M.insertWith (flip const) (x,t) n s
+              ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems $(varE y))
+              lift $ writeTVar __links $! ls' :: C Turtle _s' STM ()       
+          |]) []]
+  cfs <- funD (mkName $ "create_" ++ p ++ "_from") [clause [varP y] (normalB 
+          [|do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls <- lift $ readTVar __links
+              let insertLink f x s =  do
+                       n <- newLBreed f x True $(litE (stringL p)) $(litE (integerL (genericLength vs)))
+                       return $ M.insertWith (flip const) (f,x) n s
+              ls' <- lift $ foldlM (\ acc (MkTurtle {who_=f}) -> insertLink f x acc) ls (IM.elems $(varE y))
+              lift $ writeTVar __links $! ls' :: C Turtle _s' STM ()
+          |]) []]
+
   pg <- mapM (\ (v, i) -> do
           p' <- sigD (mkName v) [t| forall _s' m. STMorIO m => C Link _s' m Double|]
           p <- valD (varP (mkName v)) (normalB [| do
@@ -269,16 +315,6 @@ breeds [plural,singular] = do
                                                                   y' <- readTVar y_
                                                                   b <- readTVar tb
                                                                   return $ round x' == px && round y' == py && b == $(litE (stringL plural))) =<< (IM.toAscList <$> turtles)) |]) []
-  -- uth <- valD (varP (mkName ("unsafe_" ++ p ++ "_here"))) (normalB [| do 
-  --                                                                    (a,_) <- Reader.ask
-
-  --                                                                    h <- case a of
-  --                                                                            TurtleRef _ _ -> patch_here
-  --                                                                            PatchRef _ _ -> return [a]
-  --                                                                            _ -> throw $ ContextException "turtle or patch" a
-  --                                                                    ts <- $(varE (mkName ("unsafe_" ++ p)))
-  --                                                                    with (return . ( == h) =<< patch_here) ts
-  --                                                                  |]) []
 
   ta <- funD (mkName (plural ++ "_at")) [clause [varP x, varP y] (normalB [| do 
                                                                        MkPatch {pxcor_=px,pycor_=py} <- patch_at $(varE x) $(varE y)
@@ -307,29 +343,29 @@ breeds _ = fail "Breeds accepts exactly two string arguments, e.g. breeds [\"wol
 -- | Creates a directed-linkbreed. The arguments behave the same as 'breeds'. 
 directed_link_breed :: [String] -> Q [Dec]
 directed_link_breed [p,s] = do
-  sp <- valD (varP (mkName p)) (normalB [| do 
-                                          ls <- links
-                                          filterM (\ (MkLink {lbreed_ = b}) -> return $ b == $(litE (stringL p))) ls |]) []
+  sp <- [d|$(varP (mkName p)) = do ls <- links
+                                   filterM (\ (MkLink {lbreed_ = b}) -> return $ b == $(litE (stringL p))) ls 
+         |]
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do ls <- lift $ readTVar __links
                                        maybe nobody (return . return) $ M.lookup ($(varE x),$(varE y)) ls |]) []]
-  return [sp, ss]
+  return $ ss : sp
 directed_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\", \"street\"]"
 
 -- | Creates an undirected-linkbreed. The arguments behave the same as 'breeds'. 
 undirected_link_breed :: [String] -> Q [Dec]
 undirected_link_breed [p,s] = do
-  sp <- valD (varP (mkName p)) (normalB [| do 
-                                          ls <- links
-                                          filterM (\ (MkLink {lbreed_ = b}) -> return $ b == $(litE (stringL p))) ls |]) []
+  sp <- [d|$(varP (mkName p)) = do ls <- links
+                                   filterM (\ (MkLink {lbreed_ = b}) -> return $ b == $(litE (stringL p))) ls
+          |]
   x <- newName "x"
   y <- newName "y"
   ss <- funD (mkName s) [clause [varP x, varP y] 
                         (normalB [| do ls <- lift $ readTVar __links
                                        maybe nobody (return . return) $ M.lookup ($(varE x),$(varE y)) ls |]) []]
-  return [sp, ss]
+  return $ ss : sp
 undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments, e.g. breeds [\"streets\",\"street\"]"
 
 
@@ -340,21 +376,17 @@ undirected_link_breed _ = fail "Link Breeds accepts exactly two string arguments
 -- It has to take either a list of strings or a list of symbol names (this was chosen). 
 run :: [String] -> Q [Dec]
 run procs = do
-  pl <- lookupValueName "patches_length"
-  let plength = maybe (litE $ integerL 0) varE pl
-  tl <- lookupValueName "turtles_length"
-  let tlength = maybe (litE $ integerL 0) varE tl
-  ll <- lookupValueName "links_length"
-  let llength = maybe (litE $ integerL 0) varE ll
-  gl <- lookupValueName "clear_globals"
-  clear_globals <- valD (varP $ mkName "clear_globals") (normalB [| return () :: C Observer () IO () |]) []
-  mArgs <- lookupValueName "args"
-  y <- newName "y"
-  cts <- funD (mkName "create_turtles") [clause [varP y] (normalB [| do
+  plength <- maybe (litE $ integerL 0) varE <$> lookupValueName "patches_length"
+  tlength <- maybe (litE $ integerL 0) varE <$> lookupValueName "turtles_length" 
+  llength <- maybe (litE $ integerL 0) varE <$> lookupValueName "links_length"
+  
+  cts <- [d|create_turtles y = do
                   (_,_,ogen_) <- Reader.ask
                   lift (do
-                    oldWho <- readTVarIO __who
-                    atomically $ modifyTVar' __who ($(varE y) +)
+                    oldWho <- atomically $ do
+                        x <- readTVar __who
+                        writeTVar __who $! (y +x)
+                        return x
                     gen <- readIORef ogen_
                     (ns,gen') <- foldrM (\ i (ts,g) -> do
                          let (rpc,g') = randomR (0,13 :: Int) g
@@ -374,73 +406,136 @@ run procs = do
                              newTVarIO Up <*>
                              (V.replicateM $(tlength) (newTVarIO 0))
                          return ((i,t):ts, g'')
-                           ) ([],gen) [oldWho..oldWho + $(varE y)-1]
+                           ) ([],gen) [oldWho..oldWho + y-1]
                     let ns' = IM.fromDistinctAscList ns
                     writeIORef ogen_ $! gen'
                     atomically $ modifyTVar' __turtles (`IM.union` ns') 
                     return ns') :: C Observer () IO Turtles
-                            |]) []]
+            |]
 
-        -- (_, a, _, _) <- Reader.ask
-        -- case a of
-        --   ObserverRef _ -> do
-        --          oldWho <- lift $ readTVarIO __who -- it is safe to be not fully atomic
-        --          let newWho = oldWho + $(varE y)
-        --          atomic $ lift $ writeTVar __who newWho  -- since create_turtles
-        --          oldArr <- lift $ readTVarIO __turtles
-        --          let oldLength = length oldArr
-        --          arr <- if newWho > oldLength
-        --                then do
-        --                  newArr <- MV.grow oldArr (oldLength + newWho) -- grow & update the tvar ref &return the new array
-        --                  atomic $ lift $ writeTVar __turtles newArr
-        --                  return newArr
-        --                else return oldArr
-        --          sequence [do
-        --                     t <- newTurtle i $(tlength)
-        --                     lift $ MV.write arr i t
-        --                     return (TurtleRef i t)
-        --                     | i <- [oldWho..newWho-1]]
-        --   _ -> throw $ ContextException "observer" a
-  sp <- funD (mkName "sprout") [clause [varP y] (normalB [| do
-                                                           (MkPatch {pxcor_=px,pycor_=py},_,_) <- Reader.ask
-                                                           let  newTurtles w n = IM.fromDistinctAscList <$> sequence [do
-                                                                                                                              t <- newSprout i $(tlength) (fromIntegral px) (fromIntegral py)
-                                                                                                                              return (i, t)
-                                                                                                                             | i <- [w..w+n-1]]
-                                                           oldWho <- lift $ readTVarIO __who
-                                                           atomic $ lift $ modifyTVar' __who ($(varE y) +)
-                                                           ns <- newTurtles oldWho $(varE y)
-                                                           atomic $ lift $ modifyTVar' __turtles (`IM.union` ns) 
-                                                           return ns -- todo: can be optimized
-                                                         |]) []]
-
-
-
-  co <- funD (mkName "create_ordered_turtles") [clause [varP y] (normalB [| lift (do
-                                                                            let newTurtles w n = IM.fromDistinctAscList <$> mapM (\ (i,j) -> do
-                                                                                                                                        t <- newOrderedTurtle i n j $(tlength)
-                                                                                                                                        return (j, t))
-                                                                                                                                            (zip [1..n]  [w..w+n-1])
-                                                                            oldWho <- readTVarIO __who
-                                                                            atomically $ modifyTVar' __who ($(varE y) +)
-                                                                            ns <- newTurtles oldWho $(varE y)
-                                                                            atomically $ modifyTVar' __turtles (`IM.union` ns) 
-                                                                            return ns) :: C Observer () IO Turtles
-                                                                        |]) []]
+  sp <- [d|sprout y = do
+                        (MkPatch {pxcor_=px,pycor_=py},_,ogen_) <- Reader.ask
+                        lift $ do 
+                          oldWho <- atomically $ do
+                                                  x <- readTVar __who
+                                                  writeTVar __who $! (y +x)
+                                                  return x
+                          gen <- readIORef ogen_
+                          (ns,gen') <- foldrM (\ i (ts,g) -> do
+                             let (rpc,g') = randomR (0,13 :: Int) g
+                             let (rih,g'') = randomR (0,360 :: Int) g'
+                             t <- MkTurtle i <$>
+                                 newTVarIO "turtles" <*>
+                                 newTVarIO (primary_colors !! rpc)  <*>
+                                 newTVarIO (fromIntegral rih) <*>
+                                 newTVarIO (fromIntegral px) <*>
+                                 newTVarIO (fromIntegral py) <*>
+                                 newTVarIO "default" <*>
+                                 newTVarIO "" <*>
+                                 newTVarIO 9.9 <*>
+                                 newTVarIO False <*>
+                                 newTVarIO 1 <*>
+                                 newTVarIO 1 <*>
+                                 newTVarIO Up <*>
+                                 (V.replicateM $(tlength) (newTVarIO 0))
+                             return ((i,t):ts, g'')
+                               ) ([],gen) [oldWho..oldWho + y-1]
+                          let ns' = IM.fromDistinctAscList ns
+                          writeIORef ogen_ $! gen'
+                          atomically $ modifyTVar' __turtles (`IM.union` ns') 
+                          return ns'
+        |]
 
 
-  crtInline <- pragInlD (mkName "crt") Inline FunLike AllPhases                 
-  crt <- valD (varP (mkName "crt") ) (normalB [| $(varE (mkName "create_turtles")) |]) []
-  croInline <- pragInlD (mkName "cro") Inline FunLike AllPhases                 
-  cro <- valD (varP (mkName "cro") ) (normalB [| $(varE (mkName "create_ordered_turtles")) :: Int -> C Observer () IO Turtles |]) []
 
-  clsw <- funD (mkName "create_links_with") [clause [varP y] (normalB [| create_links_with_ $(varE y) $(llength) |]) []]
-  clst <- funD (mkName "create_links_to") [clause [varP y] (normalB [| create_links_to_ $(varE y) $(llength) |]) []]
-  clsf <- funD (mkName "create_links_from") [clause [varP y] (normalB [| create_links_from_ $(varE y) $(llength) |]) []]
-  clw <- funD (mkName "create_link_with") [clause [varP y] (normalB [| create_link_with_ $(varE y) $(llength) |]) []]
-  clt <- funD (mkName "create_link_to") [clause [varP y] (normalB [| create_link_to_ $(varE y) $(llength) |]) []]
-  clf <- funD (mkName "create_link_from") [clause [varP y] (normalB [| create_link_from_ $(varE y) $(llength) |]) []]
+  co <- [d|create_ordered_turtles :: Int -> C Observer () IO Turtles
+           create_ordered_turtles y = lift (do
+                                            let newTurtles w n = IM.fromDistinctAscList <$> mapM (\ (i,j) -> do
+                                                                                                              t <- newOrderedTurtle i n j $(tlength)
+                                                                                                              return (j, t))
+                                                                                            (zip [1..n]  [w..w+n-1])
+                                            oldWho <- atomically $ do
+                                                                    x <- readTVar __who
+                                                                    writeTVar __who $! (y +x)
+                                                                    return x
+                                            ns <- newTurtles oldWho y
+                                            atomically $ modifyTVar' __turtles (`IM.union` ns) 
+                                            return ns)
+        |]
 
+
+  crt <- [d|{-# INLINE crt #-}
+            crt = create_turtles |]
+  cro <- [d|{-# INLINE cro #-}
+            cro = create_ordered_turtles |]
+ 
+  clsw <- [d|{-# INLINE create_links_with #-}
+             create_links_with :: Turtles -> C Turtle _s' STM ()
+             create_links_with as =  do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls <- lift $ readTVar __links
+              ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
+              lift $ writeTVar __links $! ls'
+                where insertLink t x s =  do
+                       n <- newLBreed x t False "links" $(llength)
+                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
+          |]
+  clst <- [d|{-# INLINE create_links_to #-}
+             create_links_to :: Turtles -> C Turtle _s' STM ()
+             create_links_to as = do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls <- lift $ readTVar __links
+              ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
+              lift $ writeTVar __links $! ls'
+                where insertLink t x s =  do
+                       n <- newLink x t $(llength)
+                       return $ M.insertWith (flip const) (x,t) n s
+          |]
+  clsf <- [d|{-# INLINE create_links_from #-}
+             create_links_from :: Turtles -> C Turtle _s' STM ()
+             create_links_from as = do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls <- lift $ readTVar __links
+              ls' <- lift $ foldlM (\ acc (MkTurtle {who_=f}) -> insertLink f x acc) ls (IM.elems as)
+              lift $ writeTVar __links $! ls'
+                where insertLink f x s =  do
+                       n <- newLink f x $(llength)
+                       return $ M.insertWith (flip const) (f,x) n s
+          |]
+
+  clw <-  [d|{-# INLINE create_link_with #-}
+             create_link_with :: Turtle -> C Turtle _s' STM ()
+             create_link_with(MkTurtle {who_=t}) = do
+              (MkTurtle {who_=x},_,_) <- Reader.ask
+              ls' <- lift $ insertLink t x =<< readTVar __links
+              lift $ writeTVar __links $! ls'
+                where insertLink t x s =  do
+                       n <- newLink x t $(llength)
+                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
+          |]
+
+  clt <-  [d|{-# INLINE create_link_to_ #-}
+             create_link_to_ :: Turtle -> C Turtle _s' STM ()
+             create_link_to_ (MkTurtle {who_=t}) = do
+               (MkTurtle {who_=x},_,_) <- Reader.ask
+               ls' <- lift $ insertLink t x =<< readTVar __links
+               lift $ writeTVar __links $! ls'
+                where insertLink t x s =  do
+                       n <- newLink x t $(llength)
+                       return $ M.insertWith (flip const) (x,t) n s
+            |]
+
+
+  clf <-  [d|{-# INLINE create_link_from #-}
+             create_link_from :: Turtle -> C Turtle _s' STM ()
+             create_link_from (MkTurtle {who_=f}) = do
+               (MkTurtle {who_=x},_,_) <- Reader.ask
+               ls' <- lift $ insertLink f x =<< readTVar __links
+               lift $ writeTVar __links $! ls'
+                 where insertLink f x s =  do
+                                    n <- newLink f x $(llength)
+                                    return $ M.insertWith (flip const) (f,x) n s
+           |]
 
   clear_all <- [d| 
                {-# INLINE clear_all #-}
@@ -455,10 +550,12 @@ run procs = do
                    -- clear_all_plots
                    -- clear_output
                {-# INLINE ca #-}
-               ca = clear_all |]
+               ca = clear_all 
+               |]
 
   let as = map mkName procs
   
+  mArgs <- lookupValueName "args"
   m <- case mArgs of
         Nothing -> [d| main = runInUnboundThread $
                                cInit $(plength) >>=
@@ -472,99 +569,19 @@ run procs = do
                                Reader.runReaderT (sequence_ ($(listE (map (\ a -> infixE (Just (varE a)) (varE (mkName ">>")) 
                                                                  (Just (appE (varE (mkName "return")) (conE (mkName "()"))))) as)) :: [C Observer () IO ()]))
                   |]
+  
+  clear_globals <- [d|clear_globals :: C Observer () IO ()
+                      clear_globals = return ()
+                   |]
+  gl <- lookupValueName "clear_globals"
   return $ (case gl of
-              Nothing -> (clear_globals :)
-              _ -> id) (cts: sp: co: crtInline: crt: croInline: cro: clsw: clst: clsf: clw: clt: clf: clear_all ++ m)
+              Nothing -> (clear_globals ++)
+              _ -> id) cts ++ crt ++ co ++ cro ++ clsw ++ clst ++ clsf ++ clw ++ clt ++ clf ++ sp ++ clear_all ++ m
                  
 -- | Internal, used only in Test code.
 runT :: C Observer () IO b -> IO b
 runT as = cInit 0 >>= Reader.runReaderT as
              
-
--- | Internal
-random_primary_color :: C s _s' IO Double
-random_primary_color = do
-  (_,_,tgen) <- Reader.ask
-  gen <- lift $ readIORef tgen
-  let (v,gen') = randomR (0,13 :: Int) gen
-  lift $ writeIORef tgen $! gen'
-  return (primary_colors !! v)
-
--- | Internal
-random_integer_heading :: C s _s' IO Int
-random_integer_heading = do
-  (_,_,tgen) <- Reader.ask
-  gen <- lift $ readIORef tgen
-  let (v,gen') = randomR (0,360 :: Int) gen
-  lift $ writeIORef tgen $! gen'
-  return v
-
-{-# INLINE newOrderedBreed #-}
--- | Internal
-newOrderedBreed :: Int -> Int -> String -> Int -> Int -> IO Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> IO Turtle
-newOrderedBreed i o b x to = do
-  let rpc = primary_colors !! ((i-1) `mod` 14)
-  let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
-  MkTurtle <$>
-       return x <*>
-       newTVarIO b <*>
-       newTVarIO rpc <*>          --  ordered primary color
-       newTVarIO rdh <*> --  ordered double heading
-       newTVarIO 0 <*>
-       newTVarIO 0 <*>
-       newTVarIO "default" <*>
-       newTVarIO "" <*>
-       newTVarIO 9.9 <*>
-       newTVarIO False <*>
-       newTVarIO 1 <*>
-       newTVarIO 1 <*>
-       newTVarIO Up <*>
-       (V.replicateM to (newTVarIO 0))
-
-
--- | Internal
-newSprout :: Int -> Int -> Double -> Double -> C Patch _s' IO Turtle
-newSprout w to x y = do
-  rpc <- random_primary_color
-  rih <- random_integer_heading
-  lift $ MkTurtle <$>
-       return w <*>
-       newTVarIO "turtles" <*>
-       newTVarIO rpc <*>          --  random primary color
-       newTVarIO (fromIntegral rih) <*> --  random integer heading
-       newTVarIO x <*>
-       newTVarIO y <*>
-       newTVarIO "default" <*>
-       newTVarIO "" <*>
-       newTVarIO 9.9 <*>
-       newTVarIO False <*>
-       newTVarIO 1 <*>
-       newTVarIO 1 <*>
-       newTVarIO Up <*>
-       (V.replicateM to (newTVarIO 0))
-
--- | Internal
-newBSprout :: Int -> Int -> Double -> Double -> String -> C Patch _s' IO Turtle
-newBSprout w to x y b = do
-  rpc <- random_primary_color
-  rih <- random_integer_heading
-  lift $ MkTurtle <$>
-       return w <*>
-       newTVarIO b <*>
-       newTVarIO rpc <*>          --  random primary color
-       newTVarIO (fromIntegral rih) <*> --  random integer heading
-       newTVarIO x <*>
-       newTVarIO y <*>
-       newTVarIO "default" <*>
-       newTVarIO "" <*>
-       newTVarIO 9.9 <*>
-       newTVarIO False <*>
-       newTVarIO 1 <*>
-       newTVarIO 1 <*>
-       newTVarIO Up <*>
-       (V.replicateM to (newTVarIO 0))
-
-
 
 {-# INLINE newOrderedTurtle #-}
 -- | Internal
@@ -572,8 +589,7 @@ newOrderedTurtle :: Int -> Int -> Int -> Int -> IO Turtle -- ^ Index -> Order ->
 newOrderedTurtle i o x to = do
     let rpc = primary_colors !! ((i-1) `mod` 14)
     let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
-    MkTurtle <$>
-             return x <*>
+    MkTurtle x <$>
              newTVarIO "turtles" <*>
              newTVarIO rpc <*>          --  ordered primary color
              newTVarIO rdh <*> --  ordered double heading
@@ -594,8 +610,10 @@ create_breeds :: String -> Int -> Int -> C Observer () IO Turtles -- ^ Breed -> 
 create_breeds b n to = do
   (_,_,ogen_) <- Reader.ask
   lift (do
-         oldWho <- readTVarIO __who
-         atomically $ modifyTVar' __who (n +)
+         oldWho <- atomically $ do
+                        x <- readTVar __who
+                        writeTVar __who $! (n +x)
+                        return x
          gen <- readIORef ogen_
          (ns,gen') <- foldrM (\ i (ts,g) -> do
                          let (rpc,g') = randomR (0,13 :: Int) g
@@ -624,16 +642,36 @@ create_breeds b n to = do
 
 -- | Internal, Utility function to make TemplateHaskell easier
 create_ordered_breeds :: String -> Int -> Int -> C Observer () IO Turtles  -- ^ Breed -> Size -> VarLength -> CSTM BreededTurtles
-create_ordered_breeds b n to = do
-  oldWho <- lift $ readTVarIO __who
-  lift $ atomically $ modifyTVar' __who (n +)
-  ns <- lift $ newTurtles oldWho
-  lift $ atomically $ modifyTVar' __turtles (`IM.union` ns) 
-  return ns -- todo: can be optimized
+create_ordered_breeds b n to = lift $ do
+    oldWho <- atomically $ do
+                        x <- readTVar __who
+                        writeTVar __who $! (n +x)
+                        return x
+    ns <- newTurtles oldWho
+    atomically $ modifyTVar' __turtles (`IM.union` ns) 
+    return ns -- todo: can be optimized
         where
           newTurtles w = IM.fromDistinctAscList <$> mapM (\ (i,j) -> do
                                                             t <- newOrderedBreed i n b j to
                                                             return (j, t)) (zip [1..n] [w..w+n-1])
+          newOrderedBreed :: Int -> Int -> String -> Int -> Int -> IO Turtle -- ^ Index -> Order -> Breed -> Who -> VarLength -> IO Turtle
+          newOrderedBreed i o b x to = do
+            let rpc = primary_colors !! ((i-1) `mod` 14)
+            let rdh = ((toEnum i-1) / toEnum o) * 360 :: Double
+            MkTurtle x <$>
+                 newTVarIO b <*>
+                 newTVarIO rpc <*> --  ordered primary color
+                 newTVarIO rdh <*> --  ordered double heading
+                 newTVarIO 0 <*>
+                 newTVarIO 0 <*>
+                 newTVarIO "default" <*>
+                 newTVarIO "" <*>
+                 newTVarIO 9.9 <*>
+                 newTVarIO False <*>
+                 newTVarIO 1 <*>
+                 newTVarIO 1 <*>
+                 newTVarIO Up <*>
+                 (V.replicateM to (newTVarIO 0))
 
 
 -- Links
@@ -644,8 +682,7 @@ create_ordered_breeds b n to = do
 -- | Internal
 -- links directed by default, that makes create-link(s)-with faulty
 newLink :: Int -> Int -> Int -> STM Link -- ^ FromIndex -> ToIndex -> VarLength -> CSTM Link
-newLink f t ls = MkLink f t <$>
-                  return True <*>
+newLink f t ls = MkLink f t True <$>
                   newTVar 5 <*>
                   newTVar "" <*>
                   newTVar 9.9 <*>
@@ -669,121 +706,7 @@ newLBreed f t d b ls = MkLink f t d <$>
                   newTVar "default" <*>
                   newTVar None <*>
                   (V.replicateM ls (newTVar 0))
-
-
-{-# INLINE create_link_from_ #-}
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_from_ :: Turtle -> Int -> C Turtle _s' STM ()
-create_link_from_ (MkTurtle {who_=f}) nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls' <- lift $ insertLink f x =<< readTVar __links
-  lift $ writeTVar __links $! ls'
-    where insertLink f x s =  do
-                       n <- newLink f x nls
-                       return $ M.insertWith (flip const) (f,x) n s
-
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_from_ :: Turtles -> Int -> C Turtle _s' STM ()
-create_links_from_ as nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=f}) -> insertLink f x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink f x s =  do
-                       n <- newLink f x nls
-                       return $ M.insertWith (flip const) (f,x) n s
-
-{-# INLINE create_link_to_ #-}
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_to_ :: Turtle -> Int -> C Turtle _s' STM ()
-create_link_to_ (MkTurtle {who_=t}) nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls' <- lift $ insertLink t x =<< readTVar __links
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLink x t nls
-                       return $ M.insertWith (flip const) (x,t) n s
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_to_ :: Turtles -> Int -> C Turtle _s' STM ()
-create_links_to_ as nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLink x t nls
-                       return $ M.insertWith (flip const) (x,t) n s
-                                   
-
-{-# INLINE create_link_with_ #-}
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_link_with_ :: Turtle -> Int -> C Turtle _s' STM ()
-create_link_with_ (MkTurtle {who_=t}) nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls' <- lift $ insertLink t x =<< readTVar __links
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLink x t nls
-                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
-
-
--- |  Used for creating breeded and unbreeded links between turtles.
--- create-link-with creates an undirected link between the caller and agent. create-link-to creates a directed link from the caller to agent. create-link-from creates a directed link from agent to the caller.
--- When the plural form of the breed name is used, an agentset is expected instead of an agent and links are created between the caller and all agents in the agentset. 
-create_links_with_ :: Turtles -> Int -> C Turtle _s' STM ()
-create_links_with_ as nls =  do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLBreed x t False "links" nls
-                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_to :: String -> Turtles -> Int -> C Turtle _s' STM ()
-create_breeded_links_to b as nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLBreed x t True b nls
-                       return $ M.insertWith (flip const) (x,t) n s
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_from :: String -> Turtles -> Int -> C Turtle _s' STM ()
-create_breeded_links_from b as nls = do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=f}) -> insertLink f x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink f x s =  do
-                       n <- newLBreed f x True b nls
-                       return $ M.insertWith (flip const) (f,x) n s
-
--- | Internal, Utility function to make TemplateHaskell easier
-create_breeded_links_with :: String -> Turtles -> Int -> C Turtle _s' STM ()
-create_breeded_links_with b as nls =  do
-  (MkTurtle {who_=x},_,_) <- Reader.ask
-  ls <- lift $ readTVar __links
-  ls' <- lift $ foldlM (\ acc (MkTurtle {who_=t}) -> insertLink t x acc) ls (IM.elems as)
-  lift $ writeTVar __links $! ls'
-    where insertLink t x s =  do
-                       n <- newLBreed x t False b nls
-                       return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
+                              
 
 -- | Internal
 {-# INLINE primary_colors #-}
