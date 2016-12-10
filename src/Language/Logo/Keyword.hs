@@ -514,9 +514,9 @@ run procs = do
                        return $ M.insertWith (flip const) (t,x) n $ M.insertWith (flip const) (x,t) n s
           |]
 
-  clt <-  [d|{-# INLINE create_link_to_ #-}
-             create_link_to_ :: Turtle -> C Turtle _s' STM ()
-             create_link_to_ (MkTurtle {who_=t}) = do
+  clt <-  [d|{-# INLINE create_link_to #-}
+             create_link_to :: Turtle -> C Turtle _s' STM ()
+             create_link_to (MkTurtle {who_=t}) = do
                (MkTurtle {who_=x},_,_) <- Reader.ask
                ls' <- lift $ insertLink t x =<< readTVar __links
                lift $ writeTVar __links $! ls'

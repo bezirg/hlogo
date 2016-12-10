@@ -1,7 +1,7 @@
 # HLogo: parallel NetLogo variant in Haskell
 
 [![Build Status](https://travis-ci.org/bezirg/hlogo.svg)](https://travis-ci.org/bezirg/hlogo) [![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD--3-blue.svg?style=flat)](http://opensource.org/licenses/BSD-3-Clause)
- ([online API docs](http://bezirg.github.io/hlogo)) ([testing results](http://bezirg.github.io/hlogo/test-results.html))
+ ([Documentation](http://bezirg.github.io/hlogo)) ([Test Results](http://bezirg.github.io/hlogo/test-results.html))
 
 
 ## Software Requirements
