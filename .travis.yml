@@ -90,23 +90,6 @@ script:
 # REGENDATA ["hlogo.cabal"]
 # EOF
 
-after_success:
-  - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$GHCVER" == "8.0.1" ]; 
-    then
-       echo ""
-       #cabal haddock --hyperlink-source --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html';
-       #dist/build/unit/unit --html dist/test-results.html -j1;
-       #cp dist/test-results.html dist/doc/html/hlogo/;
-       #cd dist/doc/html/hlogo/;
-       #git init;
-       #git config user.name "Travis CI";
-       #git config user.email "nobody@nobody.org";
-       #git add .;
-       #git commit -m "Deploy to Github Pages";
-       #git push --force --quiet "https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git" master:gh-pages > /dev/null 2>&1;
-    fi
-
-
 notifications:
   email:
     on_success: never
