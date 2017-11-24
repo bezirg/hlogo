@@ -93,6 +93,7 @@ script:
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" -a "$GHCVER" == "8.0.1" ]; 
     then
+       echo ""
        #cabal haddock --hyperlink-source --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html';
        #dist/build/unit/unit --html dist/test-results.html -j1;
        #cp dist/test-results.html dist/doc/html/hlogo/;
