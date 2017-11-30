@@ -28,7 +28,7 @@ import qualified  Data.IntMap.Strict as IM (empty)
 import qualified Data.Vector as V (fromList, replicateM)
 import Data.Time.Clock (UTCTime,getCurrentTime)
 import Control.Monad
-import System.Random.TF.Gen (TFGen,seedTFGen)
+import System.Random.SplitMix (SMGen,mkSMGen)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef (IORef, newIORef)
 #if __GLASGOW_HASKELL__ < 710
@@ -53,12 +53,23 @@ __timer :: TVar UTCTime
 __timer = unsafePerformIO $ newTVarIO undefined
 
 {-# NOINLINE __patches #-}
--- | The global turtles vector
+-- | The global patches vector
 __patches :: Patches
 __patches = V.fromList [unsafePerformIO (newPatch x y) 
                        | x <- [min_pxcor_ cmdOpt..max_pxcor_ cmdOpt]
                        , y <- [min_pycor_ cmdOpt..max_pycor_ cmdOpt] 
                        ]
+  where
+    -- | Returns a 'Patch' structure with default arguments (based on NetLogo)
+    newPatch :: Int -> Int -> IO Patch
+    newPatch x y = let po = 1       -- patches_own only one element for now
+               in MkPatch x y <$>
+               newTVarIO 0 <*>
+               newTVarIO "" <*>
+               newTVarIO 9.9 <*>
+               -- init the patches-own variables to 0
+               V.replicateM po (newTVarIO 0)
+
 -- two other ways
 
 -- __patches = unsafePerformIO $ let b = max_pycor_ conf - min_pycor_ conf + 1
@@ -78,16 +89,7 @@ __patches = V.fromList [unsafePerformIO (newPatch x y)
 --                       ) (min_pxcor_ conf, min_pycor_ conf)
 
 
-{-# INLINE newPatch #-}
--- | Returns a 'Patch' structure with default arguments (based on NetLogo)
-newPatch :: Int -> Int -> IO Patch
-newPatch x y = let po = 1       -- patches_own only one element for now
-               in MkPatch x y <$>
-               newTVarIO 0 <*>
-               newTVarIO "" <*>
-               newTVarIO 9.9 <*>
-               -- init the patches-own variables to 0
-               V.replicateM po (newTVarIO 0)
+
 
 {-# NOINLINE __turtles #-}
 __turtles :: TVar Turtles
@@ -105,7 +107,7 @@ __printQueue = unsafePerformIO $ newTQueueIO
 -- | Reads the Configuration, initializes globals to 0, spawns the Patches, and forks the IO Printer.
 -- Takes the length of the patch var from TH (trick) for the patches own array.
 -- Returns the top-level Observer context.
-cInit :: Int -> IO (Observer,a,IORef TFGen)
+cInit :: Int -> IO (Observer,a,IORef SMGen)
 cInit po = do
 
   -- The printer just reads an IO chan for incoming text and outputs it to standard output.
@@ -113,7 +115,7 @@ cInit po = do
 
   (atomically . writeTVar __timer) =<< getCurrentTime
 
-  ogen <- newIORef (seedTFGen (fromIntegral $ random_seed_ cmdOpt, 0, 0, 0))   -- default StdGen seed equals 0
+  ogen <- newIORef $ mkSMGen $ random_seed_ cmdOpt  -- default StdGen seed equals 0
 
   return (undefined,undefined,ogen)             -- the initial context
 

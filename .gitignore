@@ -17,7 +17,7 @@ cabal.config
 *_flymake.hs
 TAGS
 tags
-.tags
+*.tags
 *.eps
 *.pdf
 *.exe

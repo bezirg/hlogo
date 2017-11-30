@@ -16,6 +16,7 @@ module Language.Logo.CmdOpt
 
 import System.Console.CmdArgs
 import System.IO.Unsafe (unsafePerformIO)
+import Data.Word (Word64)
 
 {-# NOINLINE cmdOpt #-}
 cmdOpt :: CmdOpt
@@ -32,7 +33,7 @@ data CmdOpt = CmdOpt {
     , vertical_wrap_ :: Bool
     , split_ :: Split
     , patch_size_ :: Int
-    , random_seed_ :: Int
+    , random_seed_ :: Word64
   } deriving (Show, Data, Typeable)
 
 -- | Where lies the origin location (0,0) in the 2d-space

@@ -44,7 +44,7 @@ module Language.Logo.Prim (
                             atomic, ask, of_, snapshot, 
 
                             -- * move_to & Internal (needed for Keyword module)
-                            TurtlePatch (..), STMorIO, readTVarSI,
+                            TurtlePatch (..), STMorIO, readTVarSI, splitCapabilities
  ) where
 
 import Prelude hiding (show,print, length)
@@ -78,8 +78,7 @@ import Data.IORef (writeIORef, readIORef, modifyIORef', newIORef)
 
 -- for rng
 import System.Random (randomR)
-import qualified System.Random.TF.Instances as TF (randomR)
-import System.Random.TF.Gen (splitn, seedTFGen)
+import qualified System.Random.SplitMix as SM (SMGen, splitSMGen, mkSMGen)
 import System.CPUTime (getCPUTime)
 import Data.Time.Clock ( getCurrentTime, UTCTime(..), diffUTCTime)
 import Data.Ratio (numerator, denominator)
@@ -611,7 +610,7 @@ new_seed = do
 random_seed :: Int -> C s _s' IO ()
 random_seed i = do
   (_,_,tgen) <-Reader.ask
-  lift $ writeIORef tgen $! seedTFGen (fromIntegral i, 0, 0, 0)
+  lift $ writeIORef tgen $! SM.mkSMGen $ fromIntegral i
                 
 -- | Reports a random floating point number from the allowable range of turtle coordinates along the given axis, x . 
 random_xcor :: C s _s' IO Double
@@ -636,7 +635,7 @@ random_pxcor :: C s _s' IO Int
 random_pxcor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readIORef tgen
-  let (v, gen') = TF.randomR (min_pxcor_ cmdOpt, max_pxcor_ cmdOpt) gen
+  let (v, gen') = randomR (min_pxcor_ cmdOpt, max_pxcor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
   return v
 
@@ -645,7 +644,7 @@ random_pycor :: C s _s' IO Int
 random_pycor = do
   (_,_,tgen) <-Reader.ask
   gen <- lift $ readIORef tgen
-  let (v, gen') = TF.randomR (min_pycor_ cmdOpt, max_pycor_ cmdOpt) gen
+  let (v, gen') = randomR (min_pycor_ cmdOpt, max_pycor_ cmdOpt) gen
   lift $ writeIORef tgen $! gen'
   return v
 
@@ -669,7 +668,7 @@ random x = do
                   else (if f == 0
                         then n+1
                         else n, 0)
-  let (v, gen') = TF.randomR randRange gen
+  let (v, gen') = randomR randRange gen
   lift $ writeIORef tgen $! gen'
   return (fromIntegral (v :: Int))
 
@@ -1081,7 +1080,7 @@ one_of l | Prelude.null l = error "empty one_of"
          | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readIORef tgen
-  let (v,gen') = TF.randomR (0, Prelude.length l -1) gen
+  let (v,gen') = randomR (0, Prelude.length l -1) gen
   lift $ writeIORef tgen $! gen'
   return $ F.toList l !! v
 #endif
@@ -1093,7 +1092,7 @@ one_of_patches l | V.null l = error "empty one_of"
                  | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readIORef tgen
-  let (v,gen') = TF.randomR (0, V.length l -1) gen
+  let (v,gen') = randomR (0, V.length l -1) gen
   lift $ writeIORef tgen $! gen'
   return $ l `V.unsafeIndex` v
 
@@ -1103,7 +1102,7 @@ one_of_links l | M.null l = error "empty one_of"
                | otherwise = do
   (_,_,tgen) <- Reader.ask
   gen <- lift $ readIORef tgen
-  let (v,gen') = TF.randomR (0, M.size l -1) gen
+  let (v,gen') = randomR (0, M.size l -1) gen
   lift $ writeIORef tgen $! gen'
   return $ snd $ M.elemAt v l
 
@@ -1125,7 +1124,7 @@ n_of :: Int -> Patches -> C s _s' IO Patches
 n_of n ps = let l = V.length ps
                 go i j acc gen | n==j = (acc,gen)
                                | otherwise = 
-                                  let (v,gen') = TF.randomR (0,l-i) gen
+                                  let (v,gen') = randomR (0,l-i) gen
                                   in if v < n - j
                                      then go (i+1) (j+1) (ps `V.unsafeIndex` (i-1):acc) gen'
                                      else go (i+1) j acc gen' 
@@ -1562,7 +1561,7 @@ instance Agent Turtles where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         __tg <- ThreadG.new
         mapM_ (\ (tslice,core,g') -> do
@@ -1575,7 +1574,7 @@ instance Agent Turtles where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         mapM_ (\ (tslice,core,g') -> do
                  tgen' <- newIORef g'
@@ -1587,7 +1586,7 @@ instance Agent Turtles where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
                      tgen' <- newIORef g'
@@ -1600,7 +1599,7 @@ instance With Turtles where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ (tslice,core,g') -> do
                      tgen' <- newIORef g'
@@ -1619,12 +1618,20 @@ splitPatches width n = let (q,r) = width `quotRem` n
                        in  case (foldl' splitPatches' (r,0,[]) ([1..n] :: [Int])) of
                              (_,_,res) -> res
 
+-- | prop> length (splitCapabilities n g) == n + 1
+splitCapabilities :: SM.SMGen -> [SM.SMGen]
+splitCapabilities = splitCapabilities' (numCapabilities+1) -- + 1 for the observer's generator
+  where
+    splitCapabilities' n  g | n < 1 = [g]
+                            | n < 3 = let (g1, g2) = SM.splitSMGen g in [g1,g2]
+                            | otherwise = let (g1,g2) = SM.splitSMGen g
+                                          in splitCapabilities' (n-4) g1 ++ splitCapabilities' (n-2) g2
 instance Agent Patches where
     ask f as = do
       (s,_,tgen) <- Reader.ask
       lift $ do
               g <- readIORef tgen
-              let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+              let (g0:gs) = splitCapabilities g
               writeIORef tgen $! g0
               __tg <- ThreadG.new
               mapM_ (\ ((start,size,core),g') -> do
@@ -1637,7 +1644,7 @@ instance Agent Patches where
       (s,_,tgen) <- Reader.ask
       lift $ do
               g <- readIORef tgen
-              let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+              let (g0:gs) = splitCapabilities g
               writeIORef tgen $! g0
               mapM_ (\ ((start,size,core),g') -> do
                       tgen' <- newIORef g'
@@ -1649,7 +1656,7 @@ instance Agent Patches where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ ((start,size,core),g') -> do
                      tgen' <- newIORef g'
@@ -1662,7 +1669,7 @@ instance With Patches where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ ((start,size,core),g') -> do
                      tgen' <- newIORef g'
@@ -1675,7 +1682,7 @@ instance Agent Links where
       (s,_,tgen) <- Reader.ask
       lift $ do 
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         __tg <- ThreadG.new
         mapM_ (\ ((core, asSection),g') -> do
@@ -1688,7 +1695,7 @@ instance Agent Links where
       (s,_,tgen) <- Reader.ask
       lift $ do 
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         mapM_ (\ ((core, asSection),g') -> do
                    tgen' <- newIORef g'
@@ -1700,7 +1707,7 @@ instance Agent Links where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ ((core, asi),g') -> do
                      tgen' <- newIORef g'
@@ -1714,7 +1721,7 @@ instance With Links where
       (s,_,tgen) <- Reader.ask
       lift $ do
         g <- readIORef tgen
-        let (g0:gs) = map (splitn g numBits) [0..fromIntegral numCapabilities]
+        let (g0:gs) = splitCapabilities g
         writeIORef tgen $! g0
         ws <- mapM (\ ((core, asi),g') -> do
                      tgen' <- newIORef g'

@@ -39,10 +39,10 @@ library
     -- for now: turtles-own, patches-own,links-own stored in a static (=fixed at compile-time) array
     -- patch-set are a 1-dim array
     vector,
-    -- for adding a context (self,myself) reader ontop of stm
+    -- for adding a context (self,myself,randomgen) reader ontop of stm
     transformers>=0.4, 
     -- for random-related functions of stdlib
-    random, tf-random,
+    random, splitmix,
     -- for timer functions of stdlib
     time,
     -- for top-level macros (globals,patches-own,breed definition,etc)
@@ -66,10 +66,7 @@ library
     Language.Logo.Prim, 
     Language.Logo.Exception
     Language.Logo.CmdOpt
-  if impl(ghc >= 8.0.1)
-    ghc-options: -Wall -fno-ignore-asserts -Wno-orphans -Wno-unused-pattern-binds
-  else
-    ghc-options: -Wall -fno-ignore-asserts -fno-warn-orphans
+  ghc-options: -Wall -fno-ignore-asserts -Wno-orphans -Wno-unused-pattern-binds
   if flag(stats-stm)
     cpp-options: -DSTATS_STM
     build-depends: atomic-primops
@@ -81,6 +78,18 @@ library
 test-suite unit
   type: exitcode-stdio-1.0
   main-is: unit.hs
+  other-modules:
+    AgentsetBuilding,
+    Agentsets,
+    AnyAll,
+    Ask,
+    BooleanOperators,
+    Breeds,
+    CanMove,
+    ComparingAgents,
+    ControlStructures,
+    Timer,
+    Utility
   build-depends: 
     base, 
     hlogo, 

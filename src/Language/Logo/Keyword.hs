@@ -32,7 +32,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
 import System.Environment (withArgs, getArgs)
 import Control.Monad (liftM, filterM)
-import System.Random.TF.Instances (randomR)
+import System.Random (randomR)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Foldable (foldlM, foldrM)
 #if __GLASGOW_HASKELL__ < 710
